@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 	"github.com/gorilla/mux"
 
@@ -28,9 +29,9 @@ func (a *App) New() *mux.Router {
 	apiCreate := r.PathPrefix("/api").Subrouter()
 
 	// API Routes
-	apiCreate.Handle("/mod/{id}", http.HandlerFunc(ModByIDHandler)).Methods("GET")       // Return Mod from ID
-	apiCreate.Handle("/mods", http.HandlerFunc(ModsHandler)).Methods("GET")              // Return ModPreview array from first page
-	apiCreate.Handle("/mods/{page}", http.HandlerFunc(ModsByPageHandler)).Methods("GET") // Returns ModPreview array from page {page_number}
+	apiCreate.Handle("/mod/{id}", api.Middleware(http.HandlerFunc(ModByIDHandler))).Methods("GET")       // Return Mod from ID
+	apiCreate.Handle("/mods", api.Middleware(http.HandlerFunc(ModsHandler))).Methods("GET")              // Return ModPreview array from first page
+	apiCreate.Handle("/mods/{page}", api.Middleware(http.HandlerFunc(ModsByPageHandler))).Methods("GET") // Return ModPreview array from page {page_number}
 
 	return r
 }

@@ -21,8 +21,7 @@ type ModResponse struct {
 	Mod     Mod    `json:"mod"`
 }
 
-// yeah
-type NoModFoundResponse struct {
+type MessageResponse struct {
 	Message string `json:"message"`
 }
 

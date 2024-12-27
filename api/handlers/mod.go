@@ -66,7 +66,7 @@ func ModByIDHandler(w http.ResponseWriter, r *http.Request) {
 	var mod models.Mod = util.GetMod(fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
 
 	if mod.Name == "" {
-		b, err := json.Marshal(models.NoModFoundResponse{Message: "Not found"})
+		b, err := json.Marshal(models.MessageResponse{Message: "Not found"})
 		if err != nil {
 			config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
 			return
