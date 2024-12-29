@@ -60,7 +60,8 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 		} else {
 			// For some reason image src does not exists, use this placeholder as
 			// used on reforger.armaplatform.com/workshop for mods with no image
-			url = "https://via.placeholder.com/1280x720"
+			// url = "https://via.placeholder.com/1280x720"
+			url = "https://via.placeholder.com/640x360"
 		}
 		imageURLs = append(imageURLs, url)
 	})
