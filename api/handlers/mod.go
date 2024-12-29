@@ -107,7 +107,7 @@ func ModByIDHandler(w http.ResponseWriter, r *http.Request) {
 	modID := mux.Vars(r)["id"]
 
 	var baseURL string = "reforger.armaplatform.com"
-	var mod models.Mod = util.GetMod(fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
+	var mod models.Mod = *util.GetMod(fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
 
 	if mod.Name == "" {
 		b, err := json.Marshal(models.ErrorResponse{

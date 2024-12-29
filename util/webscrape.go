@@ -13,7 +13,7 @@ import (
 
 const RESULTS_PER_PAGE = 16
 
-func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
+func ScrapeMods(pageNumber int) (*models.WebScrapeResults, error) {
 	var baseURL string = "reforger.armaplatform.com"
 	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d", baseURL, pageNumber)
 	var mods []models.ModPreview
@@ -99,7 +99,7 @@ func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 	c.Visit(workshopURL)
 
 	if resultSummary == "No mods found." {
-		return models.WebScrapeResults{
+		return &models.WebScrapeResults{
 			Found: false,
 		}, nil
 	} else {
@@ -110,17 +110,17 @@ func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 		var err error
 		totalMods, err = strconv.Atoi(strings.Split(resultSummary, " ")[5])
 		if err != nil {
-			return models.WebScrapeResults{}, err
+			return &models.WebScrapeResults{}, err
 		}
 
 		modsIndexStart, err = strconv.Atoi(strings.Split(resultSummary, " ")[1])
 		if err != nil {
-			return models.WebScrapeResults{}, err
+			return &models.WebScrapeResults{}, err
 		}
 
 		modsIndexEnd, err = strconv.Atoi(strings.Split(resultSummary, " ")[3])
 		if err != nil {
-			return models.WebScrapeResults{}, err
+			return &models.WebScrapeResults{}, err
 		}
 	}
 
@@ -136,7 +136,7 @@ func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 		})
 	}
 
-	return models.WebScrapeResults{
+	return &models.WebScrapeResults{
 		Found:          true,
 		Mods:           mods,
 		CurrentPage:    pageNumber,
@@ -148,7 +148,7 @@ func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 	}, nil
 }
 
-func GetMod(modURL string) models.Mod {
+func GetMod(modURL string) *models.Mod {
 	var baseURL string = "reforger.armaplatform.com"
 	var mod models.Mod
 
@@ -289,5 +289,5 @@ func GetMod(modURL string) models.Mod {
 
 	c.Visit(modURL)
 
-	return mod
+	return &mod
 }
