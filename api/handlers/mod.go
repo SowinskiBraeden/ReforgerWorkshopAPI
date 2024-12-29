@@ -10,17 +10,11 @@ import (
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/util"
 	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 )
 
 // ModsHandler returns ModPreview array from initial workshop page
 func ModsHandler(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if err := recover(); err != nil {
-			zap.S().With(err).Error("seomthing went wrongh")
-		}
-	}()
-
+	w.Header().Set("Content-Type", "application/json")
 	results, err := util.ScrapeMods(1)
 	if err != nil {
 		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
@@ -52,6 +46,7 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 
 // ModByPageHandler returns ModPreview array from given page number
 func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 	pageNumber, err := strconv.Atoi(mux.Vars(r)["page"])
 	if err != nil {
 		config.ErrorStatus("failed to convert page number to int", http.StatusInternalServerError, w, err)
@@ -82,7 +77,6 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	b, err := json.Marshal(models.ModsPreviewsResponse{
 		Status: "success",
 		Meta: models.Meta{
@@ -103,11 +97,13 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 }
 
 // ModByIDHandler returns a single Mod
 func ModByIDHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 	modID := mux.Vars(r)["id"]
 
 	var baseURL string = "reforger.armaplatform.com"
