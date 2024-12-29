@@ -43,7 +43,7 @@ func New() *Config {
 func ErrorStatus(message string, httpStatusCode int, w http.ResponseWriter, err error) {
 	zap.S().With(err).Error(message)
 	w.WriteHeader(httpStatusCode)
-	b, _ := json.Marshal(models.ErrorMessageResponse{Message: message, Error: err.Error()})
+	b, _ := json.Marshal(models.ErrorResponse{Status: "error", Error: models.Error{Title: message, Detail: err.Error()}})
 	w.Write(b)
 }
 

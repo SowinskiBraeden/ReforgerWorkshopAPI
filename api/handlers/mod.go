@@ -10,17 +10,33 @@ import (
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/util"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 // ModsHandler returns ModPreview array from initial workshop page
 func ModsHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if err := recover(); err != nil {
+			zap.S().With(err).Error("seomthing went wrongh")
+		}
+	}()
+
 	results := util.ScrapeMods(1)
 
 	b, err := json.Marshal(models.ModsPreviewsResponse{
-		Message:    results.Summary,
-		Mods:       results.Mods,
-		Page:       results.Page,
-		TotalPages: results.TotalPages,
+		Status: "success",
+		Meta: models.Meta{
+			TotalPages:     results.TotalPages,
+			CurrentPage:    results.CurrentPage,
+			TotalMods:      results.TotalMods,
+			ShownMods:      results.ShownMods,
+			ModsIndexStart: results.ModsIndexStart,
+			ModsIndexEnd:   results.ModsIndexEnd,
+		},
+		Data: results.Mods,
+		Links: map[string]string{
+			"next": "test-next",
+		},
 	})
 	if err != nil {
 		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
@@ -39,21 +55,44 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	results := util.ScrapeMods(pageNumber)
+	if !results.Found {
+		w.WriteHeader(http.StatusNotFound)
+		b, err := json.Marshal(models.ErrorResponse{
+			Status: "fail",
+			Error: models.Error{
+				Code:   http.StatusNotFound,
+				Title:  "No mods found.",
+				Detail: "No mods have been found, you may have requests a page number that does not exist.",
+			},
+		})
+		if err != nil {
+			config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
+			return
+		}
+		w.Write(b)
+		return
+	}
 
+	w.WriteHeader(http.StatusOK)
 	b, err := json.Marshal(models.ModsPreviewsResponse{
-		Message:    results.Summary,
-		Mods:       results.Mods,
-		Page:       results.Page,
-		TotalPages: results.TotalPages,
+		Status: "success",
+		Meta: models.Meta{
+			TotalPages:     results.TotalPages,
+			CurrentPage:    results.CurrentPage,
+			TotalMods:      results.TotalMods,
+			ShownMods:      results.ShownMods,
+			ModsIndexStart: results.ModsIndexStart,
+			ModsIndexEnd:   results.ModsIndexEnd,
+		},
+		Data: results.Mods,
+		Links: map[string]string{
+			"next": "test-next",
+			"prev": "test-prev",
+		},
 	})
 	if err != nil {
 		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
 		return
-	}
-	if results.Summary == "No mods found." {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		w.WriteHeader(http.StatusOK)
 	}
 	w.Write(b)
 }
@@ -66,7 +105,14 @@ func ModByIDHandler(w http.ResponseWriter, r *http.Request) {
 	var mod models.Mod = util.GetMod(fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
 
 	if mod.Name == "" {
-		b, err := json.Marshal(models.MessageResponse{Message: "Not found"})
+		b, err := json.Marshal(models.ErrorResponse{
+			Status: "fail",
+			Error: models.Error{
+				Code:   http.StatusNotFound,
+				Title:  "No mods found.",
+				Detail: "No mods have been found, the provided mod ID did not return any results.",
+			},
+		})
 		if err != nil {
 			config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
 			return
@@ -76,7 +122,10 @@ func ModByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := json.Marshal(models.ModResponse{Message: "success", Mod: mod})
+	b, err := json.Marshal(models.ModResponse{
+		Status: "success",
+		Data:   mod,
+	})
 	if err != nil {
 		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
 		return

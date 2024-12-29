@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -14,7 +15,7 @@ import (
 )
 
 const REQUESTS_PER_SECOND int = 15
-const MAX_BURSTS int = 50
+const MAX_BURSTS int = 60
 
 // Simple middleware to handling some basic rate limiting
 func Middleware(next http.Handler) http.Handler {
@@ -60,11 +61,19 @@ func Middleware(next http.Handler) http.Handler {
 			mu.Unlock()
 			zap.S().Infow("Suppressing incoming requests, too fast!", "from", ip, "to", r.URL)
 			w.WriteHeader(http.StatusTooManyRequests)
-			b, _ := json.Marshal(models.MessageResponse{Message: "Too fast! The API is at capacity, try again later."})
+			b, _ := json.Marshal(models.ErrorResponse{
+				Status: "fail",
+				Error: models.Error{
+					Code:   http.StatusTooManyRequests,
+					Title:  "Rate limited!",
+					Detail: "Too fast! The API is at capacity, try again later.",
+				},
+			})
 			w.Write(b)
 			return
 		}
 		mu.Unlock()
+		w.Header().Add("X-Rate-Limit-Limit", fmt.Sprintf("%d", REQUESTS_PER_SECOND))
 		next.ServeHTTP(w, r)
 	})
 }

@@ -23,12 +23,10 @@ func (a *App) New() *mux.Router {
 
 	r := mux.NewRouter()
 
-	// healthcheck
-	r.HandleFunc("/health", healthCheckHandler)
-
 	apiCreate := r.PathPrefix("/api").Subrouter()
 
 	// API Routes
+	apiCreate.Handle("/health", api.Middleware(http.HandlerFunc(healthCheckHandler))).Methods("GET")     // Check status of API
 	apiCreate.Handle("/mod/{id}", api.Middleware(http.HandlerFunc(ModByIDHandler))).Methods("GET")       // Return Mod from ID
 	apiCreate.Handle("/mods", api.Middleware(http.HandlerFunc(ModsHandler))).Methods("GET")              // Return ModPreview array from first page
 	apiCreate.Handle("/mods/{page}", api.Middleware(http.HandlerFunc(ModsByPageHandler))).Methods("GET") // Return ModPreview array from page {page_number}
@@ -45,7 +43,11 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	b, _ := json.Marshal(models.HealthCheckResponse{
-		Alive: true,
+		Status: "success",
+		Data: models.HealthCheckData{
+			Code:  http.StatusOK,
+			Alive: true,
+		},
 	})
 	_, _ = io.Writer.Write(w, b)
 }

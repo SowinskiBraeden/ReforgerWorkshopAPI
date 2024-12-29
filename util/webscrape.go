@@ -53,9 +53,9 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 
 	// Mod image URLs
 	c.OnHTML("div.grid div.aspect-h-9", func(e *colly.HTMLElement) {
+		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=3840&q=75", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
 		url := fmt.Sprintf("https://%s%s&w=3840&q=75", baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
 		imageURLs = append(imageURLs, url)
-		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=3840&q=75", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
 	})
 
 	// Mod URLs
@@ -86,6 +86,12 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 
 	c.Visit(workshopURL)
 
+	if resultSummary == "No mods found." {
+		return models.WebScrapeResults{
+			Found: false,
+		}
+	}
+
 	// Create mod structs from results
 	for i := 0; i < len(names); i++ {
 		mods = append(mods, models.ModPreview{
@@ -98,20 +104,11 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 		})
 	}
 
-	if resultSummary == "No mods found." {
-		return models.WebScrapeResults{
-			Mods:       []models.ModPreview{},
-			Page:       0,
-			TotalPages: 0,
-			Summary:    resultSummary,
-		}
-	}
-
 	return models.WebScrapeResults{
-		Mods:       mods,
-		Page:       pageNumber,
-		TotalPages: totalPages,
-		Summary:    resultSummary,
+		Found:       true,
+		Mods:        mods,
+		CurrentPage: pageNumber,
+		TotalPages:  totalPages,
 	}
 }
 

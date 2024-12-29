@@ -33,8 +33,12 @@ type Mod struct {
 
 // Sruct returned from utils ScapeMods
 type WebScrapeResults struct {
-	Mods       []ModPreview
-	Page       int
-	TotalPages int
-	Summary    string
+	Found          bool
+	Mods           []ModPreview
+	CurrentPage    int
+	TotalPages     int
+	TotalMods      int
+	ShownMods      int
+	ModsIndexStart int
+	ModsIndexEnd   int
 }
