@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 
 	"github.com/gocolly/colly"
@@ -126,13 +127,16 @@ func ScrapeMods(pageNumber int) (*models.WebScrapeResults, error) {
 
 	// Create mod structs from results
 	for i := 0; i < len(names); i++ {
+		modID := strings.Split(strings.Split(modURLs[i], "/")[4], "-")[0]
 		mods = append(mods, models.ModPreview{
-			Name:     names[i],
-			Author:   authors[i],
-			ImageURL: imageURLs[i],
-			ModURL:   modURLs[i],
-			Size:     sizes[i],
-			Rating:   ratings[i],
+			Name:           names[i],
+			Author:         authors[i],
+			ImageURL:       imageURLs[i],
+			OriginalModURL: modURLs[i],
+			APIModURL:      fmt.Sprintf("%s/api/mod/%s", config.GetFullURL(), modID),
+			Size:           sizes[i],
+			Rating:         ratings[i],
+			ID:             modID,
 		})
 	}
 
@@ -281,13 +285,15 @@ func GetMod(modURL string) *models.Mod {
 		mod.Tags = append(mod.Tags, e.Text)
 	})
 
-	mod.ModURL = modURL
+	c.Visit(modURL)
+
 	// If no image was found use placeholder
 	if mod.ImageURL == "" {
 		mod.ImageURL = "https://via.placeholder.com/1280x720"
 	}
 
-	c.Visit(modURL)
+	mod.OriginalModURL = modURL
+	mod.APIModURL = fmt.Sprintf("%s/api/mod/%s", config.GetFullURL(), mod.ID)
 
 	return &mod
 }
