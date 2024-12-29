@@ -57,10 +57,10 @@ func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 
 	// Mod image URLs
 	c.OnHTML("div.grid div.aspect-h-9", func(e *colly.HTMLElement) {
-		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=3840&q=75", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
+		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=1080&q=100", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
 		var url string
 		if strings.Contains(e.Text, "srcSet=\"") {
-			url = fmt.Sprintf("https://%s%s&w=3840&q=75", baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
+			url = fmt.Sprintf("https://%s%s&w=1080&q=100", baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
 		} else {
 			// For some reason image src does not exists, use this placeholder as
 			// used on reforger.armaplatform.com/workshop for mods with no image
@@ -158,7 +158,7 @@ func GetMod(modURL string) models.Mod {
 
 	// Check if mod is found
 	c.OnHTML("section h1", func(e *colly.HTMLElement) {
-		fmt.Printf("%s\n", e.Text)
+		// fmt.Printf("%s\n", e.Text)
 	})
 
 	// Mod name
@@ -184,57 +184,74 @@ func GetMod(modURL string) models.Mod {
 
 	// Mod rating
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0])
+		// fmt.Printf("Rating - %s\n", strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0])
 		mod.Rating = strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0]
 	})
 
 	// Mod version
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Version")[1], "Game")[0])
+		// fmt.Printf("Version - %s\n", strings.Split(strings.Split(e.Text, "Version")[1], "Game")[0])
 		mod.Version = strings.Split(strings.Split(e.Text, "Version")[1], "Game")[0]
 	})
 
 	// Mod game version
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Game Version")[1], "Version size")[0])
+		// fmt.Printf("Game Version - %s\n", strings.Split(strings.Split(e.Text, "Game Version")[1], "Version size")[0])
 		mod.GameVersion = strings.Split(strings.Split(e.Text, "Game Version")[1], "Version size")[0]
 	})
 
 	// Mod size
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Version size")[1], "Subscribers")[0])
-		mod.Rating = strings.Split(strings.Split(e.Text, "Version size")[1], "Subscribers")[0]
+		if strings.Contains(e.Text, "Subscribers") {
+			// fmt.Printf("Size - %s\n", strings.Split(strings.Split(e.Text, "Version size")[1], "Subscribers")[0])
+			mod.Size = strings.Split(strings.Split(e.Text, "Version size")[1], "Subscribers")[0]
+		} else {
+			// fmt.Printf("Size - %s\n", strings.Split(strings.Split(e.Text, "Version size")[1], "Downloads")[0])
+			mod.Size = strings.Split(strings.Split(e.Text, "Version size")[1], "Downloads")[0]
+		}
 	})
 
 	// Mod subscribers
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0])
-		mod.Subscribers = strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0]
+		if strings.Contains(e.Text, "Subscribers") {
+			// fmt.Printf("Subscribers - %s\n", strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0])
+			var err error
+			mod.Subscribers, err = strconv.Atoi(strings.Replace(strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0], ",", "", -1))
+			if err != nil {
+				return
+			}
+		} else {
+			mod.Subscribers = 0
+		}
 	})
 
 	// Mod downloads
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0])
-		mod.Downloads = strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0]
+		// fmt.Printf("Downloads - %s\n", strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0])
+		var err error
+		mod.Downloads, err = strconv.Atoi(strings.Replace(strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0], ",", "", -1))
+		if err != nil {
+			return
+		}
 	})
 
 	// Mod created
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", strings.Split(strings.Split(e.Text, "Created")[1], "Last Modified")[0])
+		// fmt.Printf("Created - %s\n", strings.Split(strings.Split(e.Text, "Created")[1], "Last Modified")[0])
 		mod.Created = strings.Split(strings.Split(e.Text, "Created")[1], "Last Modified")[0]
 	})
 
 	// Mod last modified
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
 		// In the rare case the mod id begins with id, we don't want to split by string 'id'
-		// fmt.Printf("%s\n", strings.Split(e.Text, "Last Modified")[1][0:10])
+		// fmt.Printf("Last Modified - %s\n", strings.Split(e.Text, "Last Modified")[1][0:10])
 		mod.LastModified = strings.Split(e.Text, "Last Modified")[1][0:10]
 	})
 
 	// Mod ID
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
 		// In the rare case the mod id begins with id, we don't want to split by string 'id'
-		// fmt.Printf("%s\n", strings.Split(e.Text, "Last Modified")[1][12:])
+		// fmt.Printf("ID - %s\n", strings.Split(e.Text, "Last Modified")[1][12:])
 		mod.ID = strings.Split(e.Text, "Last Modified")[1][12:]
 	})
 
@@ -265,6 +282,10 @@ func GetMod(modURL string) models.Mod {
 	})
 
 	mod.ModURL = modURL
+	// If no image was found use placeholder
+	if mod.ImageURL == "" {
+		mod.ImageURL = "https://via.placeholder.com/1280x720"
+	}
 
 	c.Visit(modURL)
 

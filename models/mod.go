@@ -20,8 +20,8 @@ type Mod struct {
 	Version      string   `json:"version"`
 	GameVersion  string   `json:"game_version"`
 	Size         string   `json:"size"`
-	Subscribers  string   `json:"subscribers"`
-	Downloads    string   `json:"downloads"`
+	Subscribers  int      `json:"subscribers"`
+	Downloads    int      `json:"downloads"`
 	Created      string   `json:"created"`
 	LastModified string   `json:"last_modified"`
 	ID           string   `json:"id"`
