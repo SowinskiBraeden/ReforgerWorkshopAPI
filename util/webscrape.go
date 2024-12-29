@@ -54,7 +54,14 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 	// Mod image URLs
 	c.OnHTML("div.grid div.aspect-h-9", func(e *colly.HTMLElement) {
 		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=3840&q=75", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
-		url := fmt.Sprintf("https://%s%s&w=3840&q=75", baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
+		var url string
+		if strings.Contains(e.Text, "srcSet=\"") {
+			url = fmt.Sprintf("https://%s%s&w=3840&q=75", baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
+		} else {
+			// For some reason image src does not exists, use this placeholder as
+			// used on reforger.armaplatform.com/workshop for mods with no image
+			url = "https://via.placeholder.com/1280x720"
+		}
 		imageURLs = append(imageURLs, url)
 	})
 
