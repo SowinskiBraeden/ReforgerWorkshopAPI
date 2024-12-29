@@ -98,8 +98,6 @@ func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 
 	c.Visit(workshopURL)
 
-	fmt.Printf("%s\n", resultSummary)
-
 	if resultSummary == "No mods found." {
 		return models.WebScrapeResults{
 			Found: false,
