@@ -21,7 +21,11 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	results := util.ScrapeMods(1)
+	results, err := util.ScrapeMods(1)
+	if err != nil {
+		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
+		return
+	}
 
 	b, err := json.Marshal(models.ModsPreviewsResponse{
 		Status: "success",
@@ -54,7 +58,12 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := util.ScrapeMods(pageNumber)
+	results, err := util.ScrapeMods(pageNumber)
+	if err != nil {
+		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
+		return
+	}
+
 	if !results.Found {
 		w.WriteHeader(http.StatusNotFound)
 		b, err := json.Marshal(models.ErrorResponse{

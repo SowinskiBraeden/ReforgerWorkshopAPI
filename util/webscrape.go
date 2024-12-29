@@ -13,7 +13,7 @@ import (
 
 const RESULTS_PER_PAGE = 16
 
-func ScrapeMods(pageNumber int) models.WebScrapeResults {
+func ScrapeMods(pageNumber int) (models.WebScrapeResults, error) {
 	var baseURL string = "reforger.armaplatform.com"
 	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d", baseURL, pageNumber)
 	var mods []models.ModPreview
@@ -30,9 +30,13 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 	var sizes []string
 	var ratings []string
 
-	// Page information
+	// Meta info
 	var totalPages int
 	var resultSummary string
+	var totalMods int
+	var shownMods int
+	var modsIndexStart int
+	var modsIndexEnd int
 
 	// Check if nothing found (i.e query has no matches or page number > total pages)
 	c.OnHTML("div.container div.flex div.grid div.text-center", func(e *colly.HTMLElement) {
@@ -94,9 +98,31 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 
 	c.Visit(workshopURL)
 
+	fmt.Printf("%s\n", resultSummary)
+
 	if resultSummary == "No mods found." {
 		return models.WebScrapeResults{
 			Found: false,
+		}, nil
+	} else {
+		shownMods = len(names)
+
+		// This looks awful but oh whell
+
+		var err error
+		totalMods, err = strconv.Atoi(strings.Split(resultSummary, " ")[5])
+		if err != nil {
+			return models.WebScrapeResults{}, err
+		}
+
+		modsIndexStart, err = strconv.Atoi(strings.Split(resultSummary, " ")[1])
+		if err != nil {
+			return models.WebScrapeResults{}, err
+		}
+
+		modsIndexEnd, err = strconv.Atoi(strings.Split(resultSummary, " ")[3])
+		if err != nil {
+			return models.WebScrapeResults{}, err
 		}
 	}
 
@@ -113,11 +139,15 @@ func ScrapeMods(pageNumber int) models.WebScrapeResults {
 	}
 
 	return models.WebScrapeResults{
-		Found:       true,
-		Mods:        mods,
-		CurrentPage: pageNumber,
-		TotalPages:  totalPages,
-	}
+		Found:          true,
+		Mods:           mods,
+		CurrentPage:    pageNumber,
+		TotalPages:     totalPages,
+		TotalMods:      totalMods,
+		ShownMods:      shownMods,
+		ModsIndexStart: modsIndexStart,
+		ModsIndexEnd:   modsIndexEnd,
+	}, nil
 }
 
 func GetMod(modURL string) models.Mod {
