@@ -38,6 +38,11 @@ func New() *Config {
 	}
 }
 
+func GetFullURL() string {
+	_ = godotenv.Load()
+	return os.Getenv("FULL_URL")
+}
+
 // ErrorStatus is a useful function that will log, write http headers and body for a
 // given message, status code and error
 func ErrorStatus(message string, httpStatusCode int, w http.ResponseWriter, err error) {
