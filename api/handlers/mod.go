@@ -21,6 +21,15 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	links := make(map[string]string)
+	if results.CurrentPage <= results.TotalPages && results.CurrentPage > 1 {
+		links["prev"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage-1)
+	}
+
+	if results.CurrentPage >= 1 && results.CurrentPage < results.TotalPages {
+		links["next"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage+1)
+	}
+
 	b, err := json.Marshal(models.ModsPreviewsResponse{
 		Status: "success",
 		Meta: models.Meta{
@@ -31,10 +40,8 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 			ModsIndexStart: results.ModsIndexStart,
 			ModsIndexEnd:   results.ModsIndexEnd,
 		},
-		Data: results.Mods,
-		Links: map[string]string{
-			"next": "test-next",
-		},
+		Data:  results.Mods,
+		Links: links,
 	})
 	if err != nil {
 		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
@@ -79,11 +86,11 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	links := make(map[string]string)
 	if results.CurrentPage <= results.TotalPages && results.CurrentPage > 1 {
-		links["prev"] = fmt.Sprintf("%s/api/mods/%d", config.GetFullURL(), results.CurrentPage-1)
+		links["prev"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage-1)
 	}
 
 	if results.CurrentPage >= 1 && results.CurrentPage < results.TotalPages {
-		links["next"] = fmt.Sprintf("%s/api/mods/%d", config.GetFullURL(), results.CurrentPage+1)
+		links["next"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage+1)
 	}
 
 	b, err := json.Marshal(models.ModsPreviewsResponse{
