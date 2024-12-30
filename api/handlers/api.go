@@ -21,17 +21,17 @@ type App struct {
 // New creates a new mux router and all the routes
 func (a *App) New() *mux.Router {
 
-	r := mux.NewRouter()
+	router := mux.NewRouter()
 
-	apiCreate := r.PathPrefix("/api").Subrouter()
+	// apiCreate := r.PathPrefix("/api").Subrouter()
 
 	// API Routes
-	apiCreate.Handle("/health", api.Middleware(http.HandlerFunc(healthCheckHandler))).Methods("GET")     // Check status of API
-	apiCreate.Handle("/mod/{id}", api.Middleware(http.HandlerFunc(ModByIDHandler))).Methods("GET")       // Return Mod from ID
-	apiCreate.Handle("/mods", api.Middleware(http.HandlerFunc(ModsHandler))).Methods("GET")              // Return ModPreview array from first page
-	apiCreate.Handle("/mods/{page}", api.Middleware(http.HandlerFunc(ModsByPageHandler))).Methods("GET") // Return ModPreview array from page {page_number}
+	router.Handle("/health", api.Middleware(http.HandlerFunc(healthCheckHandler))).Methods("GET")     // Check status of API
+	router.Handle("/mod/{id}", api.Middleware(http.HandlerFunc(ModByIDHandler))).Methods("GET")       // Return Mod from ID
+	router.Handle("/mods", api.Middleware(http.HandlerFunc(ModsHandler))).Methods("GET")              // Return ModPreview array from first page
+	router.Handle("/mods/{page}", api.Middleware(http.HandlerFunc(ModsByPageHandler))).Methods("GET") // Return ModPreview array from page {page_number}
 
-	return r
+	return router
 }
 
 func (a *App) Initialize() {
