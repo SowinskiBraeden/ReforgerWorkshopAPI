@@ -83,7 +83,7 @@ The index of the last mod shown in `shownMods`.\
 
 Depending on the page number that you've requested, the API will return links to the next and previous page of mods for the API.
 Allowing easy requests to navigate the pages of mods provided.
-
+___
 <br><br>
 
 ### **Get Mod Endpoint**

@@ -20,7 +20,8 @@ all information regarding the mods.
   "ID":            "{mod_id}"                                             // string
 }
 ```
-
+___
+<br><br>
 
 ### **Mod Object Structure**
 
