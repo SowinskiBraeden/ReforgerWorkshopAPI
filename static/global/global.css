@@ -1,0 +1,109 @@
+.blueprint-navbar, .blueprint-navbar-mobile {
+  z-index: 100 !important;
+  background-color: #08090a90;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+[data-bs-theme=light] .blueprint-navbar, [data-bs-theme=light] .blueprint-navbar-mobile {
+  background-color: #cad2d890 !important;
+}
+
+.nav-dropdown-btn { background-color: transparent !important; }
+[data-bs-theme=light] .invert-light { filter: invert() }
+
+.mobile-theme-switcher {
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+.mobile-theme-switcher-btn {
+  width: 33.33% !important;
+  text-align: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+
+.mobile-theme-switcher-btn.active i { opacity: 1 !important; }
+[data-bs-theme=light] .mobile-theme-switcher-btn.active i { color: #272727 !important }
+[data-bs-theme=light] .theme-switcher-btn.active,
+[data-bs-theme=light] .theme-switcher-btn:active { color: #272727 !important }
+
+[data-bs-theme=dark] .theme-switcher-btn.active,
+[data-bs-theme=dark] .theme-switcher-btn:active,
+[data-bs-theme=dark] .mobile-theme-switcher-btn.active,
+[data-bs-theme=dark] .mobile-theme-switcher-btn:active { background-color: #2b3035 !important }
+
+[data-bs-theme=light] .theme-switcher-btn.active,
+[data-bs-theme=light] .theme-switcher-btn:active,
+[data-bs-theme=light] .mobile-theme-switcher-btn.active,
+[data-bs-theme=light] .mobile-theme-switcher-btn:active { background-color: #dfdfdf !important }
+
+
+/* Scrollbar code, somewhat broken; by Auri (imlayered) */
+::-webkit-scrollbar {
+  width: 10px; 
+  background-color: #2b3035; 
+}
+
+::-webkit-scrollbar-track {
+  background: #2b3035; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888; 
+  border-radius: 5px; 
+  mix-blend-mode: multiply; 
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+
+#social-push {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  max-width: 500px;
+  opacity: 0;
+  transition: opacity .3s;
+}
+#social-push div {
+  margin: 12px;
+  padding: 25px;
+  background-color: #08090a90;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 100;
+  border-radius: 12px;
+}
+[data-bs-theme=light] #social-push div {
+  background-color: #cad2d890;
+}
+
+.pe-pointer {
+  cursor: pointer;
+}
+
+i.bi:not(button#bd-theme i.bi) {
+  font-family: '';
+  line-height: 0px;
+}
+
+.star-button:hover > i {
+  color: #fdd835; 
+  filter: drop-shadow(0 0 5px #fdd835);
+  transition: color 0.5s ease, filter 1s ease;
+}
+
+.nav-svg img {
+  width: 16px;
+  height: 20px;
+  padding-top: 5px;
+}
+[data-bs-theme=light] .nav-svg img {
+  filter: invert()
+}

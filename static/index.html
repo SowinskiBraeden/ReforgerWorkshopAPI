@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ReforgerMods.net</title>
+    <link href="./static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./static/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="./static/highlight.js/styles/atom-one-dark.css" rel="stylesheet">
+    <link href="./static/global/global.css" rel="stylesheet">
+    <link href="./static/index.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="./static/assets/logo.png">
+
+    <!-- Social Embeds -->
+    <meta property="theme-color" content="#4642f5">
+    <meta property="og:title" content="reforgermods.net">
+    <meta property="og:description" content="A simple, modern, and standardized REST API to get Arma Reforger mod information from the Arma Reforger Workshop">
+    <meta property="og:url" content="https://api.reforgermods.net">
+    <meta property="og:image" content="./static/assets/logo.png">
+    <meta property="og:type" content="website">
+  </head>
+
+  <body data-bs-theme="dark">
+
+    <!-- Desktop Navbar -->
+    <div class="p-2 d-lg-inline d-none"></div>
+    <header class="p-3 mb-3 border-bottom fixed-top d-lg-inline d-none blueprint-navbar">
+      <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+          <a href="/" class="d-flex align-items-center mb-2 me-2 mb-lg-0 link-body-emphasis text-decoration-none">
+            <img src="./static/assets/logo.png" width="35" height="35" class="rounded-3" alt="" />
+          </a>
+          <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
+            <li><a href="/" class="nav-link px-2 link-body-emphasis">Home</a></li>
+            <li><a href="/" class="nav-link px-2 link-body-emphasis">Documentation</a></li>
+          </ul>
+          <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
+            <li class="nav-item me-1 ms-1 py-1"><a class="nav-link px-1" href="mailto:support@reforgermods.net"><i class="bi bi-envelope-at-fill"></i></a></li>
+            <li class="nav-item me-1 ms-1 py-1"><a class="nav-link px-1" href="https://github.com/SowinskiBraeden/ReforgerWorkshopAPI"><i class="bi bi-github"></i></a></li>
+            <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto">
+              <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div>
+              <hr class="d-lg-none my-2 text-white-50">
+            </li>
+            <li class="nav-item dropdown">
+              <button class="btn btn-link nav-link py-2 px-0 px-lg-2 dropdown-toggle d-flex align-items-center" id="bd-theme" type="button" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme (dark)">
+                <i class="bi bi-moon-stars-fill my-1 theme-icon-active"></i>
+                <span class="d-lg-none ms-2" id="bd-theme-text">Toggle theme</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end position-absolute gap-1 p-2 rounded-3 mx-0 border-0 shadow w-220px" aria-labelledby="bd-theme-text">
+                <li><button type="button" class="theme-switcher-btn dropdown-item rounded-2 d-flex align-items-center" data-bs-theme-value="light" aria-pressed="false"><i class="bi bi-sun-fill me-2 opacity-50"></i> Light</button></li>
+                <li><button type="button" class="theme-switcher-btn dropdown-item rounded-2 d-flex align-items-center active" data-bs-theme-value="dark" aria-pressed="true"><i class="bi bi-moon-stars-fill me-2 opacity-50"></i> Dark</button></li>
+                <li><button type="button" class="theme-switcher-btn dropdown-item rounded-2 d-flex align-items-center" data-bs-theme-value="auto" aria-pressed="false"><i class="bi bi-circle-half me-2 opacity-50"></i> Auto</button></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile/Tablet Navbar -->
+    <div class="p-2 d-lg-none d-inline"></div>
+    <nav class="navbar fixed-top d-lg-none d-inline blueprint-navbar-mobile">
+      <div class="container-fluid">
+        <a href="../" class="d-flex align-items-center mb-2 me-2 mt-2 mb-lg-0 link-body-emphasis text-decoration-none"><img src="./static/assets/logo.png" width="40" height="40" class="rounded-3" alt="" /></a>
+        <div class="dropdown">
+          <button class="btn btn-secondary bg-dark-subtle border-0 nav-dropdown-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end gap-1 p-2 rounded-3 mx-0 border-0 shadow w-220px">
+            <li><a class="dropdown-item rounded-2" href="/">Home</a></li>
+            <li><a class="dropdown-item rounded-2 disabled" href="/">Documentation</a></li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <div class="mobile-theme-switcher">
+              <a href="javascript:void" class="dropdown-item rounded-2 mobile-theme-switcher-btn" data-bs-theme-value="light"><i class="bi bi-sun-fill opacity-50"></i></a>
+              <a href="javascript:void" class="dropdown-item rounded-2 mobile-theme-switcher-btn" data-bs-theme-value="dark"><i class="bi bi-moon-stars-fill opacity-50"></i></a>
+              <a href="javascript:void" class="dropdown-item rounded-2 mobile-theme-switcher-btn" data-bs-theme-value="auto"><i class="bi bi-circle-half opacity-50"></i></a>
+            </div>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="mt-5 opacity-0">.</div>
+    <div class="container mt-1">
+      <div class="row">
+        <div class="col-lg-2 col-md-4 col-sm-12">
+          <div class="docs-category pb-4">
+            <div class="ms-2"><span class="fw-bolder">Documentation</span><br></div>
+            <a href="?page=documentation/api"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">API</button><br></a>
+            <a href="?page=documentation/mods"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">Mods Structure</button><br></a>
+          </div>
+          <div class="docs-category pb-4">
+            <div class="ms-2"><span class="fw-bolder">Contact</span><br></div>
+            <a href="?page=contact/email"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">Email us</button><br></a>
+          </div>
+        </div>
+        <div class="container d-lg-none d-md-none d-sm-inline mb-4"><div class="border-bottom"></div></div>
+        <div class="col-lg-10 col-md-8 col-sm-12" id="content">
+          <div class="d-flex justify-content-center">
+            <div class="spinner-border spinner-border-sm text-secondary mt-4" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="container">
+      <footer class="d-flex flex-wrap justify-content-between align-items-center py-3 my-4 border-top">
+        <div class="col-md-4 d-flex align-items-center">
+          <a href="/" class="d-flex align-items-center mb-2 me-2 mb-lg-0 link-body-emphasis text-decoration-none">
+            <img src="./static/assets/logo.png" width="25" height="25" class="rounded-3" alt="" />
+          </a>
+          <span class="mb-3 mb-md-0 text-body-secondary">© 2024-2025 reforgermods.net</span>
+        </div>
+
+        <ul class="nav col-md-4 justify-content-end list-unstyled d-flex">
+          <li class="ms-3"><a title="Support email" class="text-body-secondary" href="mailto:support@reforgermods.net"><i class="bi bi-envelope-at-fill" width="24" height="24"></i></a></li>
+          <li class="ms-3"><a title="Github" class="text-body-secondary" href="https://github.com/SowinskiBraeden/ReforgerWorkshopAPI"><i class="bi bi-github" width="24" height="24"></i></a></li>
+          <li class="ms-3"><a title="Support donations" class="text-body-secondary" href="https://github.com/sponsors/SowinskiBraeden"><i class="bi bi-bag-heart-fill" width="24" height="24"></i></a></li>
+        </ul>
+      </footer>
+    </div>
+
+    <script src="./static/bootstrap/js/bootstrap.bundle.js"></script>
+    <script src="./static/bootstrap/etc/theme-switcher.js"></script>
+    <script src="./static/marked/marked.min.js"></script>
+    <script src="./static/highlight.js/highlight.min.js"></script>
+    <script src="./static/index.js"></script>
+
+  </body>
+</html>

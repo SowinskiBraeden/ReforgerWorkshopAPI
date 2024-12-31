@@ -1,0 +1,48 @@
+[data-bs-theme=light] .docs-nav {
+  background-color: #fff;
+  color: #000;
+  border-color: transparent;
+}
+[data-bs-theme=light] .docs-nav:hover {
+  background-color: #e7e6e6;
+  border-color: transparent;
+}
+[data-bs-theme=light] .docs-nav:active {
+  background-color: #cccccc;
+  color: #000;
+  border-color: transparent;
+}
+[data-bs-theme=light] .docs-nav-active {
+  background-color: #afafaf !important;
+}
+
+
+[data-bs-theme=dark] .docs-nav:hover {
+  background-color: #2b3035;
+  color: #dee2e6;
+  border-color: transparent;
+}
+[data-bs-theme=dark] .docs-nav:active {
+  background-color: #393f44;
+  border-color: transparent;
+}
+
+
+code.hljs {
+  border-radius: 5px;
+}
+
+[data-bs-theme=light] .changelog-btn, [data-bs-theme=light] .docs-link { background-color: #d4d4d4 !important; border-color: #e9e9e9 !important; }
+[data-bs-theme=light] .changelog-btn-disabled { background-color: #e9e9e9 !important; border-color: #e9e9e9 !important; }
+[data-bs-theme=light] .changelog-btn { background-color: #d4d4d4 !important; border-color: #e9e9e9 !important; }
+[data-bs-theme=light] .docs-link-primary { border-color: #0d6efd !important; color: #fff; }
+
+[data-bs-theme=light] .docs-navigator > a,
+[data-bs-theme=light] .docs-navigator > a:hover,
+[data-bs-theme=light] .docs-navigator > a:active,
+[data-bs-theme=light] .git-button,
+[data-bs-theme=light] .git-button:active {
+  color: #4d4d4d
+}
+
+[data-bs-theme=light] .code-spacer { border-color: #434955 !important; }

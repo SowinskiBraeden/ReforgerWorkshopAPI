@@ -25,6 +25,14 @@ func (a *App) New() *mux.Router {
 
 	// apiCreate := r.PathPrefix("/api").Subrouter()
 
+	// Serve static files
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+
+	// Serve index page on all unhandled routes
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/index.html")
+	})
+
 	// API Routes
 	router.Handle("/health", api.Middleware(http.HandlerFunc(healthCheckHandler))).Methods("GET")     // Check status of API
 	router.Handle("/mod/{id}", api.Middleware(http.HandlerFunc(ModByIDHandler))).Methods("GET")       // Return Mod from ID
