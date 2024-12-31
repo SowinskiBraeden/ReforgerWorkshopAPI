@@ -133,7 +133,7 @@ func ScrapeMods(pageNumber int) (*models.WebScrapeResults, error) {
 			Author:         authors[i],
 			ImageURL:       imageURLs[i],
 			OriginalModURL: modURLs[i],
-			APIModURL:      fmt.Sprintf("%s/api/mod/%s", config.GetFullURL(), modID),
+			APIModURL:      fmt.Sprintf("%s/mod/%s", config.GetFullURL(), modID),
 			Size:           sizes[i],
 			Rating:         ratings[i],
 			ID:             modID,
@@ -293,7 +293,7 @@ func GetMod(modURL string) *models.Mod {
 	}
 
 	mod.OriginalModURL = modURL
-	mod.APIModURL = fmt.Sprintf("%s/api/mod/%s", config.GetFullURL(), mod.ID)
+	mod.APIModURL = fmt.Sprintf("%s/mod/%s", config.GetFullURL(), mod.ID)
 
 	return &mod
 }
