@@ -291,7 +291,7 @@ func GetMod(modURL string) *models.Mod {
 
 	// Mod Dependencies
 	c.OnHTML("section div.flex section.py-8 a", func(e *colly.HTMLElement) {
-		fmt.Printf("Dep - %s\n", e.Attr("href"))
+		// fmt.Printf("Dep - %s\n", e.Attr("href"))
 		mod.Dependencies = append(mod.Dependencies, models.Dependency{
 			Name:           e.Text,
 			OriginalModURL: fmt.Sprintf("https://%s%s", baseURL, e.Attr("href")),
