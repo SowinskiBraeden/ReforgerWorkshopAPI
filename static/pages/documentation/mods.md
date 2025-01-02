@@ -29,23 +29,28 @@ When querying a single mod using the mod id, it will return the full mod object.
 
 ```json
 {
-  "name":           "Super Awesome Mod",                                // string 
-  "author":         "Homer Simpson",                                    // string
-  "originalModURL": "https://reforger.armaplatform.com/workshop/12345", // string
-  "apiModURL":      "https://api.reforgermods.net/mod/12345",           // string
-  "imageURL":       "https://example.com/image.png",                    // string
-  "rating":         "92%",                                              // string
-  "version":        "1.1.0",                                            // string
-  "gameVersion":    "1.1.0.34",                                         // string
-  "size":           "192.42 KB",                                        // string
-  "subscribers":    66677,                                              // int
-  "downloads":      791142,                                             // int
-  "created":        "19.05.2022",                                       // string
-  "lastModified":   "17.03.2024",                                       // string
-  "id":             "12345",                                            // string
-  "summary":        "This is a super awesome mod",                      // string
-  "description":    "Big awesome mod!",                                 // string
-  "license":        "Arma Public License (APL)",                        // string
-  "tags": [ "SUPER", "AWESOME", "MOD", "SIMPSON" ]                      // string array
+  "name":           "Super Awesome Mod",                                     // string 
+  "author":         "Homer Simpson",                                         // string
+  "originalModURL": "https://reforger.armaplatform.com/workshop/12345",      // string
+  "apiModURL":      "https://api.reforgermods.net/mod/12345",                // string
+  "imageURL":       "https://example.com/image.png",                         // string
+  "rating":         "92%",                                                   // string
+  "version":        "1.1.0",                                                 // string
+  "gameVersion":    "1.1.0.34",                                              // string
+  "size":           "192.42 KB",                                             // string
+  "subscribers":    66677,                                                   // int
+  "downloads":      791142,                                                  // int
+  "created":        "19.05.2022",                                            // string
+  "lastModified":   "17.03.2024",                                            // string
+  "id":             "12345",                                                 // string
+  "summary":        "This is a super awesome mod",                           // string
+  "description":    "Big awesome mod!",                                      // string
+  "license":        "Arma Public License (APL)",                             // string
+  "tags": [ "SUPER", "AWESOME", "MOD", "SIMPSON" ],                          // string array
+  "dependencies": [{                                                         // string array
+    "name":           "Mod Dependency 1",                                    // string
+    "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}", // string
+    "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"            // string
+  }]
 }
 ```
