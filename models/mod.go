@@ -20,25 +20,25 @@ type Dependency struct {
 
 // As seen when viewing single mod at https://reforger.armaplatform.com/workshop/<mod-id>-<mod-name>
 type Mod struct {
-	Name           string   `json:"name"`
-	Author         string   `json:"author"`
-	OriginalModURL string   `json:"originalModURL"`
-	APIModURL      string   `json:"apiModURL"`
-	ImageURL       string   `json:"imageURL"`
-	Rating         string   `json:"rating"`
-	Version        string   `json:"version"`
-	GameVersion    string   `json:"gameVersion"`
-	Size           string   `json:"size"`
-	Subscribers    int      `json:"subscribers"`
-	Downloads      int      `json:"downloads"`
-	Created        string   `json:"created"`
-	LastModified   string   `json:"lastModified"`
-	ID             string   `json:"id"`
-	Summary        string   `json:"summary"`
-	Description    string   `json:"description"`
-	License        string   `json:"license"`
-	Tags           []string `json:"tags"`
-	Dependencies   []Dependency
+	Name           string       `json:"name"`
+	Author         string       `json:"author"`
+	OriginalModURL string       `json:"originalModURL"`
+	APIModURL      string       `json:"apiModURL"`
+	ImageURL       string       `json:"imageURL"`
+	Rating         string       `json:"rating"`
+	Version        string       `json:"version"`
+	GameVersion    string       `json:"gameVersion"`
+	Size           string       `json:"size"`
+	Subscribers    int          `json:"subscribers"`
+	Downloads      int          `json:"downloads"`
+	Created        string       `json:"created"`
+	LastModified   string       `json:"lastModified"`
+	ID             string       `json:"id"`
+	Summary        string       `json:"summary"`
+	Description    string       `json:"description"`
+	License        string       `json:"license"`
+	Tags           []string     `json:"tags"`
+	Dependencies   []Dependency `json:"dependencies"`
 }
 
 // Sruct returned from util.ScapeMods
