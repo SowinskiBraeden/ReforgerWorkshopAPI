@@ -126,7 +126,12 @@ Querying this endpoint will only return one mod and all of its given information
     "summary":        "This is a super awesome mod",
     "description":    "I, Home Simpson made a super awesome mod that adds so much cool stuff to arma reforger!",
     "license":        "Arma Public License (APL)",
-    "tags": [ "SUPER", "AWESOME", "MOD", "SIMPSON" ]
+    "tags": [ "SUPER", "AWESOME", "MOD", "SIMPSON" ],
+    "dependencies": [{
+      "name":           "Mod Dependency 1",
+      "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}",
+      "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"
+    }]
   }
 }
 ```
