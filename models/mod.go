@@ -12,6 +12,12 @@ type ModPreview struct {
 	ID             string `json:"ID"`
 }
 
+type Dependency struct {
+	Name           string `json:"name"`
+	OriginalModURL string `json:"originalModURL"`
+	APIModURL      string `json:"apiModURL"`
+}
+
 // As seen when viewing single mod at https://reforger.armaplatform.com/workshop/<mod-id>-<mod-name>
 type Mod struct {
 	Name           string   `json:"name"`
@@ -32,9 +38,10 @@ type Mod struct {
 	Description    string   `json:"description"`
 	License        string   `json:"license"`
 	Tags           []string `json:"tags"`
+	Dependencies   []Dependency
 }
 
-// Sruct returned from utils ScapeMods
+// Sruct returned from util.ScapeMods
 type WebScrapeResults struct {
 	Found          bool
 	Mods           []ModPreview

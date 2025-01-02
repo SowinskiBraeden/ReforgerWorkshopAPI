@@ -14,6 +14,7 @@ import (
 
 const RESULTS_PER_PAGE = 16
 
+// scrapes multiple mods from a given workshop page
 func ScrapeMods(pageNumber int) (*models.WebScrapeResults, error) {
 	var baseURL string = "reforger.armaplatform.com"
 	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d", baseURL, pageNumber)
@@ -152,9 +153,12 @@ func ScrapeMods(pageNumber int) (*models.WebScrapeResults, error) {
 	}, nil
 }
 
+// Scrape single mod with all details with a given mod id
 func GetMod(modURL string) *models.Mod {
 	var baseURL string = "reforger.armaplatform.com"
 	var mod models.Mod
+
+	mod.Dependencies = []models.Dependency{}
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(baseURL),
@@ -259,7 +263,7 @@ func GetMod(modURL string) *models.Mod {
 		mod.ID = strings.Split(e.Text, "Last Modified")[1][12:]
 	})
 
-	// Mod summary + description
+	// Mod summary
 	c.OnHTML("section article pre", func(e *colly.HTMLElement) {
 		if mod.Summary == "" {
 			// fmt.Printf("%s\n", e.Text)
@@ -283,6 +287,16 @@ func GetMod(modURL string) *models.Mod {
 	c.OnHTML("section div.relative a", func(e *colly.HTMLElement) {
 		// fmt.Printf("%s\n", e.Text)
 		mod.Tags = append(mod.Tags, e.Text)
+	})
+
+	// Mod Dependencies
+	c.OnHTML("section div.flex section.py-8 a", func(e *colly.HTMLElement) {
+		fmt.Printf("Dep - %s\n", e.Attr("href"))
+		mod.Dependencies = append(mod.Dependencies, models.Dependency{
+			Name:           e.Text,
+			OriginalModURL: fmt.Sprintf("https://%s%s", baseURL, e.Attr("href")),
+			APIModURL:      fmt.Sprintf("%s/mod/%s", config.GetFullURL(), strings.Split(strings.Split(e.Attr("href"), "/")[2], "-")[0]),
+		})
 	})
 
 	c.Visit(modURL)
