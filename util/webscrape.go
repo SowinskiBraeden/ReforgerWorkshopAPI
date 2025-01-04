@@ -159,6 +159,7 @@ func GetMod(modURL string) *models.Mod {
 	var mod models.Mod
 
 	mod.Dependencies = []models.Dependency{}
+	mod.Rating = "0%" // Default to no rating
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(baseURL),
@@ -192,8 +193,10 @@ func GetMod(modURL string) *models.Mod {
 
 	// Mod rating
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("Rating - %s\n", strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0])
-		mod.Rating = strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0]
+		if strings.Contains(e.Text, "%") {
+			// fmt.Printf("Rating - %s\n", strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0])
+			mod.Rating = strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0]
+		}
 	})
 
 	// Mod version
