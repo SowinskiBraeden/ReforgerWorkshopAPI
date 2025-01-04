@@ -1,5 +1,5 @@
 # API Documentation
-<sup>*Last Updated: 2024-12-30*</sup>
+<sup>*Last Updated: 2025-01-02*</sup>
 
 Here you will find all API endpoints and the data they return.
 

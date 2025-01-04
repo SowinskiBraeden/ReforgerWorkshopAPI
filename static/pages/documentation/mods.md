@@ -1,5 +1,5 @@
 # Mod Response Structures
-<sup>*Last Updated: 2024-12-30*</sup>
+<sup>*Last Updated: 2025-01-02*</sup>
 
 Here you will find the data that is included with mods when querying the [API](?page=documentation/api).
 
