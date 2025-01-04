@@ -164,11 +164,6 @@ func GetMod(modURL string) *models.Mod {
 		colly.AllowedDomains(baseURL),
 	)
 
-	// Check if mod is found
-	c.OnHTML("section h1", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", e.Text)
-	})
-
 	// Mod name
 	c.OnHTML("section h1", func(e *colly.HTMLElement) {
 		// fmt.Printf("%s\n", e.Text)
