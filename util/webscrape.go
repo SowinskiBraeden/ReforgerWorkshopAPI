@@ -159,7 +159,6 @@ func GetMod(modURL string) *models.Mod {
 	var mod models.Mod
 
 	mod.Dependencies = []models.Dependency{}
-	mod.Rating = "0%" // Default to no rating
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(baseURL),
@@ -196,6 +195,8 @@ func GetMod(modURL string) *models.Mod {
 		if strings.Contains(e.Text, "%") {
 			// fmt.Printf("Rating - %s\n", strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0])
 			mod.Rating = strings.Split(strings.Split(e.Text, "Rating")[1], "Version")[0]
+		} else {
+			mod.Rating = "0%" // Default to no rating
 		}
 	})
 
@@ -226,11 +227,7 @@ func GetMod(modURL string) *models.Mod {
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
 		if strings.Contains(e.Text, "Subscribers") {
 			// fmt.Printf("Subscribers - %s\n", strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0])
-			var err error
-			mod.Subscribers, err = strconv.Atoi(strings.Replace(strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0], ",", "", -1))
-			if err != nil {
-				return
-			}
+			mod.Subscribers, _ = strconv.Atoi(strings.Replace(strings.Split(strings.Split(e.Text, "Subscribers")[1], "Downloads")[0], ",", "", -1))
 		} else {
 			mod.Subscribers = 0
 		}
@@ -238,11 +235,11 @@ func GetMod(modURL string) *models.Mod {
 
 	// Mod downloads
 	c.OnHTML("section dl", func(e *colly.HTMLElement) {
-		// fmt.Printf("Downloads - %s\n", strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0])
-		var err error
-		mod.Downloads, err = strconv.Atoi(strings.Replace(strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0], ",", "", -1))
-		if err != nil {
-			return
+		if strings.Contains(e.Text, "Downloads") {
+			// fmt.Printf("Downloads - %s\n", strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0])
+			mod.Downloads, _ = strconv.Atoi(strings.Replace(strings.Split(strings.Split(e.Text, "Downloads")[1], "Created")[0], ",", "", -1))
+		} else {
+			mod.Downloads = 0
 		}
 	})
 
