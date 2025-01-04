@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -9,11 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
+const version string = "1.0.15"
+
 func main() {
 	a := handlers.App{}
 	a.Config = *config.New()
 	a.Initialize() // Initialize router
 
-	zap.S().Infow("ReforgerWorkshopAPI is up and running", "url", a.Config.BaseURL, "port", a.Config.Port)
+	zap.S().Infow(fmt.Sprintf("ReforgerWorkshopAPI v%s is up and running", version), "url", a.Config.BaseURL, "port", a.Config.Port)
 	log.Fatal(http.ListenAndServe(":"+a.Config.Port, a.Router))
 }
