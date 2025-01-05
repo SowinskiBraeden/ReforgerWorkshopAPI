@@ -1,5 +1,5 @@
 # Mod Response Structures
-<sup>*Last Updated: 2025-01-02*</sup>
+<sup>*Last Updated: 2025-01-05*</sup>
 
 Here you will find the data that is included with mods when querying the [API](?page=documentation/api).
 
@@ -47,10 +47,46 @@ When querying a single mod using the mod id, it will return the full mod object.
   "description":    "Big awesome mod!",                                      // string
   "license":        "Arma Public License (APL)",                             // string
   "tags": [ "SUPER", "AWESOME", "MOD", "SIMPSON" ],                          // string array
-  "dependencies": [{                                                         // string array
+  "dependencies": [{                                                         // object array
     "name":           "Mod Dependency 1",                                    // string
     "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}", // string
     "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"            // string
+  }],
+  "scenarios": [{                                                            // object array
+    "name":        "Some Scenario",                                          // string
+    "description": "You will do awesome things in this scenario",            // string
+    "scenarioID":  "{12345}Missions/SomeScenario.conf",                      // string
+    "gamemode":    "Campaign",                                               // string
+    "playerCount": 64,                                                       // int
+    "imageURL":    "https://example.com/image.png",                          // string
   }]
 }
 ```
+___
+<br><br>
+
+### **Dependency object structure**
+
+Some mods have dependencies, when querying a mod with one or more dependencies you will find an array of these dependency objects.
+```json
+{
+  "name":           "Mod Dependency",                                      // string
+  "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}", // string
+  "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"            // string
+}
+```
+___
+<br><br>
+
+### **Scenario object structure**
+
+Some mods come with new scenarios to play, when querying a mod with one or more scenarios you will find an array of these scenario objects.
+```json
+{
+  "name":           "Mod Dependency",                                      // string
+  "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}", // string
+  "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"            // string
+}
+```
+___
+<br><br>

@@ -1,5 +1,5 @@
 # API Documentation
-<sup>*Last Updated: 2025-01-02*</sup>
+<sup>*Last Updated: 2025-01-05*</sup>
 
 Here you will find all API endpoints and the data they return.
 
@@ -131,6 +131,14 @@ Querying this endpoint will only return one mod and all of its given information
       "name":           "Mod Dependency 1",
       "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}",
       "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"
+    }],
+    "scenarios": [{
+      "name":        "Some Scenario",
+      "description": "You will do awesome things in this scenario",
+      "scenarioID":  "{12345}Missions/SomeScenario.conf",
+      "gamemode":    "Campaign",
+      "playerCount": 64,
+      "imageURL":    "https://example.com/image.png",
     }]
   }
 }
