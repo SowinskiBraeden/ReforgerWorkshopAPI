@@ -83,9 +83,12 @@ ___
 Some mods come with new scenarios to play, when querying a mod with one or more scenarios you will find an array of these scenario objects.
 ```json
 {
-  "name":           "Mod Dependency",                                      // string
-  "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}", // string
-  "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"            // string
+  "name":        "Some Scenario",                               // string
+  "description": "You will do awesome things in this scenario", // string
+  "scenarioID":  "{12345}Missions/SomeScenario.conf",           // string
+  "gamemode":    "Campaign",                                    // string
+  "playerCount": 64,                                            // int
+  "imageURL":    "https://example.com/image.png",               // string
 }
 ```
 ___
