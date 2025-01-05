@@ -18,6 +18,15 @@ type Dependency struct {
 	APIModURL      string `json:"apiModURL"`
 }
 
+type Scenario struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ScenarioID  string `json:"scenarioID"`
+	Gamemode    string `json:"gamemode"`
+	PlayerCount int    `json:"playerCount"`
+	ImageURL    string `json:"imageURL"`
+}
+
 // As seen when viewing single mod at https://reforger.armaplatform.com/workshop/<mod-id>-<mod-name>
 type Mod struct {
 	Name           string       `json:"name"`
@@ -39,6 +48,7 @@ type Mod struct {
 	License        string       `json:"license"`
 	Tags           []string     `json:"tags"`
 	Dependencies   []Dependency `json:"dependencies"`
+	Scenarios      []Scenario   `json:"scenarios"`
 }
 
 // Sruct returned from util.ScapeMods

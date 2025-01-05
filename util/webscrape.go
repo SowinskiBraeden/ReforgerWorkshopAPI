@@ -159,6 +159,7 @@ func GetMod(modURL string) *models.Mod {
 	var mod models.Mod
 
 	mod.Dependencies = []models.Dependency{}
+	mod.Scenarios = []models.Scenario{}
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(baseURL),
@@ -292,6 +293,58 @@ func GetMod(modURL string) *models.Mod {
 			OriginalModURL: fmt.Sprintf("https://%s%s", baseURL, e.Attr("href")),
 			APIModURL:      fmt.Sprintf("%s/mod/%s", config.GetFullURL(), strings.Split(strings.Split(e.Attr("href"), "/")[2], "-")[0]),
 		})
+	})
+
+	// Mod Scenarios
+	c.OnHTML("section nav.mb-4", func(e *colly.HTMLElement) {
+		// fmt.Printf("%s\n", e.Text)
+		// This is really slow
+		if strings.Contains(e.Text, "Scenarios") {
+			var names []string
+			var descriptions []string
+			var scenarioIDs []string
+			var gamemodes []string
+			var playerCounts []int
+			var imageURLs []string
+
+			c1 := colly.NewCollector(
+				colly.AllowedDomains(baseURL),
+			)
+
+			c1.OnHTML("section div.grid article h2", func(e1 *colly.HTMLElement) {
+				names = append(names, e1.Text)
+			})
+
+			c1.OnHTML("section div.grid article p", func(e1 *colly.HTMLElement) {
+				descriptions = append(descriptions, e1.Text)
+			})
+
+			c1.OnHTML("section div.grid article div dl", func(e1 *colly.HTMLElement) {
+				scenarioID := strings.Split(strings.Split(e1.Text, "Scenario ID")[1], "Game mode")[0]
+				gamemode := strings.Split(strings.Split(e1.Text, "Game mode")[1], "Player count")[0]
+				playerCount, _ := strconv.Atoi(strings.Split(e1.Text, "Player count")[1])
+				scenarioIDs = append(scenarioIDs, scenarioID)
+				gamemodes = append(gamemodes, gamemode)
+				playerCounts = append(playerCounts, playerCount)
+			})
+
+			c1.OnHTML("section div.grid article img[src]", func(e1 *colly.HTMLElement) {
+				imageURLs = append(imageURLs, fmt.Sprintf("https://%s%s", baseURL, e1.Attr("src")))
+			})
+
+			c1.Visit(fmt.Sprintf("%s/scenarios", modURL))
+
+			for i := 0; i < len(names); i++ {
+				mod.Scenarios = append(mod.Scenarios, models.Scenario{
+					Name:        names[i],
+					Description: descriptions[i],
+					ScenarioID:  scenarioIDs[i],
+					Gamemode:    gamemodes[i],
+					PlayerCount: playerCounts[i],
+					ImageURL:    imageURLs[i],
+				})
+			}
+		}
 	})
 
 	c.Visit(modURL)
