@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
@@ -18,7 +17,6 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	search := r.URL.Query().Get("search")
-	search = strings.Replace(search, " ", "+", -1)
 
 	results, err := util.ScrapeMods(1, search)
 	if err != nil {
@@ -66,7 +64,6 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search := r.URL.Query().Get("search")
-	search = strings.Replace(search, " ", "+", -1)
 
 	results, err := util.ScrapeMods(pageNumber, search)
 	if err != nil {
