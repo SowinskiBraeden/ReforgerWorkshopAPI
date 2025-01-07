@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
@@ -15,7 +16,11 @@ import (
 // ModsHandler returns ModPreview array from initial workshop page
 func ModsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	results, err := util.ScrapeMods(1)
+
+	search := r.URL.Query().Get("search")
+	search = strings.Replace(search, " ", "+", -1)
+
+	results, err := util.ScrapeMods(1, search)
 	if err != nil {
 		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
 		return
@@ -60,7 +65,10 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := util.ScrapeMods(pageNumber)
+	search := r.URL.Query().Get("search")
+	search = strings.Replace(search, " ", "+", -1)
+
+	results, err := util.ScrapeMods(pageNumber, search)
 	if err != nil {
 		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
 		return

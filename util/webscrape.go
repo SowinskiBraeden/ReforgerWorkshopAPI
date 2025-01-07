@@ -15,9 +15,9 @@ import (
 const RESULTS_PER_PAGE = 16
 
 // scrapes multiple mods from a given workshop page
-func ScrapeMods(pageNumber int) (*models.WebScrapeResults, error) {
+func ScrapeMods(pageNumber int, search string) (*models.WebScrapeResults, error) {
 	var baseURL string = "reforger.armaplatform.com"
-	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d", baseURL, pageNumber)
+	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d&search=%s", baseURL, pageNumber, search)
 	var mods []models.ModPreview
 
 	c := colly.NewCollector(
