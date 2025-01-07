@@ -1,5 +1,5 @@
 # API Documentation
-<sup>*Last Updated: 2025-01-05*</sup>
+<sup>*Last Updated: 2025-01-07*</sup>
 
 Here you will find all API endpoints and the data they return.
 
@@ -10,15 +10,17 @@ Here you will find all API endpoints and the data they return.
 You can query a list of [Mod Preview objects](?page=documentation/mods) from any of the given pages.
 This list will *only* return a maximum of `16 mods` at a time.
 
+You can optionally include a search parameter `?search=` followed by the keyword(s) you're searching for. Note that spaces seperating these words must be replaced with a `+` before sending the API request.
+
 ### **Endpoint**
 Get first page.
 ```
-GET /mods
+GET /mods?search=my+mod+name
 ```
 
 Get a specified page.
 ```
-GET /mods/{page_number}
+GET /mods/{page_number}?search=my+mod+name
 ```
 
 ### **Curl Example**
