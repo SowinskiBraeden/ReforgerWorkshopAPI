@@ -15,10 +15,14 @@ import (
 const RESULTS_PER_PAGE = 16
 
 // scrapes multiple mods from a given workshop page
-func ScrapeMods(pageNumber int, search string) (*models.WebScrapeResults, error) {
+func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*models.WebScrapeResults, error) {
 	var baseURL string = "reforger.armaplatform.com"
-	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d&search=%s", baseURL, pageNumber, search)
+	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d&search=%s&sort=%s", baseURL, pageNumber, search, sort)
 	var mods []models.ModPreview
+
+	for i := 0; i < len(tags); i++ {
+		workshopURL = workshopURL + fmt.Sprintf("&tags=%s", strings.ToUpper(tags[i]))
+	}
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(baseURL),

@@ -12,13 +12,28 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	SortPopular     string = "popularity"
+	SortNewest      string = "newest"
+	SortSubscribers string = "subscribers"
+	SortVersionSize string = "version_size"
+)
+
+func validSortOption(sort string) bool {
+	return sort == SortPopular || sort == SortNewest || sort == SortSubscribers || sort == SortVersionSize
+}
+
 // ModsHandler returns ModPreview array from initial workshop page
 func ModsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	search := r.URL.Query().Get("search")
+	sort := r.URL.Query().Get("sort")
+	if !validSortOption(sort) {
+		sort = SortPopular // if an incorrect sorting option is not provided, defualt to popular
+	}
 
-	results, err := util.ScrapeMods(1, search)
+	results, err := util.ScrapeMods(1, search, sort, []string{})
 	if err != nil {
 		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
 		return
@@ -64,8 +79,12 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search := r.URL.Query().Get("search")
+	sort := r.URL.Query().Get("sort")
+	if !validSortOption(sort) {
+		sort = SortPopular // if an incorrect sorting option is not provided, defualt to popular
+	}
 
-	results, err := util.ScrapeMods(pageNumber, search)
+	results, err := util.ScrapeMods(pageNumber, search, sort, []string{})
 	if err != nil {
 		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
 		return
