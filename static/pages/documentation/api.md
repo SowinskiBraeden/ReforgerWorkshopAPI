@@ -15,12 +15,34 @@ You can optionally include a search parameter `?search=` followed by the keyword
 ### **Endpoint**
 Get first page.
 ```
-GET /mods?search=my+mod+name
+GET /mods
 ```
 
 Get a specified page.
 ```
-GET /mods/{page_number}?search=my+mod+name
+GET /mods/{page_number}
+```
+
+### **Parameters**
+You can search mods by name, and sort by several keywords.
+
+***Search***
+You can search by name by adding the following to the end of your query URL
+<sup>Note: Spaces must be replaced with a `+`</sup>
+```
+?search=mod+name
+```
+
+***Sort***
+You can sort the mods returned by using one of the following keywords.
+1. `popularity`
+2. `newest`
+3. `subscribers` <sup>Note: subscribers feature has been deprecated by Bohemia.net</sup>
+4. `version_size`
+
+Add the following to the end of your query URL
+```
+?sort=popularity
 ```
 
 ### **Curl Example**
