@@ -16,11 +16,15 @@ const RESULTS_PER_PAGE = 16
 
 // scrapes multiple mods from a given workshop page
 func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*models.WebScrapeResults, error) {
+	if sort == "" {
+		sort = "popularity" // if no sort option is given defualt to popularity
+	}
 	var baseURL string = "reforger.armaplatform.com"
 	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d&search=%s&sort=%s", baseURL, pageNumber, search, sort)
 	var mods []models.ModPreview
 
 	for i := 0; i < len(tags); i++ {
+		fmt.Printf("%d\n", i)
 		workshopURL = workshopURL + fmt.Sprintf("&tags=%s", strings.ToUpper(tags[i]))
 	}
 

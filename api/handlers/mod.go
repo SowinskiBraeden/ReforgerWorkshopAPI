@@ -12,6 +12,43 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type parameters struct {
+	search string
+	sort   string
+}
+
+// Add additional url parameters to links if exists
+func addLinkParams(links map[string]string, link string, params parameters) map[string]string {
+	if params.search != "" {
+		links[link] = fmt.Sprintf("%s?search=%s", links[link], params.search)
+	}
+
+	if params.sort != "" && params.search != "" {
+		links[link] = fmt.Sprintf("%s&sort=%s", links[link], params.sort)
+	} else if params.sort != "" {
+		links[link] = fmt.Sprintf("%s?sort=%s", links[link], params.sort)
+	}
+
+	return links
+}
+
+func makeLinks(currentPage int, totalPages int, params parameters) map[string]string {
+	links := make(map[string]string)
+
+	// Create required links and add url parameters if provided
+	if currentPage <= totalPages && currentPage > 1 {
+		links["prev"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), currentPage-1)
+		links = addLinkParams(links, "prev", params)
+	}
+
+	if currentPage >= 1 && currentPage < totalPages {
+		links["next"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), currentPage+1)
+		links = addLinkParams(links, "next", params)
+	}
+
+	return links
+}
+
 const (
 	SortPopular     string = "popularity"
 	SortNewest      string = "newest"
@@ -20,7 +57,7 @@ const (
 )
 
 func validSortOption(sort string) bool {
-	return sort == SortPopular || sort == SortNewest || sort == SortSubscribers || sort == SortVersionSize
+	return sort == SortPopular || sort == SortNewest || sort == SortSubscribers || sort == SortVersionSize || sort == ""
 }
 
 // ModsHandler returns ModPreview array from initial workshop page
@@ -30,7 +67,7 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	sort := r.URL.Query().Get("sort")
 	if !validSortOption(sort) {
-		sort = SortPopular // if an incorrect sorting option is not provided, defualt to popular
+		sort = ""
 	}
 
 	results, err := util.ScrapeMods(1, search, sort, []string{})
@@ -39,14 +76,7 @@ func ModsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	links := make(map[string]string)
-	if results.CurrentPage <= results.TotalPages && results.CurrentPage > 1 {
-		links["prev"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage-1)
-	}
-
-	if results.CurrentPage >= 1 && results.CurrentPage < results.TotalPages {
-		links["next"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage+1)
-	}
+	links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort})
 
 	b, err := json.Marshal(models.ModsPreviewsResponse{
 		Status: "success",
@@ -81,7 +111,7 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	sort := r.URL.Query().Get("sort")
 	if !validSortOption(sort) {
-		sort = SortPopular // if an incorrect sorting option is not provided, defualt to popular
+		sort = ""
 	}
 
 	results, err := util.ScrapeMods(pageNumber, search, sort, []string{})
@@ -108,14 +138,7 @@ func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	links := make(map[string]string)
-	if results.CurrentPage <= results.TotalPages && results.CurrentPage > 1 {
-		links["prev"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage-1)
-	}
-
-	if results.CurrentPage >= 1 && results.CurrentPage < results.TotalPages {
-		links["next"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), results.CurrentPage+1)
-	}
+	links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort})
 
 	b, err := json.Marshal(models.ModsPreviewsResponse{
 		Status: "success",
