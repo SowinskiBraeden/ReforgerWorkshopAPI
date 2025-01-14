@@ -28,6 +28,10 @@ func (a *App) New() *mux.Router {
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
+	router.HandleFunc("/ads.txt", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/ads.txt")
+	})
+
 	// Serve index page on all unhandled routes
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/index.html")
