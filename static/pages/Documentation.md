@@ -1,7 +1,7 @@
 <section class="landing-hero">
   <div class="landing-hero-copy">
-    <div class="landing-kicker">Cached Workshop Metadata</div>
-    <h1>Build against Reforger mod data, no scraping required.</h1>
+    <div class="landing-kicker">Reforger Mods API</div>
+    <h1>Arma Reforger mod metadata, ready for your app.</h1>
     <p class="landing-lede">A read-only API that serves normalized Arma Reforger Workshop data — mod lists, search results, and full detail pages.</p>
     <div class="landing-actions">
       <a href="?page=documentation/api" class="landing-primary-action"><i class="bi bi-terminal"></i> API Reference</a>

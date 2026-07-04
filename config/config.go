@@ -91,7 +91,7 @@ func New() *Config {
 		UpstreamTimeout:     envDuration("UPSTREAM_TIMEOUT", 15*time.Second),
 		UpstreamRetries:     envInt("UPSTREAM_RETRIES", 2),
 		UpstreamConcurrency: envInt("UPSTREAM_CONCURRENCY", 4),
-		UpstreamUserAgent:   envString("UPSTREAM_USER_AGENT", "Cedarline Reforger Workshop API/1.0 (+https://cedarline.digital)"),
+		UpstreamUserAgent:   envString("UPSTREAM_USER_AGENT", "Cedarline Reforger Mods API/1.0 (+https://cedarline.digital)"),
 
 		ReadHeaderTimeout: envDuration("SERVER_READ_HEADER_TIMEOUT", 5*time.Second),
 		ReadTimeout:       envDuration("SERVER_READ_TIMEOUT", 10*time.Second),

@@ -38,7 +38,7 @@ var scraper = struct {
 		Timeout:     15 * time.Second,
 		Retries:     2,
 		Concurrency: 4,
-		UserAgent:   "Cedarline Reforger Workshop API/1.0 (+https://cedarline.digital)",
+		UserAgent:   "Cedarline Reforger Mods API/1.0 (+https://cedarline.digital)",
 	},
 	sem: make(chan struct{}, 4),
 }
@@ -51,7 +51,7 @@ func ConfigureScraper(cfg ScraperConfig) {
 		cfg.Concurrency = 4
 	}
 	if cfg.UserAgent == "" {
-		cfg.UserAgent = "Cedarline Reforger Workshop API/1.0 (+https://cedarline.digital)"
+		cfg.UserAgent = "Cedarline Reforger Mods API/1.0 (+https://cedarline.digital)"
 	}
 	scraper.mu.Lock()
 	defer scraper.mu.Unlock()

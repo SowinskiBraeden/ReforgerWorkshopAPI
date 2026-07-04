@@ -1,6 +1,6 @@
-# Reforger Workshop API
+# Reforger Mods API
 
-Reforger Workshop API is a read-only API for discovering Arma Reforger Workshop mod metadata without making every downstream client scrape the public Workshop page directly.
+Reforger Mods API is a read-only API for discovering Arma Reforger Workshop mod metadata without making every downstream client scrape the public Workshop page directly.
 
 This is a Cedarline product and an independent, unofficial project. It is not affiliated with or endorsed by Bohemia Interactive. Data is normalized and cached from publicly accessible Arma Reforger Workshop pages at `reforger.armaplatform.com/workshop`; upstream availability, fields, layout, sorting, and rate limits may change without notice.
 
@@ -85,7 +85,7 @@ Defaults:
 UPSTREAM_TIMEOUT=15s
 UPSTREAM_RETRIES=2
 UPSTREAM_CONCURRENCY=4
-UPSTREAM_USER_AGENT=Cedarline Reforger Workshop API/1.0 (+https://cedarline.digital)
+UPSTREAM_USER_AGENT=Cedarline Reforger Mods API/1.0 (+https://cedarline.digital)
 ```
 
 ## Configuration
@@ -138,7 +138,7 @@ docker compose up --build
 Recommended topology:
 
 ```text
-Internet -> Cloudflare -> Nginx/Caddy on the host -> Reforger Workshop API on a private port
+Internet -> Cloudflare -> Nginx/Caddy on the host -> Reforger Mods API on a private port
 ```
 
 Bind the Go service privately where possible and expose only the reverse proxy publicly. Do not expose debug, profiling, metrics, or future admin/cache-purge endpoints publicly by default. No persistent storage is used by the current in-memory cache, so there is no backup requirement for cache data.
@@ -155,4 +155,4 @@ The server uses read, write, idle, and read-header timeouts and shuts down grace
 
 ## Footer Attribution
 
-© 2025-2026 reforgermods.net. ReforgerMods.net is an independent, unofficial project and is not affiliated with Bohemia Interactive. cedarline.digital is linked separately as the Cedarline Digital site.
+© 2025-2026 reforgermods.net. Reforger Mods API is an independent, unofficial API service and is not affiliated with Bohemia Interactive. cedarline.digital is linked separately as the Cedarline Digital site.

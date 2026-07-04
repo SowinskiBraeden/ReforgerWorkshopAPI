@@ -1,6 +1,6 @@
 # Changelog
 
-<h4 class="fw-light">Public release notes for Reforger Workshop API.</h4><br/>
+<h4 class="fw-light">Public release notes for Reforger Mods API.</h4><br/>
 
 
 <h4 class="text-primary fw-bold">Current release</h4>
