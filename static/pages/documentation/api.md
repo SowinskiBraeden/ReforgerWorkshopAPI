@@ -1,25 +1,21 @@
 # API Documentation
 <sup>*Last Updated: 2026-07-04*</sup>
 
-The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages. This project is independent and unofficial; it is not affiliated with or endorsed by Bohemia Interactive.
+The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages.
 
 Use `/v1` for all new integrations. The older unversioned routes still work as deprecated aliases for now.
 
 ## Health
 
-```http
-GET /v1/health
-```
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/health</code></div>
 
 Returns process health only. It does not scrape the Workshop.
 
 ## List Mods
 
-```http
-GET /v1/mods
-GET /v1/mods/{page}
-GET /v1/search?search={query}
-```
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/mods</code></div>
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/mods/{page}</code></div>
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/search?search={query}</code></div>
 
 The Workshop currently returns 16 mods per page. Search and sort are passed through to the public Workshop page after normalization.
 
@@ -68,9 +64,7 @@ Example response:
 
 ## Get Mod
 
-```http
-GET /v1/mod/{mod_id}
-```
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/mod/{mod_id}</code></div>
 
 Example:
 
@@ -120,12 +114,18 @@ Example response:
 }
 ```
 
-Common codes include `INVALID_PAGE`, `INVALID_MOD_ID`, `INVALID_SEARCH`, `NOT_FOUND`, `RATE_LIMITED`, `QUERY_TOO_LONG`, and `UPSTREAM_UNAVAILABLE`.
+Common codes: `INVALID_PAGE`, `INVALID_MOD_ID`, `INVALID_SEARCH`, `NOT_FOUND`, `RATE_LIMITED`, `QUERY_TOO_LONG`, `UPSTREAM_UNAVAILABLE`.
 
-## Rate Limits and Cache
+## Rate Limits & Cache
 
-Anonymous clients are rate limited. The default public limit is 60 requests per minute per resolved client IP with a burst of 20. `429` responses include `Retry-After` and rate-limit headers.
+Anonymous clients are rate limited to **60 requests per minute** per resolved IP, with a burst of 20. `429` responses include `Retry-After` and rate-limit headers.
 
-Responses may be cached and temporarily stale. Default cache windows are 1 hour fresh plus 24 hours stale for mod details, 10 minutes fresh plus 1 hour stale for list/search responses, and 10 minutes for not-found responses. The API returns `Cache-Control`, `ETag`, and `X-Cache` headers.
+Responses may be cached and temporarily stale. Default cache windows:
 
-Workshop fields and page layout are controlled by Bohemia Interactive and may change upstream.
+| Resource | Fresh | Stale fallback |
+| --- | --- | --- |
+| Mod detail | 1 hour | 24 hours |
+| List / search | 10 minutes | 1 hour |
+| Not found | 10 minutes | — |
+
+The API returns `Cache-Control`, `ETag`, and `X-Cache` headers. Workshop fields and page layout are controlled by Bohemia Interactive and may change upstream.

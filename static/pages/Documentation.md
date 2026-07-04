@@ -1,34 +1,58 @@
-# Reforger Workshop API
-<h4 class="fw-light">A read-only Cedarline API for cached metadata from publicly accessible <a target="_blank" href="https://reforger.armaplatform.com/workshop">Arma Reforger Workshop</a> pages.</h4>
-
-This is an independent, unofficial project and is not affiliated with or endorsed by Bohemia Interactive. Workshop data availability, fields, layout, and rate limits may change upstream. Cached responses may be temporarily stale by design.
-
-<div class="row row-cols-1 row-cols-lg-3 align-items-stretch g-4 py-3 pt-4">
-  <div class="col">
-    <a href="?page=documentation/api" class="link-underline-opacity-0 link-underline">
-      <div class="card card-cover h-100 overflow-hidden rounded-4 bg-primary border-primary docs-link-primary">
-        <div class="d-flex flex-column h-100 p-4 text-shadow-1 text">
-          <h3 class="fw-bolder"><i class="bi bi-file-earmark-medical-fill" style="font-size:27px"></i> API Docs</h3>
-        </div>
-      </div>
-    </a>
+<section class="landing-hero">
+  <div class="landing-hero-copy">
+    <div class="landing-kicker">Cached Workshop Metadata</div>
+    <h1>Build against Reforger mod data, no scraping required.</h1>
+    <p class="landing-lede">A read-only API that serves normalized Arma Reforger Workshop data — mod lists, search results, and full detail pages.</p>
+    <div class="landing-actions">
+      <a href="?page=documentation/api" class="landing-primary-action"><i class="bi bi-terminal"></i> API Reference</a>
+      <a href="/v1/health" class="landing-secondary-action">Health check</a>
+    </div>
   </div>
-  <div class="col">
-    <a href="?page=documentation/mods" class="link-underline-opacity-0 link-underline">
-      <div class="card card-cover h-100 overflow-hidden rounded-4 bg-dark-subtle docs-link">
-        <div class="d-flex flex-column h-100 p-4 text-shadow-1">
-          <h3 class="fw-bold"><i class="bi bi-puzzle-fill" style="font-size:27px"></i> Mod Structures</h3>
-        </div>
-      </div>
-    </a>
+  <div class="landing-panel" aria-label="API example">
+    <div class="landing-panel-header">
+      <div class="landing-panel-chrome"><span></span><span></span><span></span></div>
+      <div class="landing-panel-label">Example request</div>
+    </div>
+    <code>GET /v1/mods?search=radio&amp;sort=newest</code>
+    <div class="landing-panel-meta">
+      <span><i class="bi bi-check2-circle"></i> Normalized JSON responses</span>
+      <span><i class="bi bi-clock"></i> Stale-while-revalidate cache</span>
+      <span><i class="bi bi-shield-check"></i> Rate limited &amp; safe</span>
+    </div>
   </div>
-  <!-- <div class="col">
-    <a href="?page=getting-started/Frequently-asked-questions" class="link-underline-opacity-0 link-underline">
-      <div class="card card-cover h-auto overflow-hidden rounded-4 bg-dark-subtle docs-link">
-        <div class="d-flex flex-column h-100 p-4 text-shadow-1">
-          <h3 class="fw-bold"><i class="bi bi-question-diamond-fill" style="font-size:27px"></i> FAQs</h3>
-        </div>
-      </div>
-    </a>
-  </div> -->
+</section>
+
+<div class="landing-metrics" aria-label="API defaults">
+  <div>
+    <span class="landing-status-label">Version</span>
+    <strong>/v1</strong>
+  </div>
+  <div>
+    <span class="landing-status-label">Public limit</span>
+    <strong>60 / min</strong>
+  </div>
+  <div>
+    <span class="landing-status-label">Mod cache</span>
+    <strong>1 h fresh</strong>
+  </div>
+</div>
+
+<p class="landing-note">Cached responses may be temporarily stale. Workshop layout, fields, and availability are controlled by Bohemia Interactive and can change upstream without notice.</p>
+
+<div class="landing-grid">
+  <a href="?page=documentation/api" class="landing-link-card">
+    <i class="bi bi-braces"></i>
+    <span>API Reference</span>
+    <small>Routes, examples, cache headers, error codes, and rate limits.</small>
+  </a>
+  <a href="?page=documentation/mods" class="landing-link-card">
+    <i class="bi bi-diagram-3"></i>
+    <span>Mod Structures</span>
+    <small>Preview, detail, dependency, and scenario response fields.</small>
+  </a>
+  <a href="/v1/mods" class="landing-link-card">
+    <i class="bi bi-box-arrow-up-right"></i>
+    <span>Try the API</span>
+    <small>Open the first cached Workshop list response in your browser.</small>
+  </a>
 </div>

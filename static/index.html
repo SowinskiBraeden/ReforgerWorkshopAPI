@@ -9,7 +9,9 @@
     <link href="./static/highlight.js/styles/atom-one-dark.css" rel="stylesheet">
     <link href="./static/global/global.css" rel="stylesheet">
     <link href="./static/index.css" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="./static/assets/logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./static/assets/reforger-mods-favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="./static/assets/reforger-mods-favicon-64.png">
+    <link rel="apple-touch-icon" href="./static/assets/reforger-mods-favicon-256.png">
 
     <meta name="keywords" content="Arma Reforger, mods, arma, reforger, API, api, plugins">
     <meta name="author" content="cedarline.digital">
@@ -17,11 +19,11 @@
     <meta property="og:url" content="https://cedarline.digital">
 
     <!-- Social Embeds -->
-    <meta property="theme-color" content="#4642f5">
+    <meta property="theme-color" content="#26C29A">
     <meta property="og:title" content="Reforger Workshop API">
     <meta property="og:description" content="Read-only cached metadata API for publicly accessible Arma Reforger Workshop mod pages.">
     <meta property="og:url" content="https://cedarline.digital">
-    <meta property="og:image" content="./static/assets/logo.png">
+    <meta property="og:image" content="./static/assets/reforger-mods-favicon-256.png">
     <meta property="og:type" content="website">
   </head>
 
@@ -29,24 +31,23 @@
 
     <!-- Desktop Navbar -->
     <div class="p-2 d-lg-inline d-none"></div>
-    <header class="p-3 mb-3 border-bottom fixed-top d-lg-inline d-none blueprint-navbar">
+    <header class="site-header border-bottom fixed-top d-lg-inline d-none blueprint-navbar">
       <div class="container">
-        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
-          <a href="/" class="d-flex align-items-center mb-2 me-2 mb-lg-0 link-body-emphasis text-decoration-none">
-            <img src="./static/assets/logo.png" width="35" height="35" class="rounded-3" alt="" />
+        <div class="site-header-inner">
+          <a href="/" class="site-brand link-body-emphasis text-decoration-none">
+            <img src="./static/assets/reforger-mods-icon-dark.png" width="30" height="30" class="site-logo site-logo-dark" alt="Reforger Mods" />
+            <img src="./static/assets/reforger-mods-icon-light.png" width="30" height="30" class="site-logo site-logo-light" alt="Reforger Mods" />
+            <span class="site-brand-text">Reforger Mods</span>
           </a>
-          <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
-            <li><a href="/" class="nav-link px-2 link-body-emphasis">Home</a></li>
-            <li><a href="/" class="nav-link px-2 link-body-emphasis">Documentation</a></li>
+          <ul class="site-nav nav">
+            <li><a href="/" class="nav-link link-body-emphasis" data-nav-page="home">Overview</a></li>
+            <li><a href="?page=documentation/api" class="nav-link link-body-emphasis" data-nav-page="documentation/api">API</a></li>
+            <li><a href="?page=documentation/mods" class="nav-link link-body-emphasis" data-nav-page="documentation/mods">Models</a></li>
           </ul>
-          <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
-            <li class="nav-item me-1 ms-1 py-1"><a class="nav-link px-1" href="mailto:support@cedarline.digital"><i class="bi bi-envelope-at-fill"></i></a></li>
-            <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto">
-              <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div>
-              <hr class="d-lg-none my-2 text-white-50">
-            </li>
+          <ul class="site-actions navbar-nav flex-row flex-wrap ms-md-auto">
+            <li class="nav-item"><a class="site-contact-link" href="mailto:support@cedarline.digital">Contact</a></li>
             <li class="nav-item dropdown">
-              <button class="btn btn-link nav-link py-2 px-0 px-lg-2 dropdown-toggle d-flex align-items-center" id="bd-theme" type="button" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme (dark)">
+              <button class="btn btn-link nav-link py-2 px-0 px-lg-2 dropdown-toggle d-flex align-items-center site-theme-button" id="bd-theme" type="button" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme (dark)">
                 <i class="bi bi-moon-stars-fill my-1 theme-icon-active"></i>
                 <span class="d-lg-none ms-2" id="bd-theme-text">Toggle theme</span>
               </button>
@@ -65,14 +66,15 @@
     <div class="p-2 d-lg-none d-inline"></div>
     <nav class="navbar fixed-top d-lg-none d-inline blueprint-navbar-mobile">
       <div class="container-fluid">
-        <a href="../" class="d-flex align-items-center mb-2 me-2 mt-2 mb-lg-0 link-body-emphasis text-decoration-none"><img src="./static/assets/logo.png" width="40" height="40" class="rounded-3" alt="" /></a>
+        <a href="../" class="site-brand link-body-emphasis text-decoration-none"><img src="./static/assets/reforger-mods-icon-dark.png" width="34" height="34" class="site-logo site-logo-dark" alt="Reforger Mods" /><img src="./static/assets/reforger-mods-icon-light.png" width="34" height="34" class="site-logo site-logo-light" alt="Reforger Mods" /><span class="site-brand-text">Reforger Mods</span></a>
         <div class="dropdown">
           <button class="btn btn-secondary bg-dark-subtle border-0 nav-dropdown-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <span class="navbar-toggler-icon"></span>
           </button>
           <ul class="dropdown-menu dropdown-menu-end gap-1 p-2 rounded-3 mx-0 border-0 shadow w-220px">
             <li><a class="dropdown-item rounded-2" href="/">Home</a></li>
-            <li><a class="dropdown-item rounded-2 disabled" href="/">Documentation</a></li>
+            <li><a class="dropdown-item rounded-2" href="?page=documentation/api">Documentation</a></li>
+            <li><a class="dropdown-item rounded-2" href="?page=documentation/mods">Models</a></li>
             <li>
               <hr class="dropdown-divider">
             </li>
@@ -87,26 +89,28 @@
     </nav>
 
     <!-- Content -->
-    <div class="mt-5 opacity-0">.</div>
-    <div class="container mt-1">
-      <div class="row">
+    <main class="site-main">
+    <div class="container docs-shell">
+      <div class="row g-4">
         <div class="col-lg-2 col-md-4 col-sm-12">
-          <div class="docs-category pb-4">
-            <div class="ms-2"><span class="text-start docs-nav">API v1</span><br></div>
+          <aside class="docs-sidebar">
+          <div class="docs-category">
+            <div class="docs-version">API v1</div>
           </div>
-          <div class="docs-category pb-4">
-            <div class="ms-2"><span class="fw-bolder">Documentation</span><br></div>
-            <a href="?page=documentation/api"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">API</button><br></a>
-            <a href="?page=documentation/mods"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">Mods Structure</button><br></a>
-            <a href="?page=documentation/changelog"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">Changelog</button><br></a>
+          <div class="docs-category">
+            <div class="docs-category-title">Documentation</div>
+            <a href="?page=documentation/api"><button type="button" class="btn btn-sm text-start docs-nav">API</button><br></a>
+            <a href="?page=documentation/mods"><button type="button" class="btn btn-sm text-start docs-nav">Mod Structures</button><br></a>
+            <a href="?page=documentation/changelog"><button type="button" class="btn btn-sm text-start docs-nav">Changelog</button><br></a>
           </div>
-          <div class="docs-category pb-4">
-            <div class="ms-2"><span class="fw-bolder">Contact</span><br></div>
-            <a href="?page=contact/email"><button type="button" class="btn btn-sm text-start docs-nav" style="--bs-btn-padding-y: .1rem;">Email us</button><br></a>
+          <div class="docs-category">
+            <div class="docs-category-title">Contact</div>
+            <a href="?page=contact/email"><button type="button" class="btn btn-sm text-start docs-nav">Email</button><br></a>
           </div>
+          </aside>
         </div>
         <div class="container d-lg-none d-md-none d-sm-inline mb-4"><div class="border-bottom"></div></div>
-        <div class="col-lg-10 col-md-8 col-sm-12" id="content">
+        <div class="col-lg-10 col-md-8 col-sm-12 docs-content" id="content">
           <div class="d-flex justify-content-center">
             <div class="spinner-border spinner-border-sm text-secondary mt-4" role="status">
               <span class="visually-hidden">Loading...</span>
@@ -115,6 +119,7 @@
         </div>
       </div>
     </div>
+    </main>
 
     <!-- Footer -->
     <div class="container">
@@ -122,7 +127,8 @@
         <div class="site-footer-main">
           <div class="site-footer-brand">
             <a href="/" class="d-flex align-items-center link-body-emphasis text-decoration-none">
-              <img src="./static/assets/logo.png" width="28" height="28" class="rounded-2" alt="Reforger Workshop API" />
+              <img src="./static/assets/reforger-mods-icon-dark.png" width="26" height="26" class="site-logo site-logo-dark" alt="Reforger Mods" />
+              <img src="./static/assets/reforger-mods-icon-light.png" width="26" height="26" class="site-logo site-logo-light" alt="Reforger Mods" />
             </a>
             <div>
               <div class="site-footer-title">© 2025-2026 reforgermods.net</div>
@@ -132,6 +138,7 @@
 
           <div class="site-footer-links">
             <a href="https://cedarline.digital" class="site-footer-link">cedarline.digital</a>
+            <a href="?page=privacy" class="site-footer-link">Privacy</a>
             <a href="mailto:support@cedarline.digital" class="site-footer-link">Contact</a>
           </div>
         </div>

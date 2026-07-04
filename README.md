@@ -155,4 +155,4 @@ The server uses read, write, idle, and read-header timeouts and shuts down grace
 
 ## Footer Attribution
 
-© cedarline.digital Reforger Workshop API is an independent, unofficial project and is not affiliated with Bohemia Interactive.
+© 2025-2026 reforgermods.net. ReforgerMods.net is an independent, unofficial project and is not affiliated with Bohemia Interactive. cedarline.digital is linked separately as the Cedarline Digital site.
