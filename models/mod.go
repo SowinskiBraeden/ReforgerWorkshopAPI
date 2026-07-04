@@ -6,7 +6,7 @@ type ModPreview struct {
 	Author         string `json:"author"`
 	ImageURL       string `json:"imageURL"`
 	OriginalModURL string `json:"originalModURL"`
-	APIModURL      string `jons:"apiModURL"`
+	APIModURL      string `json:"apiModURL"`
 	Size           string `json:"size"`
 	Rating         string `json:"rating"`
 	ID             string `json:"ID"`

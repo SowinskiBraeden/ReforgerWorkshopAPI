@@ -1,169 +1,131 @@
 # API Documentation
-<sup>*Last Updated: 2025-01-07*</sup>
+<sup>*Last Updated: 2026-07-04*</sup>
 
-Here you will find all API endpoints and the data they return.
+The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages. This project is independent and unofficial; it is not affiliated with or endorsed by Bohemia Interactive.
 
-<br><br>
+Use `/v1` for all new integrations. The older unversioned routes still work as deprecated aliases for now.
 
-### **Get Mod Preview List Endpoint**
+## Health
 
-You can query a list of [Mod Preview objects](?page=documentation/mods) from any of the given pages.
-This list will *only* return a maximum of `16 mods` at a time.
-
-You can optionally include a search parameter `?search=` followed by the keyword(s) you're searching for. Note that spaces seperating these words must be replaced with a `+` before sending the API request.
-
-### **Endpoint**
-Get first page.
-```
-GET /mods
+```http
+GET /v1/health
 ```
 
-Get a specified page.
-```
-GET /mods/{page_number}
+Returns process health only. It does not scrape the Workshop.
+
+## List Mods
+
+```http
+GET /v1/mods
+GET /v1/mods/{page}
+GET /v1/search?search={query}
 ```
 
-### **Parameters**
-You can search mods by name, and sort by several keywords.
+The Workshop currently returns 16 mods per page. Search and sort are passed through to the public Workshop page after normalization.
 
-***Search***
-You can search by name by adding the following to the end of your query URL
-<sup>Note: Spaces must be replaced with a `+`</sup>
-```
-?search=mod+name
-```
+Query parameters:
 
-***Sort***
-You can sort the mods returned by using one of the following keywords.
-1. `popularity`
-2. `newest`
-3. `subscribers` <sup>Note: subscribers feature has been deprecated by Bohemia.net</sup>
-4. `version_size`
+| Name | Values |
+| --- | --- |
+| `search` | Search text, normalized and capped before use |
+| `sort` | `popularity`, `newest`, `subscribers`, `version_size` |
 
-Add the following to the end of your query URL
-```
-?sort=popularity
+Example:
+
+```bash
+curl https://api.example.com/v1/mods/2?search=radio&sort=newest
 ```
 
-### **Curl Example**
-```
-curl -n -X GET https://api.reforgermods.net/mods/2
-```
+Example response:
 
-### **Returned JSON**
-
-Querying this endpoint will return some addition meta data in the json.
 ```json
 {
   "status": "success",
   "meta": {
-    "totalPages":     314,
-    "currentPage":    2,
-    "totalMods":      5024,
-    "shownMods":      16,
+    "totalPages": 2593,
+    "currentPage": 2,
+    "totalMods": 41478,
+    "shownMods": 16,
     "modsIndexStart": 17,
-    "modsIndexEnd":   32
+    "modsIndexEnd": 32
   },
-  "data":  [{
-    "name":          "Super Awesome Mod",
-    "author":        "Homer Simpson",
-    "imageURL":      "https://example.com/image.png",
-    "originalModURL":"https://reforger.armaplatform.com/workshop/{mod_id}",
-    "APIModURL":     "https://api.reforgermods.net/mod/{mod_id}",
-    "size":          "192.42 KB",
-    "rating":        "92%",
-    "ID":            "{mod_id}"
+  "data": [{
+    "name": "Example Mod",
+    "author": "Example Author",
+    "imageURL": "https://example.com/image.png",
+    "originalModURL": "https://reforger.armaplatform.com/workshop/{mod_id}",
+    "apiModURL": "https://api.example.com/v1/mod/{mod_id}",
+    "size": "192.42 KB",
+    "rating": "92%",
+    "ID": "{mod_id}"
   }],
   "links": {
-    "next": "https://api.reforgermods.net/mods/3",
-    "prev": "https://api.reforgermods.net/mods/1"
+    "next": "https://api.example.com/v1/mods/3?search=radio&sort=newest",
+    "prev": "https://api.example.com/v1/mods/1?search=radio&sort=newest"
   }
 }
 ```
 
-***JSON Meta***
+## Get Mod
 
-`totalPages` *int*\
-The total number of pages that are abled to be queried using `/mods/{page}`.
-
-`currentPage` *int*\
-The current page that you've queried.
-
-`totalMods` *int*\
-The total mods found from `reforger.armaplatform.com/workshop`.
-
-`shownMods` *int*\
-The number of mods returned in the `data` array.
-
-`modsIndexStart` *int*\
-The index of the first mod shown in `shownMods`.\
-*e.g. "Showing mods `17` to `32`"*  - Where `17` is the index of the first mod in `shownMods` out of the total number of mods in `totalMods`.
-
-`modsIndexEnd` *int*\
-The index of the last mod shown in `shownMods`.\
-*e.g. "Showing mods `17` to `32`"*  - Where `32` is the index of the last mod in `shownMods` out of the total number of mods in `totalMods`.
-
-***JSON Links***
-
-Depending on the page number that you've requested, the API will return links to the next and previous page of mods for the API.
-Allowing easy requests to navigate the pages of mods provided.
-___
-<br><br>
-
-### **Get Mod Endpoint**
-
-You can query a specific [Mod object](?page=documentation/mods) with the given mod id.
-This will return all information for a mod as seen in the [Mod objects definition](?page=documentation/mods).
-
-### **Endpoint**
-Get mod.
-```
-GET /mod/{mod_id}
+```http
+GET /v1/mod/{mod_id}
 ```
 
-### **Curl Example**
-```
-curl -n -X GET https://api.reforgermods.net/mod/12345
+Example:
+
+```bash
+curl https://api.example.com/v1/mod/12345
 ```
 
-### **Returned JSON**
+Example response:
 
-Querying this endpoint will only return one mod and all of its given information.
 ```json
 {
   "status": "success",
   "mod": {
-    "name":           "Super Awesome Mod",
-    "author":         "Homer Simpson",
+    "name": "Example Mod",
+    "author": "Example Author",
     "originalModURL": "https://reforger.armaplatform.com/workshop/12345",
-    "apiModURL":      "https://api.reforgermods.net/mod/12345",
-    "imageURL":       "https://example.com/image.png",
-    "rating":         "92%",
-    "version":        "1.1.0",
-    "gameVersion":    "1.1.0.34",
-    "size":           "192.42 KB",
-    "subscribers":    66677,
-    "downloads":      791142,
-    "created":        "19.05.2022",
-    "lastModified":   "17.03.2024",
-    "id":             "12345",
-    "summary":        "This is a super awesome mod",
-    "description":    "I, Home Simpson made a super awesome mod that adds so much cool stuff to arma reforger!",
-    "license":        "Arma Public License (APL)",
-    "tags": [ "SUPER", "AWESOME", "MOD", "SIMPSON" ],
-    "dependencies": [{
-      "name":           "Mod Dependency 1",
-      "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}",
-      "apiModURL":      "https://api.reforgermods.net/mod/{dep_id}"
-    }],
-    "scenarios": [{
-      "name":        "Some Scenario",
-      "description": "You will do awesome things in this scenario",
-      "scenarioID":  "{12345}Missions/SomeScenario.conf",
-      "gamemode":    "Campaign",
-      "playerCount": 64,
-      "imageURL":    "https://example.com/image.png",
-    }]
+    "apiModURL": "https://api.example.com/v1/mod/12345",
+    "imageURL": "https://example.com/image.png",
+    "rating": "92%",
+    "version": "1.1.0",
+    "gameVersion": "1.1.0.34",
+    "size": "192.42 KB",
+    "subscribers": 0,
+    "downloads": 791142,
+    "created": "19.05.2022",
+    "lastModified": "17.03.2024",
+    "id": "12345",
+    "summary": "Short Workshop summary",
+    "description": "Workshop description",
+    "license": "Arma Public License (APL)",
+    "tags": ["EXAMPLE"],
+    "dependencies": [],
+    "scenarios": []
   }
 }
 ```
+
+## Errors
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many requests.",
+    "requestId": "..."
+  }
+}
+```
+
+Common codes include `INVALID_PAGE`, `INVALID_MOD_ID`, `INVALID_SEARCH`, `NOT_FOUND`, `RATE_LIMITED`, `QUERY_TOO_LONG`, and `UPSTREAM_UNAVAILABLE`.
+
+## Rate Limits and Cache
+
+Anonymous clients are rate limited. The default public limit is 60 requests per minute per resolved client IP with a burst of 20. `429` responses include `Retry-After` and rate-limit headers.
+
+Responses may be cached and temporarily stale. Default cache windows are 1 hour fresh plus 24 hours stale for mod details, 10 minutes fresh plus 1 hour stale for list/search responses, and 10 minutes for not-found responses. The API returns `Cache-Control`, `ETag`, and `X-Cache` headers.
+
+Workshop fields and page layout are controlled by Bohemia Interactive and may change upstream.

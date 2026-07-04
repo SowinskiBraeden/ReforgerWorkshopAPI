@@ -1,26 +1,80 @@
 package util
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math"
+	"math/rand"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 
 	"github.com/gocolly/colly"
+	"go.uber.org/zap"
 )
 
 const RESULTS_PER_PAGE = 16
 
+type ScraperConfig struct {
+	Timeout     time.Duration
+	Retries     int
+	Concurrency int
+	UserAgent   string
+}
+
+var scraper = struct {
+	mu  sync.RWMutex
+	cfg ScraperConfig
+	sem chan struct{}
+}{
+	cfg: ScraperConfig{
+		Timeout:     15 * time.Second,
+		Retries:     2,
+		Concurrency: 4,
+		UserAgent:   "Cedarline Reforger Workshop API/1.0 (+https://cedarline.digital)",
+	},
+	sem: make(chan struct{}, 4),
+}
+
+func ConfigureScraper(cfg ScraperConfig) {
+	if cfg.Timeout <= 0 {
+		cfg.Timeout = 15 * time.Second
+	}
+	if cfg.Concurrency <= 0 {
+		cfg.Concurrency = 4
+	}
+	if cfg.UserAgent == "" {
+		cfg.UserAgent = "Cedarline Reforger Workshop API/1.0 (+https://cedarline.digital)"
+	}
+	scraper.mu.Lock()
+	defer scraper.mu.Unlock()
+	scraper.cfg = cfg
+	scraper.sem = make(chan struct{}, cfg.Concurrency)
+}
+
 // scrapes multiple mods from a given workshop page
 func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*models.WebScrapeResults, error) {
+	return ScrapeModsContext(context.Background(), pageNumber, search, sort, tags)
+}
+
+func ScrapeModsContext(ctx context.Context, pageNumber int, search string, sort string, tags []string) (*models.WebScrapeResults, error) {
+	if err := acquireScraper(ctx); err != nil {
+		return nil, err
+	}
+	defer releaseScraper()
+
 	if sort == "" {
 		sort = "popularity" // if no sort option is given defualt to popularity
 	}
 	var baseURL string = "reforger.armaplatform.com"
-	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d&search=%s&sort=%s", baseURL, pageNumber, search, sort)
+	workshopURL := fmt.Sprintf("https://%s/workshop?page=%d&search=%s&sort=%s", baseURL, pageNumber, url.QueryEscape(search), url.QueryEscape(sort))
 	var mods []models.ModPreview
 
 	for i := 0; i < len(tags); i++ {
@@ -28,9 +82,7 @@ func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*mod
 		workshopURL = workshopURL + fmt.Sprintf("&tags=%s", strings.ToUpper(tags[i]))
 	}
 
-	c := colly.NewCollector(
-		colly.AllowedDomains(baseURL),
-	)
+	c := newCollector(baseURL)
 
 	// Mod results
 	var names []string
@@ -106,7 +158,9 @@ func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*mod
 		totalPages = int(math.Ceil(float64(totalResults) / float64(RESULTS_PER_PAGE)))
 	})
 
-	c.Visit(workshopURL)
+	if err := c.Visit(workshopURL); err != nil {
+		return nil, err
+	}
 
 	if resultSummary == "No mods found." {
 		return &models.WebScrapeResults{
@@ -142,7 +196,7 @@ func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*mod
 			Author:         authors[i],
 			ImageURL:       imageURLs[i],
 			OriginalModURL: modURLs[i],
-			APIModURL:      fmt.Sprintf("%s/mod/%s", config.GetFullURL(), modID),
+			APIModURL:      fmt.Sprintf("%s/v1/mod/%s", config.GetFullURL(), modID),
 			Size:           sizes[i],
 			Rating:         ratings[i],
 			ID:             modID,
@@ -163,15 +217,26 @@ func ScrapeMods(pageNumber int, search string, sort string, tags []string) (*mod
 
 // Scrape single mod with all details with a given mod id
 func GetMod(modURL string) *models.Mod {
+	mod, _ := GetModContext(context.Background(), modURL)
+	if mod == nil {
+		return &models.Mod{}
+	}
+	return mod
+}
+
+func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
+	if err := acquireScraper(ctx); err != nil {
+		return nil, err
+	}
+	defer releaseScraper()
+
 	var baseURL string = "reforger.armaplatform.com"
 	var mod models.Mod
 
 	mod.Dependencies = []models.Dependency{}
 	mod.Scenarios = []models.Scenario{}
 
-	c := colly.NewCollector(
-		colly.AllowedDomains(baseURL),
-	)
+	c := newCollector(baseURL)
 
 	// Mod name
 	c.OnHTML("section h1", func(e *colly.HTMLElement) {
@@ -299,7 +364,7 @@ func GetMod(modURL string) *models.Mod {
 		mod.Dependencies = append(mod.Dependencies, models.Dependency{
 			Name:           e.Text,
 			OriginalModURL: fmt.Sprintf("https://%s%s", baseURL, e.Attr("href")),
-			APIModURL:      fmt.Sprintf("%s/mod/%s", config.GetFullURL(), strings.Split(strings.Split(e.Attr("href"), "/")[2], "-")[0]),
+			APIModURL:      fmt.Sprintf("%s/v1/mod/%s", config.GetFullURL(), strings.Split(strings.Split(e.Attr("href"), "/")[2], "-")[0]),
 		})
 	})
 
@@ -315,9 +380,7 @@ func GetMod(modURL string) *models.Mod {
 			var playerCounts []int
 			var imageURLs []string
 
-			c1 := colly.NewCollector(
-				colly.AllowedDomains(baseURL),
-			)
+			c1 := newCollector(baseURL)
 
 			c1.OnHTML("section div.grid article h2", func(e1 *colly.HTMLElement) {
 				names = append(names, e1.Text)
@@ -340,7 +403,9 @@ func GetMod(modURL string) *models.Mod {
 				imageURLs = append(imageURLs, fmt.Sprintf("https://%s%s", baseURL, e1.Attr("src")))
 			})
 
-			c1.Visit(fmt.Sprintf("%s/scenarios", modURL))
+			if err := c1.Visit(fmt.Sprintf("%s/scenarios", modURL)); err != nil {
+				zap.S().Warnw("failed to scrape scenarios", "error", err)
+			}
 
 			for i := 0; i < len(names); i++ {
 				mod.Scenarios = append(mod.Scenarios, models.Scenario{
@@ -355,7 +420,9 @@ func GetMod(modURL string) *models.Mod {
 		}
 	})
 
-	c.Visit(modURL)
+	if err := c.Visit(modURL); err != nil {
+		return nil, err
+	}
 
 	// If no image was found use placeholder
 	if mod.ImageURL == "" {
@@ -363,7 +430,78 @@ func GetMod(modURL string) *models.Mod {
 	}
 
 	mod.OriginalModURL = modURL
-	mod.APIModURL = fmt.Sprintf("%s/mod/%s", config.GetFullURL(), mod.ID)
+	mod.APIModURL = fmt.Sprintf("%s/v1/mod/%s", config.GetFullURL(), mod.ID)
 
-	return &mod
+	return &mod, nil
+}
+
+func newCollector(baseURL string) *colly.Collector {
+	cfg := scraperConfig()
+	c := colly.NewCollector(
+		colly.AllowedDomains(baseURL),
+		colly.UserAgent(cfg.UserAgent),
+	)
+	c.SetRequestTimeout(cfg.Timeout)
+	c.OnError(func(r *colly.Response, err error) {
+		status := 0
+		if r != nil {
+			status = r.StatusCode
+		}
+		attempt := 0
+		if r != nil && r.Request != nil {
+			if rawAttempt := r.Request.Ctx.GetAny("attempt"); rawAttempt != nil {
+				attempt, _ = rawAttempt.(int)
+			}
+		}
+		if r == nil || r.Request == nil || attempt >= cfg.Retries || !retryable(status, err) {
+			zap.S().Warnw("upstream scrape failed", "status", status, "error", err)
+			return
+		}
+		delay := time.Duration(100*(1<<attempt))*time.Millisecond + time.Duration(rand.Intn(150))*time.Millisecond
+		time.Sleep(delay)
+		r.Request.Ctx.Put("attempt", attempt+1)
+		_ = r.Request.Retry()
+	})
+	c.OnRequest(func(r *colly.Request) {
+		if r.Ctx.GetAny("attempt") == nil {
+			r.Ctx.Put("attempt", 0)
+		}
+		zap.S().Debugw("upstream fetch", "url", r.URL.String())
+	})
+	return c
+}
+
+func acquireScraper(ctx context.Context) error {
+	scraper.mu.RLock()
+	sem := scraper.sem
+	scraper.mu.RUnlock()
+	select {
+	case sem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func releaseScraper() {
+	scraper.mu.RLock()
+	sem := scraper.sem
+	scraper.mu.RUnlock()
+	<-sem
+}
+
+func scraperConfig() ScraperConfig {
+	scraper.mu.RLock()
+	defer scraper.mu.RUnlock()
+	return scraper.cfg
+}
+
+func retryable(status int, err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	if status == http.StatusTooManyRequests || status == http.StatusBadGateway || status == http.StatusServiceUnavailable || status == http.StatusGatewayTimeout {
+		return true
+	}
+	return status >= 500
 }

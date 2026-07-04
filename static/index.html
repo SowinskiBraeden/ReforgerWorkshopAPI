@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ReforgerMods.net</title>
+    <title>Reforger Workshop API</title>
     <link href="./static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="./static/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
     <link href="./static/highlight.js/styles/atom-one-dark.css" rel="stylesheet">
@@ -12,16 +12,15 @@
     <link rel="icon" type="image/x-icon" href="./static/assets/logo.png">
 
     <meta name="keywords" content="Arma Reforger, mods, arma, reforger, API, api, plugins">
-    <meta name="author" content="Braeden Sowinski">
-    <meta name="description" content="A simple, modern, and standardized REST API to get Arma Reforger Mods information.">
-    <meta property="og:url" content="https://api.reforgermods.net">
-    <meta name="google-adsense-account" content="ca-pub-3849346929740382">
+    <meta name="author" content="cedarline.digital">
+    <meta name="description" content="Read-only cached metadata API for publicly accessible Arma Reforger Workshop mod pages.">
+    <meta property="og:url" content="https://cedarline.digital">
 
     <!-- Social Embeds -->
     <meta property="theme-color" content="#4642f5">
-    <meta property="og:title" content="reforgermods.net">
-    <meta property="og:description" content="A simple, modern, and standardized REST API to get Arma Reforger Mods information.">
-    <meta property="og:url" content="https://api.reforgermods.net">
+    <meta property="og:title" content="Reforger Workshop API">
+    <meta property="og:description" content="Read-only cached metadata API for publicly accessible Arma Reforger Workshop mod pages.">
+    <meta property="og:url" content="https://cedarline.digital">
     <meta property="og:image" content="./static/assets/logo.png">
     <meta property="og:type" content="website">
   </head>
@@ -41,8 +40,7 @@
             <li><a href="/" class="nav-link px-2 link-body-emphasis">Documentation</a></li>
           </ul>
           <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
-            <li class="nav-item me-1 ms-1 py-1"><a class="nav-link px-1" href="mailto:support@reforgermods.net"><i class="bi bi-envelope-at-fill"></i></a></li>
-            <li class="nav-item me-1 ms-1 py-1"><a class="nav-link px-1" href="https://github.com/SowinskiBraeden/ReforgerWorkshopAPI"><i class="bi bi-github"></i></a></li>
+            <li class="nav-item me-1 ms-1 py-1"><a class="nav-link px-1" href="mailto:support@cedarline.digital"><i class="bi bi-envelope-at-fill"></i></a></li>
             <li class="nav-item py-2 py-lg-1 col-12 col-lg-auto">
               <div class="vr d-none d-lg-flex h-100 mx-lg-2 text-white"></div>
               <hr class="d-lg-none my-2 text-white-50">
@@ -94,7 +92,7 @@
       <div class="row">
         <div class="col-lg-2 col-md-4 col-sm-12">
           <div class="docs-category pb-4">
-            <div class="ms-2"><span class="text-start docs-nav">API v2.3.0</span><br></div>
+            <div class="ms-2"><span class="text-start docs-nav">API v1</span><br></div>
           </div>
           <div class="docs-category pb-4">
             <div class="ms-2"><span class="fw-bolder">Documentation</span><br></div>
@@ -120,19 +118,23 @@
 
     <!-- Footer -->
     <div class="container">
-      <footer class="d-flex flex-wrap justify-content-between align-items-center py-3 my-4 border-top">
-        <div class="col-md-4 d-flex align-items-center">
-          <a href="/" class="d-flex align-items-center mb-2 me-2 mb-lg-0 link-body-emphasis text-decoration-none">
-            <img src="./static/assets/logo.png" width="25" height="25" class="rounded-3" alt="" />
-          </a>
-          <span class="mb-3 mb-md-0 text-body-secondary">© 2024-2025 reforgermods.net</span>
-        </div>
+      <footer class="site-footer border-top">
+        <div class="site-footer-main">
+          <div class="site-footer-brand">
+            <a href="/" class="d-flex align-items-center link-body-emphasis text-decoration-none">
+              <img src="./static/assets/logo.png" width="28" height="28" class="rounded-2" alt="Reforger Workshop API" />
+            </a>
+            <div>
+              <div class="site-footer-title">© 2025-2026 reforgermods.net</div>
+              <div class="site-footer-disclaimer">ReforgerMods.net is an independent, unofficial project and is not affiliated with Bohemia Interactive.</div>
+            </div>
+          </div>
 
-        <ul class="nav col-md-4 justify-content-end list-unstyled d-flex">
-          <li class="ms-3"><a title="Support email" class="text-body-secondary" href="mailto:support@reforgermods.net"><i class="bi bi-envelope-at-fill" width="24" height="24"></i></a></li>
-          <li class="ms-3"><a title="Github" class="text-body-secondary" href="https://github.com/SowinskiBraeden/ReforgerWorkshopAPI"><i class="bi bi-github" width="24" height="24"></i></a></li>
-          <li class="ms-3"><a title="Support donations" class="text-body-secondary" href="https://github.com/sponsors/SowinskiBraeden"><i class="bi bi-bag-heart-fill" width="24" height="24"></i></a></li>
-        </ul>
+          <div class="site-footer-links">
+            <a href="https://cedarline.digital" class="site-footer-link">cedarline.digital</a>
+            <a href="mailto:support@cedarline.digital" class="site-footer-link">Contact</a>
+          </div>
+        </div>
       </footer>
     </div>
 
@@ -141,8 +143,5 @@
     <script src="./static/marked/marked.min.js"></script>
     <script src="./static/highlight.js/highlight.min.js"></script>
     <script src="./static/index.js"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3849346929740382"
-    crossorigin="anonymous"></script>
-
   </body>
 </html>

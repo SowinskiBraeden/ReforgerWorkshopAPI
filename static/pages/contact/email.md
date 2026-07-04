@@ -1,4 +1,6 @@
 # Contact Us
-<sup>*Last Updated: 2024-12-30*</sup>
+<sup>*Last Updated: 2026-07-04*</sup>
 
-Have any questions, concerns, or need help with the API? Contact us at ***support@reforgermods.net***
+For support or operational questions, contact cedarline.digital at ***support@cedarline.digital***.
+
+Reforger Workshop API is an independent, unofficial project and is not affiliated with or endorsed by Bohemia Interactive.

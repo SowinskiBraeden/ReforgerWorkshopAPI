@@ -1,5 +1,7 @@
-# api.reforgermods.net
-<h4 class="fw-light">A simple, modern, and standardized REST API to get Arma Reforger mod information from the <a target="_blank" href="https://reforger.armaplatform.com/workshop">Arma Reforger Workshop</a></h4>
+# Reforger Workshop API
+<h4 class="fw-light">A read-only Cedarline API for cached metadata from publicly accessible <a target="_blank" href="https://reforger.armaplatform.com/workshop">Arma Reforger Workshop</a> pages.</h4>
+
+This is an independent, unofficial project and is not affiliated with or endorsed by Bohemia Interactive. Workshop data availability, fields, layout, and rate limits may change upstream. Cached responses may be temporarily stale by design.
 
 <div class="row row-cols-1 row-cols-lg-3 align-items-stretch g-4 py-3 pt-4">
   <div class="col">
@@ -12,10 +14,10 @@
     </a>
   </div>
   <div class="col">
-    <a href="?page=getting-started/Installation" class="link-underline-opacity-0 link-underline">
+    <a href="?page=documentation/mods" class="link-underline-opacity-0 link-underline">
       <div class="card card-cover h-100 overflow-hidden rounded-4 bg-dark-subtle docs-link">
         <div class="d-flex flex-column h-100 p-4 text-shadow-1">
-          <h3 class="fw-bold"><i class="bi bi-puzzle-fill" style="font-size:27px"></i> Mods Structs</h3>
+          <h3 class="fw-bold"><i class="bi bi-puzzle-fill" style="font-size:27px"></i> Mod Structures</h3>
         </div>
       </div>
     </a>
@@ -30,4 +32,3 @@
     </a>
   </div> -->
 </div>
-

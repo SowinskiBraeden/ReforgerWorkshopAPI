@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 
+	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/util"
@@ -20,13 +24,13 @@ type parameters struct {
 // Add additional url parameters to links if exists
 func addLinkParams(links map[string]string, link string, params parameters) map[string]string {
 	if params.search != "" {
-		links[link] = fmt.Sprintf("%s?search=%s", links[link], params.search)
+		links[link] = fmt.Sprintf("%s?search=%s", links[link], url.QueryEscape(params.search))
 	}
 
 	if params.sort != "" && params.search != "" {
-		links[link] = fmt.Sprintf("%s&sort=%s", links[link], params.sort)
+		links[link] = fmt.Sprintf("%s&sort=%s", links[link], url.QueryEscape(params.sort))
 	} else if params.sort != "" {
-		links[link] = fmt.Sprintf("%s?sort=%s", links[link], params.sort)
+		links[link] = fmt.Sprintf("%s?sort=%s", links[link], url.QueryEscape(params.sort))
 	}
 
 	return links
@@ -37,12 +41,12 @@ func makeLinks(currentPage int, totalPages int, params parameters) map[string]st
 
 	// Create required links and add url parameters if provided
 	if currentPage <= totalPages && currentPage > 1 {
-		links["prev"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), currentPage-1)
+		links["prev"] = fmt.Sprintf("%s/v1/mods/%d", config.GetFullURL(), currentPage-1)
 		links = addLinkParams(links, "prev", params)
 	}
 
 	if currentPage >= 1 && currentPage < totalPages {
-		links["next"] = fmt.Sprintf("%s/mods/%d", config.GetFullURL(), currentPage+1)
+		links["next"] = fmt.Sprintf("%s/v1/mods/%d", config.GetFullURL(), currentPage+1)
 		links = addLinkParams(links, "next", params)
 	}
 
@@ -60,141 +64,99 @@ func validSortOption(sort string) bool {
 	return sort == SortPopular || sort == SortNewest || sort == SortSubscribers || sort == SortVersionSize || sort == ""
 }
 
+var validModID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+
 // ModsHandler returns ModPreview array from initial workshop page
-func ModsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	search := r.URL.Query().Get("search")
-	sort := r.URL.Query().Get("sort")
-	if !validSortOption(sort) {
-		sort = ""
-	}
-
-	results, err := util.ScrapeMods(1, search, sort, []string{})
-	if err != nil {
-		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
-		return
-	}
-
-	links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort})
-
-	b, err := json.Marshal(models.ModsPreviewsResponse{
-		Status: "success",
-		Meta: models.Meta{
-			TotalPages:     results.TotalPages,
-			CurrentPage:    results.CurrentPage,
-			TotalMods:      results.TotalMods,
-			ShownMods:      results.ShownMods,
-			ModsIndexStart: results.ModsIndexStart,
-			ModsIndexEnd:   results.ModsIndexEnd,
-		},
-		Data:  results.Mods,
-		Links: links,
-	})
-	if err != nil {
-		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+func (a *App) ModsHandler(w http.ResponseWriter, r *http.Request) {
+	a.serveModsPage(w, r, 1)
 }
 
 // ModByPageHandler returns ModPreview array from given page number
-func ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (a *App) ModsByPageHandler(w http.ResponseWriter, r *http.Request) {
 	pageNumber, err := strconv.Atoi(mux.Vars(r)["page"])
-	if err != nil {
-		config.ErrorStatus("failed to convert page number to int", http.StatusInternalServerError, w, err)
+	if err != nil || pageNumber < 1 || pageNumber > 10000 {
+		config.WriteError(w, r, http.StatusBadRequest, "INVALID_PAGE", "Page must be a positive integer.")
+		return
+	}
+	a.serveModsPage(w, r, pageNumber)
+}
+
+func (a *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
+	a.serveModsPage(w, r, 1)
+}
+
+func (a *App) serveModsPage(w http.ResponseWriter, r *http.Request, pageNumber int) {
+	search := api.NormalizeSearch(r.URL.Query().Get("search"), 120)
+	sort := api.NormalizeSort(r.URL.Query().Get("sort"), map[string]bool{
+		SortPopular: true, SortNewest: true, SortSubscribers: true, SortVersionSize: true,
+	})
+	if r.URL.Query().Get("search") != "" && search == "" {
+		config.WriteError(w, r, http.StatusBadRequest, "INVALID_SEARCH", "Search query is empty after normalization.")
 		return
 	}
 
-	search := r.URL.Query().Get("search")
-	sort := r.URL.Query().Get("sort")
-	if !validSortOption(sort) {
-		sort = ""
-	}
+	key := api.CacheKey("v1", "mods", strconv.Itoa(pageNumber), search, sort)
+	a.Cache.Serve(w, r, key, a.Config.ListCacheTTL, a.Config.ListCacheStale, func(ctx context.Context) api.CachedResponse {
+		results, err := util.ScrapeModsContext(ctx, pageNumber, search, sort, []string{})
+		if err != nil {
+			return api.CachedResponse{Err: err, ErrorCode: "UPSTREAM_UNAVAILABLE", Message: "Workshop list data is temporarily unavailable."}
+		}
 
-	results, err := util.ScrapeMods(pageNumber, search, sort, []string{})
-	if err != nil {
-		config.ErrorStatus("failed to scrape mods", http.StatusInternalServerError, w, err)
-		return
-	}
+		if !results.Found {
+			b, _ := json.Marshal(models.ErrorResponse{Error: models.Error{Code: "NOT_FOUND", Message: "No mods found.", RequestID: ""}})
+			return api.CachedResponse{StatusCode: http.StatusNotFound, Body: b, TTL: a.Config.NotFoundCacheTTL, Stale: 0}
+		}
 
-	if !results.Found {
-		w.WriteHeader(http.StatusNotFound)
-		b, err := json.Marshal(models.ErrorResponse{
-			Status: "fail",
-			Error: models.Error{
-				Code:   http.StatusNotFound,
-				Title:  "No mods found.",
-				Detail: "No mods have been found, you may have requests a page number that does not exist.",
+		links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort})
+
+		b, err := json.Marshal(models.ModsPreviewsResponse{
+			Status: "success",
+			Meta: models.Meta{
+				TotalPages:     results.TotalPages,
+				CurrentPage:    results.CurrentPage,
+				TotalMods:      results.TotalMods,
+				ShownMods:      results.ShownMods,
+				ModsIndexStart: results.ModsIndexStart,
+				ModsIndexEnd:   results.ModsIndexEnd,
 			},
+			Data:  results.Mods,
+			Links: links,
 		})
 		if err != nil {
-			config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
-			return
+			return api.CachedResponse{Err: err, ErrorCode: "INTERNAL_ERROR", Message: "Failed to encode response."}
 		}
-		w.Write(b)
-		return
-	}
-
-	links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort})
-
-	b, err := json.Marshal(models.ModsPreviewsResponse{
-		Status: "success",
-		Meta: models.Meta{
-			TotalPages:     results.TotalPages,
-			CurrentPage:    results.CurrentPage,
-			TotalMods:      results.TotalMods,
-			ShownMods:      results.ShownMods,
-			ModsIndexStart: results.ModsIndexStart,
-			ModsIndexEnd:   results.ModsIndexEnd,
-		},
-		Data:  results.Mods,
-		Links: links,
+		return api.CachedResponse{StatusCode: http.StatusOK, Body: b}
 	})
-	if err != nil {
-		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
 }
 
 // ModByIDHandler returns a single Mod
-func ModByIDHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (a *App) ModByIDHandler(w http.ResponseWriter, r *http.Request) {
 	modID := mux.Vars(r)["id"]
+	if !validModID.MatchString(modID) {
+		config.WriteError(w, r, http.StatusBadRequest, "INVALID_MOD_ID", "Mod ID is malformed.")
+		return
+	}
 
-	var baseURL string = "reforger.armaplatform.com"
-	var mod models.Mod = *util.GetMod(fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
+	key := api.CacheKey("v1", "mod", modID)
+	a.Cache.Serve(w, r, key, a.Config.ModCacheTTL, a.Config.ModCacheStale, func(ctx context.Context) api.CachedResponse {
+		var baseURL string = "reforger.armaplatform.com"
+		mod, err := util.GetModContext(ctx, fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
+		if err != nil {
+			return api.CachedResponse{Err: err, ErrorCode: "UPSTREAM_UNAVAILABLE", Message: "Workshop mod data is temporarily unavailable."}
+		}
 
-	if mod.Name == "" {
-		b, err := json.Marshal(models.ErrorResponse{
-			Status: "fail",
-			Error: models.Error{
-				Code:   http.StatusNotFound,
-				Title:  "No mods found.",
-				Detail: "No mods have been found, the provided mod ID did not return any results.",
-			},
+		if mod.Name == "" {
+			b, _ := json.Marshal(models.ErrorResponse{Error: models.Error{Code: "NOT_FOUND", Message: "No mod found for the provided ID.", RequestID: ""}})
+			return api.CachedResponse{StatusCode: http.StatusNotFound, Body: b, TTL: a.Config.NotFoundCacheTTL, Stale: 0}
+		}
+
+		b, err := json.Marshal(models.ModResponse{
+			Status: "success",
+			Data:   *mod,
 		})
 		if err != nil {
-			config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
-			return
+			return api.CachedResponse{Err: err, ErrorCode: "INTERNAL_ERROR", Message: "Failed to encode response."}
 		}
-		w.WriteHeader(http.StatusNotFound)
-		w.Write(b)
-		return
-	}
-
-	b, err := json.Marshal(models.ModResponse{
-		Status: "success",
-		Data:   mod,
+		return api.CachedResponse{StatusCode: http.StatusOK, Body: b}
 	})
-	if err != nil {
-		config.ErrorStatus("failed to marshal response", http.StatusInternalServerError, w, err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(b)
 }

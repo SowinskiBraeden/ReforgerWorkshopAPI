@@ -38,12 +38,11 @@ type ModResponse struct {
 
 // ErrorResponse returns the error message and error detals
 type ErrorResponse struct {
-	Status string `json:"status"`
-	Error  Error  `json:"error"`
+	Error Error `json:"error"`
 }
 
 type Error struct {
-	Code   int    `json:"code"`
-	Title  string `json:"title"`
-	Detail string `json:"detail"`
+	Code      string `json:"code"`
+	Message   string `json:"message"`
+	RequestID string `json:"requestId,omitempty"`
 }
