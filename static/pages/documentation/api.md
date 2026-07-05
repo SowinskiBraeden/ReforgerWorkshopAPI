@@ -1,7 +1,9 @@
 # API Documentation
 <sup>*Last Updated: 2026-07-04*</sup>
 
-The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages.
+The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages. It is intended for developers building Arma Reforger mod browsers, server dashboards, launchers, community tools, and other integrations that need Workshop mod data as JSON.
+
+Use Reforger Mods API when you need to search Arma Reforger mods, fetch Workshop mod details, inspect dependencies, read scenario metadata, or link users back to official Arma Reforger Workshop pages.
 
 Public API base URL: `https://api.reforgermods.net`
 

@@ -33,6 +33,12 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/ads.txt", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/ads.txt")
 	})
+	router.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/robots.txt")
+	})
+	router.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/sitemap.xml")
+	})
 
 	// Serve index page on all unhandled routes
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

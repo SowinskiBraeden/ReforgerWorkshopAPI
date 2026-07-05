@@ -2,7 +2,7 @@
   <div class="landing-hero-copy">
     <div class="landing-kicker">Reforger Mods API</div>
     <h1>Arma Reforger mod metadata, ready for your app.</h1>
-    <p class="landing-lede">A read-only API that serves normalized Arma Reforger Workshop data — mod lists, search results, and full detail pages.</p>
+    <p class="landing-lede">Search Arma Reforger Workshop mods and fetch normalized metadata through a public read-only API for mod lists, detail pages, dependencies, scenarios, ratings, downloads, and Workshop links.</p>
     <div class="landing-actions">
       <a href="?page=documentation/api" class="landing-primary-action"><i class="bi bi-terminal"></i> API Reference</a>
       <a href="https://api.reforgermods.net/v1/health" class="landing-secondary-action">Health check</a>
@@ -38,6 +38,19 @@
 </div>
 
 <p class="landing-note">Cached responses may be temporarily stale. Workshop layout, fields, and availability are controlled by Bohemia Interactive and can change upstream without notice.</p>
+
+## Arma Reforger Workshop Data for Developers
+
+Reforger Mods API helps apps, dashboards, launchers, server tools, and community sites work with Arma Reforger mods without scraping Workshop pages directly. The API exposes searchable Workshop mod previews and full mod detail responses as predictable JSON.
+
+Use it when you need an Arma Reforger API for mod discovery, Workshop metadata, dependency lookups, scenario data, or links back to the official Bohemia Interactive Workshop pages.
+
+## Common Arma Reforger Mod API Use Cases
+
+- Find Arma Reforger mods by Workshop search text and sort order.
+- Read mod names, authors, images, ratings, sizes, subscribers, downloads, versions, and game versions.
+- Resolve mod dependencies and scenario metadata for server or community tools.
+- Link each API response back to the official Arma Reforger Workshop mod page.
 
 <div class="landing-grid">
   <a href="?page=documentation/api" class="landing-link-card">

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reforger Mods API</title>
+    <title>Arma Reforger Mods API & Workshop Data | Reforger Mods API</title>
     <link href="./static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="./static/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
     <link href="./static/highlight.js/styles/atom-one-dark.css" rel="stylesheet">
@@ -13,18 +13,50 @@
     <link rel="icon" type="image/png" sizes="64x64" href="./static/assets/reforger-mods-favicon-64.png">
     <link rel="apple-touch-icon" href="./static/assets/reforger-mods-favicon-256.png">
 
-    <meta name="keywords" content="Arma Reforger, mods, arma, reforger, API, api, plugins">
+    <link rel="canonical" href="https://reforgermods.net/">
+
+    <meta name="keywords" content="Arma Reforger mods, Arma Reforger Workshop, Arma Reforger API, Reforger mods API, Arma Reforger mod database, Reforger Workshop data, Arma Reforger server tools, Bohemia Workshop mods">
     <meta name="author" content="cedarline.digital">
-    <meta name="description" content="A read-only metadata API for publicly accessible Arma Reforger Workshop mod pages.">
-    <meta property="og:url" content="https://reforgermods.net">
+    <meta name="description" content="Reforger Mods API provides searchable Arma Reforger Workshop mod metadata, normalized JSON responses, mod details, dependencies, scenarios, and cache-friendly API endpoints.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="application-name" content="Reforger Mods API">
 
     <!-- Social Embeds -->
     <meta property="theme-color" content="#26C29A">
-    <meta property="og:title" content="Reforger Mods API">
-    <meta property="og:description" content="A read-only metadata API for publicly accessible Arma Reforger Workshop mod pages.">
+    <meta property="og:title" content="Arma Reforger Mods API & Workshop Data">
+    <meta property="og:description" content="Search Arma Reforger Workshop mods and fetch normalized mod metadata through a public read-only JSON API.">
     <meta property="og:url" content="https://reforgermods.net">
-    <meta property="og:image" content="./static/assets/reforger-mods-favicon-256.png">
+    <meta property="og:site_name" content="Reforger Mods API">
+    <meta property="og:image" content="https://reforgermods.net/static/assets/reforger-mods-favicon-256.png">
     <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Arma Reforger Mods API & Workshop Data">
+    <meta name="twitter:description" content="Search Arma Reforger Workshop mods and fetch normalized mod metadata through a public read-only JSON API.">
+    <meta name="twitter:image" content="https://reforgermods.net/static/assets/reforger-mods-favicon-256.png">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebAPI",
+        "name": "Reforger Mods API",
+        "url": "https://reforgermods.net/",
+        "description": "A public read-only API for searchable Arma Reforger Workshop mod metadata, mod details, dependencies, and scenarios.",
+        "documentation": "https://reforgermods.net/?page=documentation/api",
+        "provider": {
+          "@type": "Organization",
+          "name": "cedarline.digital",
+          "url": "https://cedarline.digital"
+        },
+        "areaServed": "Worldwide",
+        "applicationCategory": "DeveloperApplication",
+        "keywords": [
+          "Arma Reforger mods",
+          "Arma Reforger Workshop",
+          "Arma Reforger API",
+          "Reforger mods API",
+          "Workshop mod metadata"
+        ]
+      }
+    </script>
   </head>
 
   <body data-bs-theme="dark">
@@ -111,11 +143,40 @@
         </div>
         <div class="container d-lg-none d-md-none d-sm-inline mb-4"><div class="border-bottom"></div></div>
         <div class="col-lg-10 col-md-8 col-sm-12 docs-content" id="content">
-          <div class="d-flex justify-content-center">
-            <div class="spinner-border spinner-border-sm text-secondary mt-4" role="status">
-              <span class="visually-hidden">Loading...</span>
+          <section class="landing-hero">
+            <div class="landing-hero-copy">
+              <div class="landing-kicker">Reforger Mods API</div>
+              <h1>Arma Reforger mod metadata, ready for your app.</h1>
+              <p class="landing-lede">Search Arma Reforger Workshop mods and fetch normalized metadata through a public read-only API for mod lists, detail pages, dependencies, scenarios, ratings, downloads, and Workshop links.</p>
+              <div class="landing-actions">
+                <a href="?page=documentation/api" class="landing-primary-action"><i class="bi bi-terminal"></i> API Reference</a>
+                <a href="https://api.reforgermods.net/v1/health" class="landing-secondary-action">Health check</a>
+              </div>
             </div>
-          </div>
+            <div class="landing-panel" aria-label="API example">
+              <div class="landing-panel-header">
+                <div class="landing-panel-chrome"><span></span><span></span><span></span></div>
+                <div class="landing-panel-label">Example request</div>
+              </div>
+              <code>GET https://api.reforgermods.net/v1/mods?search=radio&amp;sort=newest</code>
+              <div class="landing-panel-meta">
+                <span><i class="bi bi-check2-circle"></i> Normalized JSON responses</span>
+                <span><i class="bi bi-clock"></i> Stale-while-revalidate cache</span>
+                <span><i class="bi bi-shield-check"></i> Rate limited &amp; safe</span>
+              </div>
+            </div>
+          </section>
+
+          <h2>Arma Reforger Workshop Data for Developers</h2>
+          <p>Reforger Mods API helps apps, dashboards, launchers, server tools, and community sites work with Arma Reforger mods without scraping Workshop pages directly. The API exposes searchable Workshop mod previews and full mod detail responses as predictable JSON.</p>
+
+          <h2>Common Arma Reforger Mod API Use Cases</h2>
+          <ul>
+            <li>Find Arma Reforger mods by Workshop search text and sort order.</li>
+            <li>Read mod names, authors, images, ratings, sizes, subscribers, downloads, versions, and game versions.</li>
+            <li>Resolve mod dependencies and scenario metadata for server or community tools.</li>
+            <li>Link back to the official Arma Reforger Workshop page for each mod.</li>
+          </ul>
         </div>
       </div>
     </div>
