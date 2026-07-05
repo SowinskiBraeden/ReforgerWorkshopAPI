@@ -68,22 +68,36 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		start := time.Now()
 		requestID := requestID(r)
 		r.Header.Set("X-Request-Id", requestID)
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		recorder.Header().Set("X-Request-Id", requestID)
+		defer func() {
+			zap.S().Infow("request completed",
+				"requestId", requestID,
+				"clientIP", m.ClientIP(r),
+				"method", r.Method,
+				"path", r.URL.Path,
+				"query", r.URL.RawQuery,
+				"status", recorder.statusCode,
+				"latencyMs", time.Since(start).Milliseconds(),
+				"userAgent", r.UserAgent(),
+			)
+		}()
 
-		m.setSecurityHeaders(w)
-		if !m.applyCORS(w, r) {
-			config.WriteError(w, r, http.StatusForbidden, "CORS_FORBIDDEN", "Origin is not allowed.")
+		m.setSecurityHeaders(recorder)
+		if !m.applyCORS(recorder, r) {
+			config.WriteError(recorder, r, http.StatusForbidden, "CORS_FORBIDDEN", "Origin is not allowed.")
 			return
 		}
 		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
+			recorder.WriteHeader(http.StatusNoContent)
 			return
 		}
 		if len(r.URL.RawQuery) > m.cfg.MaxQueryLength {
-			config.WriteError(w, r, http.StatusRequestURITooLong, "QUERY_TOO_LONG", "Query string is too long.")
+			config.WriteError(recorder, r, http.StatusRequestURITooLong, "QUERY_TOO_LONG", "Query string is too long.")
 			return
 		}
 		if m.cfg.MaxBodyBytes > 0 {
-			r.Body = http.MaxBytesReader(w, r.Body, m.cfg.MaxBodyBytes)
+			r.Body = http.MaxBytesReader(recorder, r.Body, m.cfg.MaxBodyBytes)
 		}
 
 		clientIP := m.ClientIP(r)
@@ -94,14 +108,28 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		if identity.Burst <= 0 {
 			identity.Burst = m.cfg.AnonymousRateBurst
 		}
-		if !m.allow(w, r, identity) {
+		if !m.allow(recorder, r, identity) {
 			zap.S().Infow("rate limit rejected", "requestId", requestID, "clientIP", clientIP, "path", r.URL.Path, "bucket", identity.Bucket)
 			return
 		}
 
-		next.ServeHTTP(w, r)
-		zap.S().Infow("request completed", "requestId", requestID, "clientIP", clientIP, "method", r.Method, "path", r.URL.Path, "latencyMs", time.Since(start).Milliseconds())
+		next.ServeHTTP(recorder, r)
 	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+	wrote      bool
+}
+
+func (r *statusRecorder) WriteHeader(statusCode int) {
+	if r.wrote {
+		return
+	}
+	r.wrote = true
+	r.statusCode = statusCode
+	r.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (m *MiddlewareChain) ClientIP(r *http.Request) string {

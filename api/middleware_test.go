@@ -50,6 +50,41 @@ func TestClientIPUsesForwardedForFromTrustedProxy(t *testing.T) {
 	}
 }
 
+func TestMiddlewareReturnsRequestIDHeader(t *testing.T) {
+	cfg := testConfig()
+	m := NewMiddleware(cfg)
+	handler := m.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	r.RemoteAddr = "203.0.113.10:1234"
+	r.Header.Set("X-Request-Id", "test-request-id")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, r)
+
+	if got := recorder.Header().Get("X-Request-Id"); got != "test-request-id" {
+		t.Fatalf("X-Request-Id = %q, want test-request-id", got)
+	}
+}
+
+func TestMiddlewareGeneratesRequestIDHeader(t *testing.T) {
+	cfg := testConfig()
+	m := NewMiddleware(cfg)
+	handler := m.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	r.RemoteAddr = "203.0.113.10:1234"
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, r)
+
+	if got := recorder.Header().Get("X-Request-Id"); got == "" {
+		t.Fatal("X-Request-Id header was not set")
+	}
+}
+
 func TestRateLimitRejectsSpoofByUntrustedForwardedFor(t *testing.T) {
 	cfg := testConfig()
 	m := NewMiddleware(cfg)

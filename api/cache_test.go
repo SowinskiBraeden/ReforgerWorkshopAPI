@@ -34,6 +34,50 @@ func TestResponseCacheHit(t *testing.T) {
 	}
 }
 
+func TestResponseCacheFreshnessHeaders(t *testing.T) {
+	cfg := testConfig()
+	cache := NewResponseCache(cfg)
+	now := time.Date(2026, 7, 4, 12, 0, 0, 0, time.UTC)
+	cache.now = func() time.Time { return now }
+
+	fetch := func(context.Context) CachedResponse {
+		return CachedResponse{StatusCode: http.StatusOK, Body: []byte(`{"ok":true}`)}
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/mods", nil)
+	w := httptest.NewRecorder()
+	cache.Serve(w, r, "v1:mods:freshness", time.Minute, time.Hour, fetch)
+
+	if got := w.Header().Get("X-Cache"); got != "MISS" {
+		t.Fatalf("X-Cache = %q, want MISS", got)
+	}
+	if got := w.Header().Get("Age"); got != "0" {
+		t.Fatalf("Age = %q, want 0", got)
+	}
+	if got := w.Header().Get("X-Cache-Created-At"); got != "2026-07-04T12:00:00Z" {
+		t.Fatalf("X-Cache-Created-At = %q", got)
+	}
+	if got := w.Header().Get("X-Cache-Expires-At"); got != "2026-07-04T12:01:00Z" {
+		t.Fatalf("X-Cache-Expires-At = %q", got)
+	}
+	if got := w.Header().Get("X-Cache-Stale-At"); got != "2026-07-04T13:01:00Z" {
+		t.Fatalf("X-Cache-Stale-At = %q", got)
+	}
+
+	now = now.Add(30 * time.Second)
+	w = httptest.NewRecorder()
+	cache.Serve(w, r, "v1:mods:freshness", time.Minute, time.Hour, fetch)
+	if got := w.Header().Get("X-Cache"); got != "HIT" {
+		t.Fatalf("X-Cache = %q, want HIT", got)
+	}
+	if got := w.Header().Get("Age"); got != "30" {
+		t.Fatalf("Age = %q, want 30", got)
+	}
+	if got := w.Header().Get("X-Cache-Fresh-Seconds"); got != "30" {
+		t.Fatalf("X-Cache-Fresh-Seconds = %q, want 30", got)
+	}
+}
+
 func TestResponseCacheServesStaleWhenRefreshFails(t *testing.T) {
 	cfg := testConfig()
 	cache := NewResponseCache(cfg)

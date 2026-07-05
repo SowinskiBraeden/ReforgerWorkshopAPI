@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 	"github.com/joho/godotenv"
@@ -20,6 +23,9 @@ type Config struct {
 	BaseURL string
 	FullURL string
 	Port    string
+
+	LogDir      string
+	LogToStdout bool
 
 	TrustedProxyCIDRs string
 	AllowedOrigins    []string
@@ -69,6 +75,9 @@ func New() *Config {
 		BaseURL: envString("BASE_URL", "localhost"),
 		FullURL: strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/"),
 		Port:    envString("PORT", "8000"),
+
+		LogDir:      envString("LOG_DIR", "logs"),
+		LogToStdout: envBool("LOG_TO_STDOUT", true),
 
 		TrustedProxyCIDRs: envString("TRUSTED_PROXY_CIDRS", ""),
 		AllowedOrigins:    envCSV("CORS_ALLOWED_ORIGINS"),
@@ -128,8 +137,37 @@ func WriteError(w http.ResponseWriter, r *http.Request, httpStatusCode int, code
 	_, _ = w.Write(b)
 }
 
-// setLogger is a helper function to set the Logger based on the environment
+// setLogger is a helper function to set the Logger based on the environment.
 func setLogger(env string) (*zap.Logger, error) {
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.TimeKey = "ts"
+
+	level := zap.InfoLevel
+	if env == "development" || env == "local" {
+		level = zap.DebugLevel
+	}
+
+	var cores []zapcore.Core
+	if envBool("LOG_TO_STDOUT", true) {
+		cores = append(cores, zapcore.NewCore(zapcore.NewJSONEncoder(encoderConfig), zapcore.AddSync(os.Stdout), level))
+	}
+
+	logDir := envString("LOG_DIR", "logs")
+	var logErr error
+	if logDir != "" {
+		writer, err := newDailyLogWriter(logDir, time.Now)
+		if err != nil {
+			logErr = err
+		} else {
+			cores = append(cores, zapcore.NewCore(zapcore.NewJSONEncoder(encoderConfig), zapcore.AddSync(writer), level))
+		}
+	}
+
+	if len(cores) > 0 {
+		return zap.New(zapcore.NewTee(cores...), zap.AddCaller()), logErr
+	}
+
 	switch env {
 	case "production":
 		return zap.NewProduction()
@@ -140,6 +178,50 @@ func setLogger(env string) (*zap.Logger, error) {
 	default:
 		return zap.NewExample(), fmt.Errorf("cannon find ENV car so defaulting to debug logging")
 	}
+}
+
+type dailyLogWriter struct {
+	dir  string
+	now  func() time.Time
+	mu   sync.Mutex
+	date string
+	file *os.File
+}
+
+func newDailyLogWriter(dir string, now func() time.Time) (*dailyLogWriter, error) {
+	if err := os.MkdirAll(dir, 0750); err != nil {
+		return nil, err
+	}
+	return &dailyLogWriter{dir: dir, now: now}, nil
+}
+
+func (w *dailyLogWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	date := w.now().Format("2006-01-02")
+	if w.file == nil || w.date != date {
+		if w.file != nil {
+			_ = w.file.Close()
+		}
+		path := filepath.Join(w.dir, date+".log")
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
+		if err != nil {
+			return 0, err
+		}
+		w.file = file
+		w.date = date
+	}
+	return w.file.Write(p)
+}
+
+func (w *dailyLogWriter) Sync() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.file == nil {
+		return nil
+	}
+	return w.file.Sync()
 }
 
 func envString(key string, fallback string) string {
@@ -159,6 +241,21 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func envBool(key string, fallback bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if v == "" {
+		return fallback
+	}
+	switch v {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
 }
 
 func envDuration(key string, fallback time.Duration) time.Duration {

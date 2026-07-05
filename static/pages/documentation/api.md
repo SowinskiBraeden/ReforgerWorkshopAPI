@@ -3,6 +3,8 @@
 
 The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages.
 
+Public API base URL: `https://api.reforgermods.net`
+
 Use `/v1` for all new integrations. The older unversioned routes still work as deprecated aliases for now.
 
 ## Health
@@ -29,7 +31,7 @@ Query parameters:
 Example:
 
 ```bash
-curl https://api.example.com/v1/mods/2?search=radio&sort=newest
+curl https://api.reforgermods.net/v1/mods/2?search=radio&sort=newest
 ```
 
 Example response:
@@ -50,14 +52,14 @@ Example response:
     "author": "Example Author",
     "imageURL": "https://example.com/image.png",
     "originalModURL": "https://reforger.armaplatform.com/workshop/{mod_id}",
-    "apiModURL": "https://api.example.com/v1/mod/{mod_id}",
+    "apiModURL": "https://api.reforgermods.net/v1/mod/{mod_id}",
     "size": "192.42 KB",
     "rating": "92%",
     "ID": "{mod_id}"
   }],
   "links": {
-    "next": "https://api.example.com/v1/mods/3?search=radio&sort=newest",
-    "prev": "https://api.example.com/v1/mods/1?search=radio&sort=newest"
+    "next": "https://api.reforgermods.net/v1/mods/3?search=radio&sort=newest",
+    "prev": "https://api.reforgermods.net/v1/mods/1?search=radio&sort=newest"
   }
 }
 ```
@@ -69,7 +71,7 @@ Example response:
 Example:
 
 ```bash
-curl https://api.example.com/v1/mod/12345
+curl https://api.reforgermods.net/v1/mod/12345
 ```
 
 Example response:
@@ -81,7 +83,7 @@ Example response:
     "name": "Example Mod",
     "author": "Example Author",
     "originalModURL": "https://reforger.armaplatform.com/workshop/12345",
-    "apiModURL": "https://api.example.com/v1/mod/12345",
+    "apiModURL": "https://api.reforgermods.net/v1/mod/12345",
     "imageURL": "https://example.com/image.png",
     "rating": "92%",
     "version": "1.1.0",
@@ -116,6 +118,8 @@ Example response:
 
 Common codes: `INVALID_PAGE`, `INVALID_MOD_ID`, `INVALID_SEARCH`, `NOT_FOUND`, `RATE_LIMITED`, `QUERY_TOO_LONG`, `UPSTREAM_UNAVAILABLE`.
 
+Every API response includes an `X-Request-Id` header. Error responses also include the same value as `error.requestId`. Include that request ID when reporting an issue so the request can be found in server logs.
+
 ## Rate Limits & Cache
 
 Anonymous clients are rate limited to **60 requests per minute** per resolved IP, with a burst of 20. `429` responses include `Retry-After` and rate-limit headers.
@@ -128,4 +132,21 @@ Responses may be cached and temporarily stale. Default cache windows:
 | List / search | 10 minutes | 1 hour |
 | Not found | 10 minutes | — |
 
-The API returns `Cache-Control`, `ETag`, and `X-Cache` headers. Workshop fields and page layout are controlled by Bohemia Interactive and may change upstream.
+The API does not expose a public cache-bypass flag. Freshness is reported through response headers so clients can decide whether the returned data is recent enough for their use case.
+
+Cache headers:
+
+| Header | Meaning |
+| --- | --- |
+| `X-Cache` | `MISS`, `HIT`, or `STALE` |
+| `Age` | Standard cache age in seconds |
+| `X-Cache-Age` | Same cache age in seconds, included for easier client parsing |
+| `X-Cache-Created-At` | UTC time when the cached response was stored |
+| `X-Cache-Expires-At` | UTC time when the response stops being fresh |
+| `X-Cache-Fresh-Seconds` | Seconds until the response stops being fresh |
+| `X-Cache-Stale-At` | UTC time after which the cached response will no longer be served |
+| `X-Cache-Stale-Seconds` | Seconds until the cached response becomes unusable |
+| `Cache-Control` | Browser/proxy cache hint for the response |
+| `ETag` | Weak validator for conditional requests |
+
+When `X-Cache` is `STALE`, the API serves the cached response and starts a background refresh. Workshop fields and page layout are controlled by Bohemia Interactive and may change upstream.

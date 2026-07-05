@@ -5,7 +5,7 @@
     <p class="landing-lede">A read-only API that serves normalized Arma Reforger Workshop data — mod lists, search results, and full detail pages.</p>
     <div class="landing-actions">
       <a href="?page=documentation/api" class="landing-primary-action"><i class="bi bi-terminal"></i> API Reference</a>
-      <a href="/v1/health" class="landing-secondary-action">Health check</a>
+      <a href="https://api.reforgermods.net/v1/health" class="landing-secondary-action">Health check</a>
     </div>
   </div>
   <div class="landing-panel" aria-label="API example">
@@ -13,7 +13,7 @@
       <div class="landing-panel-chrome"><span></span><span></span><span></span></div>
       <div class="landing-panel-label">Example request</div>
     </div>
-    <code>GET /v1/mods?search=radio&amp;sort=newest</code>
+    <code>GET https://api.reforgermods.net/v1/mods?search=radio&amp;sort=newest</code>
     <div class="landing-panel-meta">
       <span><i class="bi bi-check2-circle"></i> Normalized JSON responses</span>
       <span><i class="bi bi-clock"></i> Stale-while-revalidate cache</span>
@@ -50,7 +50,7 @@
     <span>Mod Structures</span>
     <small>Preview, detail, dependency, and scenario response fields.</small>
   </a>
-  <a href="/v1/mods" class="landing-link-card">
+  <a href="https://api.reforgermods.net/v1/mods" class="landing-link-card">
     <i class="bi bi-box-arrow-up-right"></i>
     <span>Try the API</span>
     <small>Open the first cached Workshop list response in your browser.</small>

@@ -8,6 +8,12 @@ Do not treat this API as an authoritative source for ownership, entitlement, mod
 
 ## Current API
 
+Public API base URL:
+
+```text
+https://api.reforgermods.net
+```
+
 Versioned routes are available under `/v1`:
 
 ```text
@@ -16,6 +22,15 @@ GET /v1/mods
 GET /v1/mods/{page}
 GET /v1/mod/{id}
 GET /v1/search?search={query}
+```
+
+Examples:
+
+```bash
+curl https://api.reforgermods.net/v1/health
+curl https://api.reforgermods.net/v1/mods
+curl 'https://api.reforgermods.net/v1/mods/2?search=radio&sort=newest'
+curl https://api.reforgermods.net/v1/mod/12345
 ```
 
 The old unversioned routes are still present as deprecated aliases and return a `Deprecation: true` header plus a `Link` header pointing to the `/v1` route. New clients should use `/v1`.
@@ -75,6 +90,20 @@ Cache keys include API version, route shape, mod ID, page, normalized search tex
 
 Responses include `Cache-Control`, `ETag`, and `X-Cache` (`HIT`, `MISS`, or `STALE`). Users may not see Workshop updates immediately.
 
+Freshness is also exposed in response headers:
+
+```text
+Age
+X-Cache-Age
+X-Cache-Created-At
+X-Cache-Expires-At
+X-Cache-Fresh-Seconds
+X-Cache-Stale-At
+X-Cache-Stale-Seconds
+```
+
+`Age` and `X-Cache-Age` show how many seconds old the cached response is. `X-Cache-Expires-At` and `X-Cache-Stale-At` show when the response stops being fresh and when it stops being serveable. Public clients cannot force a cache bypass; stale entries refresh in the background where possible.
+
 ## Upstream Scraping
 
 The scraper uses a service-identifying User-Agent, request timeouts, bounded retries for transient failures, exponential backoff with jitter, and global upstream concurrency limits. It does not scrape speculatively in the background; upstream fetches are driven by client requests and cache refreshes.
@@ -96,7 +125,10 @@ Important variables:
 
 ```text
 PORT=8000
-FULL_URL=http://localhost:8000
+FULL_URL=https://api.reforgermods.net
+LOG_DIR=logs
+LOG_TO_STDOUT=true
+LOG_RETENTION_DAYS=14
 CORS_ALLOWED_ORIGINS=
 TRUSTED_PROXY_CIDRS=
 ANON_RATE_LIMIT_PER_MINUTE=60
@@ -108,6 +140,39 @@ UPSTREAM_CONCURRENCY=4
 ```
 
 CORS is not permissive by default. Set `CORS_ALLOWED_ORIGINS` to a comma-separated list of browser origins that should be allowed.
+
+## Logging
+
+Logs are structured JSON. By default they are written to stdout and to daily files:
+
+```text
+logs/2026-07-04.log
+logs/2026-07-05.log
+```
+
+Useful settings:
+
+```text
+LOG_DIR=logs
+LOG_TO_STDOUT=true
+LOG_RETENTION_DAYS=14
+```
+
+Every API response includes an `X-Request-Id` header. Error responses include the same value in the JSON envelope. Request logs include `requestId`, `clientIP`, `method`, `path`, `query`, response `status`, latency, and user agent. Cache logs include `requestId`, cache key, and cache status.
+
+Example lookup:
+
+```bash
+rg '"requestId":"1751659200000000000"' logs/
+```
+
+Clean old daily logs:
+
+```bash
+LOG_RETENTION_DAYS=14 ./scripts/clean-logs.sh
+```
+
+Set `LOG_DIR` when logs live somewhere other than `./logs`.
 
 ## Local Development
 

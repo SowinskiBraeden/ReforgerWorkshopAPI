@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -200,18 +201,42 @@ func (c *ResponseCache) refreshAsync(key string, ttl time.Duration, stale time.D
 }
 
 func (c *ResponseCache) write(w http.ResponseWriter, r *http.Request, entry *cacheEntry, cacheStatus string) {
+	now := c.now()
 	if match := r.Header.Get("If-None-Match"); match != "" && match == entry.etag {
-		w.Header().Set("ETag", entry.etag)
-		w.Header().Set("X-Cache", cacheStatus)
+		c.setCacheHeaders(w, entry, cacheStatus, now)
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", cacheControl(entry, c.now()))
-	w.Header().Set("ETag", entry.etag)
-	w.Header().Set("X-Cache", cacheStatus)
+	c.setCacheHeaders(w, entry, cacheStatus, now)
 	w.WriteHeader(entry.response.StatusCode)
 	_, _ = w.Write(entry.response.Body)
+}
+
+func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry, cacheStatus string, now time.Time) {
+	age := int(now.Sub(entry.createdAt).Seconds())
+	if age < 0 {
+		age = 0
+	}
+	freshSeconds := int(entry.expiresAt.Sub(now).Seconds())
+	if freshSeconds < 0 {
+		freshSeconds = 0
+	}
+	staleSeconds := int(entry.staleAt.Sub(now).Seconds())
+	if staleSeconds < 0 {
+		staleSeconds = 0
+	}
+
+	w.Header().Set("Age", strconv.Itoa(age))
+	w.Header().Set("Cache-Control", cacheControl(entry, now))
+	w.Header().Set("ETag", entry.etag)
+	w.Header().Set("X-Cache", cacheStatus)
+	w.Header().Set("X-Cache-Age", strconv.Itoa(age))
+	w.Header().Set("X-Cache-Created-At", entry.createdAt.UTC().Format(time.RFC3339))
+	w.Header().Set("X-Cache-Expires-At", entry.expiresAt.UTC().Format(time.RFC3339))
+	w.Header().Set("X-Cache-Fresh-Seconds", strconv.Itoa(freshSeconds))
+	w.Header().Set("X-Cache-Stale-At", entry.staleAt.UTC().Format(time.RFC3339))
+	w.Header().Set("X-Cache-Stale-Seconds", strconv.Itoa(staleSeconds))
 }
 
 func (c *ResponseCache) writeFetchError(w http.ResponseWriter, r *http.Request, resp CachedResponse) {
