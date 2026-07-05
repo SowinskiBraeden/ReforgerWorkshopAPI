@@ -20,9 +20,9 @@ import (
 
 // Config holds the project config values
 type Config struct {
-	BaseURL string
-	FullURL string
-	Port    string
+	BaseURL     string
+	FullURL     string
+	BindAddress string
 
 	LogDir      string
 	LogToStdout bool
@@ -72,9 +72,9 @@ func New() *Config {
 	_ = zap.ReplaceGlobals(logger)
 
 	cfg := &Config{
-		BaseURL: envString("BASE_URL", "localhost"),
-		FullURL: strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/"),
-		Port:    envString("PORT", "8000"),
+		BaseURL:     envString("BASE_URL", "localhost"),
+		FullURL:     strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/"),
+		BindAddress: envString("BIND_ADDRESS", "0.0.0.0:8000"),
 
 		LogDir:      envString("LOG_DIR", "logs"),
 		LogToStdout: envBool("LOG_TO_STDOUT", true),

@@ -29,9 +29,9 @@ func main() {
 	})
 	a.Initialize() // Initialize router
 
-	zap.S().Infow(fmt.Sprintf("ReforgerWorkshopAPI v%s is up and running", version), "url", a.Config.BaseURL, "port", a.Config.Port)
+	zap.S().Infow(fmt.Sprintf("ReforgerWorkshopAPI v%s is up and running", version), "url", a.Config.BaseURL, "bind_address", a.Config.BindAddress)
 	server := &http.Server{
-		Addr:              ":" + a.Config.Port,
+		Addr:              a.Config.BindAddress,
 		Handler:           a.Router,
 		ReadHeaderTimeout: a.Config.ReadHeaderTimeout,
 		ReadTimeout:       a.Config.ReadTimeout,

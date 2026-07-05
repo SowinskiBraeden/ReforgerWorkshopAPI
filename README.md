@@ -174,6 +174,18 @@ LOG_RETENTION_DAYS=14 ./scripts/clean-logs.sh
 
 Set `LOG_DIR` when logs live somewhere other than `./logs`.
 
+## Systemd
+
+The recommended production path is a systemd-managed binary behind Caddy. A ready-to-use unit file lives at [deploy/reforger-mods-api.service](/home/flami/Projects/ReforgerWorkshopAPI/deploy/reforger-mods-api.service), with a deployment checklist in [deploy/README.md](/home/flami/Projects/ReforgerWorkshopAPI/deploy/README.md).
+
+The basic release flow is:
+
+```bash
+go build -o /opt/reforgermods-api/releases/<release>/reforgermods-api .
+ln -sfn /opt/reforgermods-api/releases/<release> /opt/reforgermods-api/current
+sudo systemctl restart reforger-mods-api
+```
+
 ## Local Development
 
 ```bash
