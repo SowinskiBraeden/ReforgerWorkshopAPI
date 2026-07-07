@@ -13,7 +13,7 @@ We collect a small amount of technical information needed to operate a public AP
 | --- | --- |
 | Request details such as IP address, path, request time, status code, and request ID | To run the service, troubleshoot errors, prevent abuse, and apply rate limits |
 | API inputs such as mod IDs, page numbers, search text, and sort options | To return the API response you requested |
-| Internal performance and usage metrics such as request counts, response times, cache status counts, cache freshness, and upstream scrape/fetch results | To monitor reliability, cache performance, upstream health, and API usage patterns |
+| Internal performance and usage metrics such as request counts, response times, cache status counts, cache freshness, approximate country-level request origin, coarse unique client-network estimates, and upstream scrape/fetch results | To monitor reliability, cache performance, upstream health, and API usage patterns |
 | Support emails sent to `support@cedarline.digital` | To respond to your message |
 
 The website also stores your light/dark theme choice in your browser's `localStorage`. This stays on your device and can be removed by clearing site data in your browser.
@@ -40,7 +40,9 @@ The only browser storage currently used by the site is the theme preference desc
 
 Operational logs may include request details needed for debugging, security, and reliability. These logs are kept only as long as needed for operational, legal, or security purposes.
 
-Internal metrics are stored in process memory and reset when the API process restarts. Metrics may include aggregate request counts, response-time summaries, cache hit/miss/stale counts, cache keys, cache freshness timestamps, upstream scrape/fetch status, and retained aggregate day/week/month/year buckets. They are used for service operations and are not a public analytics product.
+Internal metrics are stored in process memory and reset when the API process restarts. Metrics may include aggregate request counts, response-time summaries, cache hit/miss/stale counts, cache keys, cache freshness timestamps, upstream scrape/fetch status, approximate country-level request counts, coarse unique client-network estimates, and retained aggregate day/week/month/year buckets. They are used for service operations and are not a public analytics product.
+
+Approximate country and unique client-network metrics are generated from request metadata for aggregate operational visibility. Raw IP addresses are not stored in the internal metrics snapshot. Unique client-network estimates use coarse IP network prefixes and rotating in-memory hashes, so they are approximate and are not intended to identify individual people.
 
 Cached API responses may be kept temporarily to improve performance and reduce repeated requests to the public Workshop. Cached responses may be stale and may be cleared or refreshed at any time.
 

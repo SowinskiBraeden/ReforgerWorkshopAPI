@@ -73,15 +73,24 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		requestID := requestID(r)
+		clientIP := ""
+		countryCode := ""
 		r.Header.Set("X-Request-Id", requestID)
 		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
 		recorder.Header().Set("X-Request-Id", requestID)
 		defer func() {
 			latency := time.Since(start)
-			m.metrics.RecordRequest(latency)
+			if clientIP == "" {
+				clientIP = m.ClientIP(r)
+			}
+			if countryCode == "" {
+				countryCode = m.CountryCode(r)
+			}
+			m.metrics.RecordRequestDetails(latency, clientIP, countryCode)
 			zap.S().Infow("request completed",
 				"requestId", requestID,
-				"clientIP", m.ClientIP(r),
+				"clientIP", clientIP,
+				"countryCode", countryCode,
 				"method", r.Method,
 				"path", r.URL.Path,
 				"query", r.URL.RawQuery,
@@ -108,7 +117,8 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 			r.Body = http.MaxBytesReader(recorder, r.Body, m.cfg.MaxBodyBytes)
 		}
 
-		clientIP := m.ClientIP(r)
+		clientIP = m.ClientIP(r)
+		countryCode = m.CountryCode(r)
 		identity := m.identityResolver(r, clientIP)
 		if identity.Limit <= 0 {
 			identity.Limit = m.cfg.AnonymousRateLimitPerMinute
@@ -164,6 +174,45 @@ func (m *MiddlewareChain) ClientIP(r *http.Request) string {
 		return realIP.String()
 	}
 	return remoteIP.String()
+}
+
+func (m *MiddlewareChain) CountryCode(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	remoteIP := net.ParseIP(strings.TrimSpace(host))
+	if remoteIP == nil || !m.isTrustedProxy(remoteIP) {
+		return "ZZ"
+	}
+	return requestCountryCodeFromHeaders(r)
+}
+
+func requestCountryCodeFromHeaders(r *http.Request) string {
+	for _, header := range []string{
+		"CF-IPCountry",
+		"CloudFront-Viewer-Country",
+		"X-Vercel-IP-Country",
+		"X-Country-Code",
+	} {
+		if code := normalizeMetricsCountryCode(r.Header.Get(header)); code != "" {
+			return code
+		}
+	}
+	return "ZZ"
+}
+
+func normalizeMetricsCountryCode(raw string) string {
+	code := strings.ToUpper(strings.TrimSpace(raw))
+	if len(code) != 2 || code == "XX" {
+		return ""
+	}
+	for _, r := range code {
+		if r < 'A' || r > 'Z' {
+			return ""
+		}
+	}
+	return code
 }
 
 func (m *MiddlewareChain) allow(w http.ResponseWriter, r *http.Request, identity RateIdentity) bool {

@@ -90,6 +90,46 @@ func TestMetricsRetentionWindows(t *testing.T) {
 	}
 }
 
+func TestMetricsTracksCoarseGeographyAndUniqueClientNetworks(t *testing.T) {
+	metrics := NewMetrics()
+	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	metrics.now = func() time.Time { return now }
+	metrics.startedAt = now
+	metrics.mu.Lock()
+	metrics.resetRequestWindowsLocked(now)
+	metrics.mu.Unlock()
+
+	metrics.RecordRequestDetails(100*time.Millisecond, "203.0.113.10", "CA")
+	metrics.RecordRequestDetails(120*time.Millisecond, "203.0.113.42", "CA")
+	metrics.RecordRequestDetails(80*time.Millisecond, "198.51.100.20", "US")
+
+	snapshot := metrics.Snapshot(nil)
+	if snapshot.Requests.UniqueClientNetworks.Today != 2 {
+		t.Fatalf("unique networks today = %d, want 2", snapshot.Requests.UniqueClientNetworks.Today)
+	}
+	if len(snapshot.Geography.Countries) != 2 {
+		t.Fatalf("countries = %d, want 2", len(snapshot.Geography.Countries))
+	}
+	if snapshot.Geography.Countries[0].CountryCode != "CA" {
+		t.Fatalf("top country = %q, want CA", snapshot.Geography.Countries[0].CountryCode)
+	}
+	if snapshot.Geography.Countries[0].Requests.Today != 2 {
+		t.Fatalf("CA requests today = %d, want 2", snapshot.Geography.Countries[0].Requests.Today)
+	}
+	if snapshot.Geography.Countries[0].UniqueClientNetworks.Today != 1 {
+		t.Fatalf("CA unique networks today = %d, want 1", snapshot.Geography.Countries[0].UniqueClientNetworks.Today)
+	}
+
+	now = now.Add(24 * time.Hour)
+	snapshot = metrics.Snapshot(nil)
+	if snapshot.Requests.UniqueClientNetworks.Today != 0 {
+		t.Fatalf("next-day unique networks today = %d, want 0", snapshot.Requests.UniqueClientNetworks.Today)
+	}
+	if snapshot.Requests.UniqueClientNetworks.ThisWeek != 2 {
+		t.Fatalf("same-week unique networks = %d, want 2", snapshot.Requests.UniqueClientNetworks.ThisWeek)
+	}
+}
+
 func TestMetricsTracksCacheAndScrapes(t *testing.T) {
 	cfg := testConfig()
 	metrics := NewMetrics()

@@ -75,6 +75,9 @@ func TestInternalMetricsPanelServesShellWithBasicAuth(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "Internal Metrics") {
 		t.Fatal("panel body did not include title")
 	}
+	if !strings.Contains(w.Body.String(), `rel="icon"`) {
+		t.Fatal("panel body did not include favicon link")
+	}
 	if got := w.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
 	}

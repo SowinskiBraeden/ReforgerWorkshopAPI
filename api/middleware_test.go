@@ -50,6 +50,39 @@ func TestClientIPUsesForwardedForFromTrustedProxy(t *testing.T) {
 	}
 }
 
+func TestCountryCodeUsesKnownHeadersFromTrustedProxy(t *testing.T) {
+	cfg := testConfig()
+	cfg.TrustedProxyCIDRs = "10.0.0.0/8"
+	m := NewMiddleware(cfg)
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	r.RemoteAddr = "10.1.2.3:1234"
+	r.Header.Set("CF-IPCountry", "ca")
+
+	if got := m.CountryCode(r); got != "CA" {
+		t.Fatalf("CountryCode() = %q, want CA", got)
+	}
+
+	r.Header.Set("CF-IPCountry", "XX")
+	r.Header.Set("X-Vercel-IP-Country", "US")
+	if got := m.CountryCode(r); got != "US" {
+		t.Fatalf("CountryCode() fallback = %q, want US", got)
+	}
+}
+
+func TestCountryCodeIgnoresSpoofedHeadersFromUntrustedRemote(t *testing.T) {
+	cfg := testConfig()
+	m := NewMiddleware(cfg)
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	r.RemoteAddr = "203.0.113.10:1234"
+	r.Header.Set("CF-IPCountry", "CA")
+
+	if got := m.CountryCode(r); got != "ZZ" {
+		t.Fatalf("CountryCode() = %q, want unknown for untrusted remote", got)
+	}
+}
+
 func TestMiddlewareReturnsRequestIDHeader(t *testing.T) {
 	cfg := testConfig()
 	m := NewMiddleware(cfg)

@@ -25,7 +25,7 @@ The API is provided without a guarantee of uptime, permanent compatibility, comp
 
 ## Internal Metrics
 
-The service may collect internal operational metrics to monitor performance, usage, cache behavior, and upstream Workshop fetches. These metrics may include request counts, average/high/low response time, cache hit/miss/stale counts, cache freshness, latest cache activity, latest upstream scrape/fetch results, and retained aggregate day/week/month/year buckets.
+The service may collect internal operational metrics to monitor performance, usage, cache behavior, and upstream Workshop fetches. These metrics may include request counts, average/high/low response time, cache hit/miss/stale counts, cache freshness, approximate country-level request origin, coarse unique client-network estimates, latest cache activity, latest upstream scrape/fetch results, and retained aggregate day/week/month/year buckets.
 
 Internal metrics are used to operate and improve the service. They are not a public analytics feature and may reset when the API process restarts.
 

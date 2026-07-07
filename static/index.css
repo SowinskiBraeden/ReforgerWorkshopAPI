@@ -306,10 +306,10 @@ code.hljs { border-radius: 10px; }
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 24px 60px rgba(0, 0, 0, .14);
   display: grid;
-  gap: 2rem;
-  grid-template-columns: minmax(0, 1fr) minmax(265px, 385px);
+  gap: clamp(1rem, 3vw, 2rem);
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 385px);
   margin-bottom: 1rem;
-  padding: 2.5rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
 }
 
 .landing-kicker {
@@ -329,7 +329,7 @@ code.hljs { border-radius: 10px; }
 }
 
 .landing-hero h1 {
-  font-size: clamp(1.75rem, 3.5vw, 2.8rem);
+  font-size: clamp(1.85rem, 5vw, 2.8rem);
   font-weight: 800;
   letter-spacing: -.03em;
   line-height: 1.08;
@@ -341,7 +341,7 @@ code.hljs { border-radius: 10px; }
   font-size: 1rem;
   line-height: 1.65;
   margin: 1rem 0 0;
-  max-width: 520px;
+  max-width: 56ch;
 }
 
 .landing-actions {
@@ -359,6 +359,7 @@ code.hljs { border-radius: 10px; }
   font-size: .875rem;
   font-weight: 600;
   gap: .45rem;
+  justify-content: center;
   min-height: 38px;
   padding: .48rem .9rem;
   text-decoration: none;
@@ -395,6 +396,7 @@ code.hljs { border-radius: 10px; }
   background: color-mix(in srgb, var(--site-panel-soft) 75%, transparent);
   border: 1px solid var(--site-muted-border);
   border-radius: 10px;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -439,9 +441,10 @@ code.hljs { border-radius: 10px; }
   display: block;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: .88rem;
+  overflow-wrap: anywhere;
   padding: 1rem;
   white-space: normal;
-  word-break: break-word;
+  word-break: normal;
 }
 
 [data-bs-theme=light] .landing-panel code {
@@ -674,16 +677,32 @@ code.hljs { border-radius: 10px; }
 }
 
 /* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 991.98px) {
+  .docs-content { max-width: none; }
+
+  .landing-hero { grid-template-columns: 1fr; }
+  .landing-panel { max-width: 100%; }
+  .landing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 767.98px) {
   .site-main { padding-top: 5.75rem; }
   .docs-sidebar { position: static; }
 
-  .landing-hero,
   .landing-grid,
   .landing-metrics { grid-template-columns: 1fr; }
 
-  .landing-hero { padding: 1.5rem; }
+  .landing-actions { align-items: stretch; flex-direction: column; }
+  .landing-primary-action,
+  .landing-secondary-action { width: 100%; }
 
   .site-footer-main { flex-direction: column; align-items: flex-start; }
   .site-footer-links { flex-wrap: wrap; }
+}
+
+@media (max-width: 575.98px) {
+  .docs-shell { padding-left: .75rem; padding-right: .75rem; }
+  .landing-kicker { font-size: .68rem; }
+  .landing-panel-meta span { align-items: flex-start; }
+  .landing-link-card { min-height: auto; padding: 1.1rem; }
 }
