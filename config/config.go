@@ -56,6 +56,10 @@ type Config struct {
 	InternalMetricsEnabled bool
 	InternalMetricsToken   string
 
+	MetricsPersistenceEnabled bool
+	MetricsStatePath          string
+	MetricsFlushInterval      time.Duration
+
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -113,6 +117,10 @@ func New() *Config {
 
 		InternalMetricsEnabled: envBool("INTERNAL_METRICS_ENABLED", true),
 		InternalMetricsToken:   strings.TrimSpace(os.Getenv("INTERNAL_METRICS_TOKEN")),
+
+		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", false),
+		MetricsStatePath:          envString("METRICS_STATE_PATH", ""),
+		MetricsFlushInterval:      envDuration("METRICS_FLUSH_INTERVAL", 15*time.Second),
 
 		ReadHeaderTimeout: envDuration("SERVER_READ_HEADER_TIMEOUT", 5*time.Second),
 		ReadTimeout:       envDuration("SERVER_READ_TIMEOUT", 10*time.Second),

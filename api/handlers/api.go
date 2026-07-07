@@ -13,17 +13,19 @@ import (
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/models"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
 )
 
 // App stores the router and db connection so it can be reused
 type App struct {
-	Router     *mux.Router
-	Config     config.Config
-	Cache      *api.ResponseCache
-	Middleware *api.MiddlewareChain
-	Metrics    *api.Metrics
+	Router       *mux.Router
+	Config       config.Config
+	Cache        *api.ResponseCache
+	Middleware   *api.MiddlewareChain
+	Metrics      *api.Metrics
+	MetricsStore *api.MetricsStore
 }
 
 // New creates a new mux router and all the routes
@@ -52,6 +54,28 @@ func (a *App) New() *mux.Router {
 	})
 
 	a.Metrics = api.NewMetrics()
+
+	if a.Config.MetricsPersistenceEnabled {
+		store, err := api.NewMetricsStore(
+			a.Config.MetricsStatePath,
+			a.Config.MetricsFlushInterval,
+		)
+		if err != nil {
+			zap.S().Warnw("metrics persistence disabled", "error", err)
+		} else {
+			if err := store.Load(a.Metrics); err != nil {
+				zap.S().Warnw(
+					"metrics state was not loaded; starting with fresh metrics",
+					"error",
+					err,
+				)
+			}
+
+			store.Start(a.Metrics)
+			a.MetricsStore = store
+		}
+	}
+
 	a.Cache = api.NewResponseCache(a.Config, a.Metrics)
 	a.Middleware = api.NewMiddleware(a.Config, a.Metrics)
 
@@ -89,10 +113,21 @@ func (a *App) Initialize() {
 }
 
 func (a *App) Shutdown(ctx context.Context) error {
-	if a.Cache == nil {
-		return nil
+	var firstErr error
+
+	if a.Cache != nil {
+		if err := a.Cache.Shutdown(ctx); err != nil && firstErr == nil {
+			firstErr = err
+		}
 	}
-	return a.Cache.Shutdown(ctx)
+
+	if a.MetricsStore != nil {
+		if err := a.MetricsStore.Close(a.Metrics); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+
+	return firstErr
 }
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
