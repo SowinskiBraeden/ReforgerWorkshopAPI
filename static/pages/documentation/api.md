@@ -1,5 +1,5 @@
 # API Documentation
-<sup>*Last Updated: 2026-07-04*</sup>
+<sup>*Last Updated: 2026-07-07*</sup>
 
 The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages. It is intended for developers building Arma Reforger mod browsers, server dashboards, launchers, community tools, and other integrations that need Workshop mod data as JSON.
 

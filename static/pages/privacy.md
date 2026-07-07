@@ -1,5 +1,5 @@
 # Privacy Policy
-<sup>*Last Updated: 2026-07-04*</sup>
+<sup>*Last Updated: 2026-07-07*</sup>
 
 This Privacy Policy explains how Reforger Mods API handles information when you use `reforgermods.net`, the API, or the documentation.
 
@@ -13,6 +13,7 @@ We collect a small amount of technical information needed to operate a public AP
 | --- | --- |
 | Request details such as IP address, path, request time, status code, and request ID | To run the service, troubleshoot errors, prevent abuse, and apply rate limits |
 | API inputs such as mod IDs, page numbers, search text, and sort options | To return the API response you requested |
+| Internal performance and usage metrics such as request counts, response times, cache status counts, cache freshness, and upstream scrape/fetch results | To monitor reliability, cache performance, upstream health, and API usage patterns |
 | Support emails sent to `support@cedarline.digital` | To respond to your message |
 
 The website also stores your light/dark theme choice in your browser's `localStorage`. This stays on your device and can be removed by clearing site data in your browser.
@@ -25,7 +26,7 @@ That Workshop data comes from public pages controlled by Bohemia Interactive. Re
 
 ## How We Use Information
 
-We use collected information to provide the API, maintain reliability, apply rate limits, investigate errors, respond to support requests, and protect the service from misuse.
+We use collected information to provide the API, maintain reliability, apply rate limits, measure internal performance, investigate errors, respond to support requests, and protect the service from misuse.
 
 We do not sell personal information. The current service does not provide user accounts, accept payments, or include third-party analytics scripts.
 
@@ -38,6 +39,8 @@ The only browser storage currently used by the site is the theme preference desc
 ## Logs And Retention
 
 Operational logs may include request details needed for debugging, security, and reliability. These logs are kept only as long as needed for operational, legal, or security purposes.
+
+Internal metrics are stored in process memory and reset when the API process restarts. Metrics may include aggregate request counts, response-time summaries, cache hit/miss/stale counts, cache keys, cache freshness timestamps, upstream scrape/fetch status, and retained aggregate day/week/month/year buckets. They are used for service operations and are not a public analytics product.
 
 Cached API responses may be kept temporarily to improve performance and reduce repeated requests to the public Workshop. Cached responses may be stale and may be cleared or refreshed at any time.
 

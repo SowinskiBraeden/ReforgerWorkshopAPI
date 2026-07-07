@@ -28,6 +28,11 @@ var pageMeta = {
     title: 'Privacy Policy | Reforger Mods API',
     description: 'Privacy policy for Reforger Mods API, an independent Arma Reforger Workshop metadata API.',
     canonical: siteUrl + '?page=privacy'
+  },
+  terms: {
+    title: 'Terms of Service | Reforger Mods API',
+    description: 'Terms of service for Reforger Mods API, an independent Arma Reforger Workshop metadata API.',
+    canonical: siteUrl + '?page=terms'
   }
 };
 var meta = pageMeta[navKey] || pageMeta.home;

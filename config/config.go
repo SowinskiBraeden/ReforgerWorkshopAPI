@@ -50,6 +50,9 @@ type Config struct {
 	UpstreamConcurrency int
 	UpstreamUserAgent   string
 
+	InternalMetricsEnabled bool
+	InternalMetricsToken   string
+
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -101,6 +104,9 @@ func New() *Config {
 		UpstreamRetries:     envInt("UPSTREAM_RETRIES", 2),
 		UpstreamConcurrency: envInt("UPSTREAM_CONCURRENCY", 4),
 		UpstreamUserAgent:   envString("UPSTREAM_USER_AGENT", "Cedarline Reforger Mods API/1.0 (+https://cedarline.digital)"),
+
+		InternalMetricsEnabled: envBool("INTERNAL_METRICS_ENABLED", true),
+		InternalMetricsToken:   strings.TrimSpace(os.Getenv("INTERNAL_METRICS_TOKEN")),
 
 		ReadHeaderTimeout: envDuration("SERVER_READ_HEADER_TIMEOUT", 5*time.Second),
 		ReadTimeout:       envDuration("SERVER_READ_TIMEOUT", 10*time.Second),

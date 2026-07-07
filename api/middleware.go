@@ -28,6 +28,7 @@ type MiddlewareConfig struct {
 
 type MiddlewareChain struct {
 	cfg              config.Config
+	metrics          *Metrics
 	identityResolver IdentityResolver
 	trustedProxies   []*net.IPNet
 	clients          map[string]*rateClient
@@ -41,9 +42,14 @@ type rateClient struct {
 	burst    int
 }
 
-func NewMiddleware(cfg config.Config) *MiddlewareChain {
+func NewMiddleware(cfg config.Config, metrics ...*Metrics) *MiddlewareChain {
+	var collector *Metrics
+	if len(metrics) > 0 {
+		collector = metrics[0]
+	}
 	m := &MiddlewareChain{
 		cfg:            cfg,
+		metrics:        collector,
 		trustedProxies: parseTrustedProxies(cfg.TrustedProxyCIDRs),
 		clients:        make(map[string]*rateClient),
 	}
@@ -71,6 +77,8 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
 		recorder.Header().Set("X-Request-Id", requestID)
 		defer func() {
+			latency := time.Since(start)
+			m.metrics.RecordRequest(latency)
 			zap.S().Infow("request completed",
 				"requestId", requestID,
 				"clientIP", m.ClientIP(r),
@@ -78,7 +86,7 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 				"path", r.URL.Path,
 				"query", r.URL.RawQuery,
 				"status", recorder.statusCode,
-				"latencyMs", time.Since(start).Milliseconds(),
+				"latencyMs", latency.Milliseconds(),
 				"userAgent", r.UserAgent(),
 			)
 		}()
@@ -271,6 +279,13 @@ func requestID(r *http.Request) string {
 
 func maxInt(a, b int) int {
 	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
 		return a
 	}
 	return b

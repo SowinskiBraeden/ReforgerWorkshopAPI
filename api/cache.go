@@ -30,6 +30,7 @@ type CachedResponse struct {
 
 type ResponseCache struct {
 	cfg      config.Config
+	metrics  *Metrics
 	mu       sync.Mutex
 	entries  map[string]*cacheEntry
 	inflight map[string]*inflightFetch
@@ -51,13 +52,37 @@ type inflightFetch struct {
 	resp CachedResponse
 }
 
-func NewResponseCache(cfg config.Config) *ResponseCache {
+type CacheSnapshot struct {
+	Entries       int         `json:"entries"`
+	MaxEntries    int         `json:"maxEntries"`
+	LatestEntries []CacheInfo `json:"latestEntries"`
+}
+
+type CacheInfo struct {
+	Key           string    `json:"key"`
+	StatusCode    int       `json:"statusCode"`
+	BodyBytes     int       `json:"bodyBytes"`
+	CreatedAt     time.Time `json:"createdAt"`
+	ExpiresAt     time.Time `json:"expiresAt"`
+	StaleAt       time.Time `json:"staleAt"`
+	AgeSeconds    int       `json:"ageSeconds"`
+	FreshSeconds  int       `json:"freshSeconds"`
+	StaleSeconds  int       `json:"staleSeconds"`
+	CurrentStatus string    `json:"currentStatus"`
+}
+
+func NewResponseCache(cfg config.Config, metrics ...*Metrics) *ResponseCache {
 	parallel := cfg.CacheRefreshParallel
 	if parallel <= 0 {
 		parallel = 1
 	}
+	var collector *Metrics
+	if len(metrics) > 0 {
+		collector = metrics[0]
+	}
 	return &ResponseCache{
 		cfg:      cfg,
+		metrics:  collector,
 		entries:  make(map[string]*cacheEntry),
 		inflight: make(map[string]*inflightFetch),
 		sem:      make(chan struct{}, parallel),
@@ -71,7 +96,7 @@ func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string
 		if status == "STALE" {
 			c.refreshAsync(key, ttl, stale, fetch, r.Header.Get("X-Request-Id"))
 		}
-		c.write(w, r, entry, status)
+		c.write(w, r, key, entry, status)
 		zap.S().Infow("cache served", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status)
 		return
 	}
@@ -81,7 +106,7 @@ func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string
 		select {
 		case <-call.done:
 			if entry, status := c.lookup(key, c.now()); entry != nil {
-				c.write(w, r, entry, status)
+				c.write(w, r, key, entry, status)
 				zap.S().Infow("cache served after wait", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status)
 				return
 			}
@@ -93,7 +118,7 @@ func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string
 		}
 	}
 
-	resp := c.fetchWithLimit(r.Context(), fetch)
+	resp := c.fetchWithLimit(r.Context(), key, fetch)
 	if resp.TTL == 0 {
 		resp.TTL = ttl
 	}
@@ -109,7 +134,7 @@ func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string
 		if status == "HIT" {
 			status = "MISS"
 		}
-		c.write(w, r, entry, status)
+		c.write(w, r, key, entry, status)
 		return
 	}
 	config.WriteError(w, r, http.StatusServiceUnavailable, "UPSTREAM_UNAVAILABLE", "Workshop data is temporarily unavailable.")
@@ -167,16 +192,20 @@ func (c *ResponseCache) finishFetch(key string, call *inflightFetch, resp Cached
 	close(call.done)
 }
 
-func (c *ResponseCache) fetchWithLimit(ctx context.Context, fetch CacheFetchFunc) CachedResponse {
+func (c *ResponseCache) fetchWithLimit(ctx context.Context, key string, fetch CacheFetchFunc) CachedResponse {
+	start := c.now()
 	select {
 	case c.sem <- struct{}{}:
 		defer func() { <-c.sem }()
 	case <-ctx.Done():
-		return CachedResponse{Err: ctx.Err(), ErrorCode: "REQUEST_CANCELLED", Message: "Request was cancelled."}
+		resp := CachedResponse{Err: ctx.Err(), ErrorCode: "REQUEST_CANCELLED", Message: "Request was cancelled."}
+		c.metrics.RecordScrape(key, resp.StatusCode, c.now().Sub(start), resp.Err)
+		return resp
 	}
 	fetchCtx, cancel := context.WithTimeout(ctx, c.cfg.CacheRefreshTimeout)
 	defer cancel()
 	resp := fetch(fetchCtx)
+	c.metrics.RecordScrape(key, resp.StatusCode, c.now().Sub(start), resp.Err)
 	return resp
 }
 
@@ -186,7 +215,7 @@ func (c *ResponseCache) refreshAsync(key string, ttl time.Duration, stale time.D
 		return
 	}
 	go func() {
-		resp := c.fetchWithLimit(context.Background(), fetch)
+		resp := c.fetchWithLimit(context.Background(), key, fetch)
 		if resp.TTL == 0 {
 			resp.TTL = ttl
 		}
@@ -200,17 +229,19 @@ func (c *ResponseCache) refreshAsync(key string, ttl time.Duration, stale time.D
 	}()
 }
 
-func (c *ResponseCache) write(w http.ResponseWriter, r *http.Request, entry *cacheEntry, cacheStatus string) {
+func (c *ResponseCache) write(w http.ResponseWriter, r *http.Request, key string, entry *cacheEntry, cacheStatus string) {
 	now := c.now()
 	if match := r.Header.Get("If-None-Match"); match != "" && match == entry.etag {
 		c.setCacheHeaders(w, entry, cacheStatus, now)
 		w.WriteHeader(http.StatusNotModified)
+		c.metrics.RecordCache(key, cacheStatus, http.StatusNotModified)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	c.setCacheHeaders(w, entry, cacheStatus, now)
 	w.WriteHeader(entry.response.StatusCode)
 	_, _ = w.Write(entry.response.Body)
+	c.metrics.RecordCache(key, cacheStatus, entry.response.StatusCode)
 }
 
 func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry, cacheStatus string, now time.Time) {
@@ -274,6 +305,70 @@ func (c *ResponseCache) evictLocked() {
 		oldest := c.order[0]
 		c.order = c.order[1:]
 		delete(c.entries, oldest)
+	}
+}
+
+func (c *ResponseCache) Snapshot(limit int) CacheSnapshot {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	maxEntries := c.cfg.CacheMaxEntries
+	if maxEntries <= 0 {
+		maxEntries = 1000
+	}
+	if limit < 0 {
+		limit = 0
+	}
+	now := c.now()
+	out := CacheSnapshot{
+		Entries:       len(c.entries),
+		MaxEntries:    maxEntries,
+		LatestEntries: make([]CacheInfo, 0, minInt(limit, len(c.entries))),
+	}
+	if limit <= 0 {
+		return out
+	}
+	for i := len(c.order) - 1; i >= 0 && len(out.LatestEntries) < limit; i-- {
+		key := c.order[i]
+		entry := c.entries[key]
+		if entry == nil {
+			continue
+		}
+		out.LatestEntries = append(out.LatestEntries, cacheInfo(key, entry, now))
+	}
+	return out
+}
+
+func cacheInfo(key string, entry *cacheEntry, now time.Time) CacheInfo {
+	age := int(now.Sub(entry.createdAt).Seconds())
+	if age < 0 {
+		age = 0
+	}
+	freshSeconds := int(entry.expiresAt.Sub(now).Seconds())
+	if freshSeconds < 0 {
+		freshSeconds = 0
+	}
+	staleSeconds := int(entry.staleAt.Sub(now).Seconds())
+	if staleSeconds < 0 {
+		staleSeconds = 0
+	}
+	status := "MISS"
+	if now.Before(entry.expiresAt) {
+		status = "HIT"
+	} else if now.Before(entry.staleAt) {
+		status = "STALE"
+	}
+	return CacheInfo{
+		Key:           key,
+		StatusCode:    entry.response.StatusCode,
+		BodyBytes:     len(entry.response.Body),
+		CreatedAt:     entry.createdAt.UTC(),
+		ExpiresAt:     entry.expiresAt.UTC(),
+		StaleAt:       entry.staleAt.UTC(),
+		AgeSeconds:    age,
+		FreshSeconds:  freshSeconds,
+		StaleSeconds:  staleSeconds,
+		CurrentStatus: status,
 	}
 }
 
