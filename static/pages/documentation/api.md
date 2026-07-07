@@ -1,60 +1,90 @@
 # API Documentation
+
 <sup>*Last Updated: 2026-07-07*</sup>
 
-The API is read-only and returns normalized metadata scraped from publicly accessible Arma Reforger Workshop pages. It is intended for developers building Arma Reforger mod browsers, server dashboards, launchers, community tools, and other integrations that need Workshop mod data as JSON.
+Reforger Mods API is a read-only API for Arma Reforger Workshop metadata.
 
-Use Reforger Mods API when you need to search Arma Reforger mods, fetch Workshop mod details, inspect dependencies, read scenario metadata, or link users back to official Arma Reforger Workshop pages.
+It is built for mod browsers, server dashboards, launchers, Discord bots, and community tools that need Workshop data as JSON without scraping Workshop pages themselves.
 
-Public API base URL: `https://api.reforgermods.net`
+The API is independent and unofficial. It is not affiliated with or endorsed by Bohemia Interactive.
 
-Use `/v1` for all new integrations. The older unversioned routes still work as deprecated aliases for now.
+## Base URL
+
+```text
+https://api.reforgermods.net
+```
+
+Use `/v1` for all new integrations.
+
+```text
+GET /v1/health
+GET /v1/mods
+GET /v1/mods/{page}
+GET /v1/search?search={query}
+GET /v1/mod/{mod_id}
+GET /v1/refresh/jobs/{id}
+```
+
+Older unversioned routes remain available as deprecated aliases for now. New integrations should always use `/v1`.
+
+## Quick Start
+
+Request an endpoint normally.
+
+```bash
+curl 'https://api.reforgermods.net/v1/mods?search=radio'
+```
+
+Most requests return `200 OK` with JSON data.
+
+For an uncached resource, the API may return `202 Accepted` while it fetches current Workshop data. In that case:
+
+1. Read `Retry-After`.
+2. Wait for that delay.
+3. Retry the original request URL.
+
+Polling the refresh-job URL from `Location` is optional. It is mainly useful when your application wants to show loading progress.
 
 ## Health
 
 <div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/health</code></div>
 
-Returns process health only. It does not scrape the Workshop.
+Returns process health only. It does not request Workshop data.
 
-## Refresh Jobs
-
-<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/refresh/jobs/{id}</code></div>
-
-When a cacheable resource is missing from cache, the API queues a background refresh and returns `202 Accepted` instead of waiting for a slow Workshop scrape. Use the `Location` header to poll this endpoint, or retry the original resource URL after `Retry-After`.
-
-Example job response:
+```bash
+curl https://api.reforgermods.net/v1/health
+```
 
 ```json
 {
-  "id": "9f0b7d0f6fd4f88a8bb0e455f0b640247a93",
-  "status": "queued",
-  "resource_url": "/v1/mods?search=radio",
-  "created_at": "2026-07-07T20:00:00Z",
-  "updated_at": "2026-07-07T20:00:00Z",
-  "retry_after_seconds": 2
+  "status": "success",
+  "data": {
+    "code": 200,
+    "alive": true
+  }
 }
 ```
-
-Statuses are `queued`, `running`, `succeeded`, `failed`, and `expired`. Job responses do not include the full mod payload. After a job succeeds, request the original `resource_url`.
 
 ## List Mods
 
 <div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/mods</code></div>
 <div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/mods/{page}</code></div>
-<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/search?search={query}</code></div>
 
-The Workshop currently returns 16 mods per page. Search and sort are passed through to the public Workshop page after normalization.
+`/v1/mods` returns the first page of Workshop listings.
 
-Query parameters:
+`/v1/mods/{page}` returns a specific page. Pages must be positive integers.
 
-| Name | Values |
-| --- | --- |
-| `search` | Search text, normalized and capped before use |
-| `sort` | `popularity`, `newest`, `subscribers`, `version_size` |
+### Query Parameters
+
+| Name     | Values                                                   |
+| -------- | -------------------------------------------------------- |
+| `search` | Optional search text                                     |
+| `sort`   | `popularity`, `newest`, `subscribers`, or `version_size` |
 
 Example:
 
 ```bash
-curl https://api.reforgermods.net/v1/mods/2?search=radio&sort=newest
+curl 'https://api.reforgermods.net/v1/mods/2?search=radio&sort=newest'
 ```
 
 Example response:
@@ -70,16 +100,18 @@ Example response:
     "modsIndexStart": 17,
     "modsIndexEnd": 32
   },
-  "data": [{
-    "name": "Example Mod",
-    "author": "Example Author",
-    "imageURL": "https://example.com/image.png",
-    "originalModURL": "https://reforger.armaplatform.com/workshop/{mod_id}",
-    "apiModURL": "https://api.reforgermods.net/v1/mod/{mod_id}",
-    "size": "192.42 KB",
-    "rating": "92%",
-    "ID": "{mod_id}"
-  }],
+  "data": [
+    {
+      "name": "Example Mod",
+      "author": "Example Author",
+      "imageURL": "https://example.com/image.png",
+      "originalModURL": "https://reforger.armaplatform.com/workshop/5965550F24A0C152",
+      "apiModURL": "https://api.reforgermods.net/v1/mod/5965550F24A0C152",
+      "size": "192.42 KB",
+      "rating": "92%",
+      "ID": "5965550F24A0C152"
+    }
+  ],
   "links": {
     "next": "https://api.reforgermods.net/v1/mods/3?search=radio&sort=newest",
     "prev": "https://api.reforgermods.net/v1/mods/1?search=radio&sort=newest"
@@ -87,14 +119,30 @@ Example response:
 }
 ```
 
-## Get Mod
+## Search Mods
+
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/search?search={query}</code></div>
+
+Search is a convenience route for first-page results.
+
+```bash
+curl 'https://api.reforgermods.net/v1/search?search=radio'
+```
+
+It returns the same response shape as:
+
+```text
+GET /v1/mods?search=radio
+```
+
+## Get Mod Details
 
 <div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/mod/{mod_id}</code></div>
 
-Example:
+Returns detailed metadata for one Workshop mod.
 
 ```bash
-curl https://api.reforgermods.net/v1/mod/12345
+curl 'https://api.reforgermods.net/v1/mod/5965550F24A0C152'
 ```
 
 Example response:
@@ -102,11 +150,11 @@ Example response:
 ```json
 {
   "status": "success",
-  "mod": {
+  "data": {
     "name": "Example Mod",
     "author": "Example Author",
-    "originalModURL": "https://reforger.armaplatform.com/workshop/12345",
-    "apiModURL": "https://api.reforgermods.net/v1/mod/12345",
+    "originalModURL": "https://reforger.armaplatform.com/workshop/5965550F24A0C152",
+    "apiModURL": "https://api.reforgermods.net/v1/mod/5965550F24A0C152",
     "imageURL": "https://example.com/image.png",
     "rating": "92%",
     "version": "1.1.0",
@@ -116,18 +164,103 @@ Example response:
     "downloads": 791142,
     "created": "19.05.2022",
     "lastModified": "17.03.2024",
-    "id": "12345",
+    "id": "5965550F24A0C152",
     "summary": "Short Workshop summary",
     "description": "Workshop description",
     "license": "Arma Public License (APL)",
-    "tags": ["EXAMPLE"],
-    "dependencies": [],
-    "scenarios": []
+    "tags": [
+      "EXAMPLE"
+    ],
+    "dependencies": [
+      {
+        "name": "Example Dependency",
+        "originalModURL": "https://reforger.armaplatform.com/workshop/example-dependency-id",
+        "apiModURL": "https://api.reforgermods.net/v1/mod/example-dependency-id"
+      }
+    ],
+    "scenarios": [
+      {
+        "name": "Example Scenario",
+        "description": "Scenario summary",
+        "scenarioID": "{EXAMPLE}Missions/Example.conf",
+        "gamemode": "Game Master",
+        "playerCount": 16,
+        "imageURL": "https://example.com/scenario-image.png"
+      }
+    ]
   }
 }
 ```
 
+`dependencies`, `scenarios`, tags, and optional metadata may be empty when the Workshop does not provide them.
+
+## Refresh Jobs
+
+<div class="api-endpoint"><span class="api-method api-method-get">GET</span><code>/v1/refresh/jobs/{id}</code></div>
+
+Most integrations do not need to call this endpoint.
+
+When a resource is not available in cache, the API may return:
+
+```text
+HTTP/1.1 202 Accepted
+Location: /v1/refresh/jobs/9f0b7d0f6fd4f88a8bb0e455f0b640247a93
+Retry-After: 2
+X-Cache: MISS
+```
+
+The simplest handling is to wait for `Retry-After`, then retry the original URL.
+
+For applications that want to show progress, request the URL in `Location`:
+
+```bash
+curl 'https://api.reforgermods.net/v1/refresh/jobs/9f0b7d0f6fd4f88a8bb0e455f0b640247a93'
+```
+
+```json
+{
+  "id": "9f0b7d0f6fd4f88a8bb0e455f0b640247a93",
+  "status": "queued",
+  "resource_url": "/v1/mods?search=radio",
+  "retry_after_seconds": 2
+}
+```
+
+Possible statuses are `queued`, `running`, `succeeded`, `failed`, and `expired`.
+
+After a job succeeds, request `resource_url` again. Refresh-job responses do not contain the finished mod or list payload.
+
+## Cache and Rate Limits
+
+Workshop data is cached and may be temporarily stale. This allows the API to remain responsive when the upstream Workshop is slow or unavailable.
+
+| Resource            | Fresh cache | Stale fallback |
+| ------------------- | ----------- | -------------- |
+| Mod detail          | 1 hour      | 24 hours       |
+| Mod list and search | 10 minutes  | 1 hour         |
+| Not found response  | 10 minutes  | —              |
+
+Useful response headers:
+
+| Header         | Meaning                                                 |
+| -------------- | ------------------------------------------------------- |
+| `X-Cache`      | `HIT`, `STALE`, or `MISS`                               |
+| `Retry-After`  | How long to wait before retrying                        |
+| `Location`     | Refresh-job URL on `202 Accepted`                       |
+| `ETag`         | Optional validator for client-side conditional requests |
+| `X-Request-Id` | Request identifier for support and debugging            |
+
+There is no public cache-bypass or force-refresh parameter.
+
+Anonymous clients are limited to **60 requests per minute** per resolved client IP, with a burst allowance of 20.
+
+For `429 Too Many Requests` or `503 Service Unavailable`, wait for `Retry-After` and retry later.
+
+Do not poll refresh jobs faster than the advertised delay or repeatedly request variations of the same query to bypass caching.
+
 ## Errors
+
+Errors use a consistent JSON response:
 
 ```json
 {
@@ -139,89 +272,23 @@ Example response:
 }
 ```
 
-Common codes: `INVALID_PAGE`, `INVALID_MOD_ID`, `INVALID_SEARCH`, `NOT_FOUND`, `RATE_LIMITED`, `QUERY_TOO_LONG`, `REFRESH_JOB_NOT_FOUND`, `REFRESH_QUEUE_FULL`, `REFRESH_SHUTTING_DOWN`, `UPSTREAM_UNAVAILABLE`.
+Common error codes:
 
-Every API response includes an `X-Request-Id` header. Error responses also include the same value as `error.requestId`. Include that request ID when reporting an issue so the request can be found in server logs.
+| Code                    | Meaning                                      |
+| ----------------------- | -------------------------------------------- |
+| `INVALID_PAGE`          | The requested page is invalid.               |
+| `INVALID_MOD_ID`        | The mod ID is malformed.                     |
+| `INVALID_SEARCH`        | The search text is invalid.                  |
+| `NOT_FOUND`             | No matching resource was found.              |
+| `RATE_LIMITED`          | Too many requests were sent.                 |
+| `REFRESH_JOB_NOT_FOUND` | The refresh job no longer exists.            |
+| `REFRESH_QUEUE_FULL`    | Refresh capacity is temporarily unavailable. |
+| `REFRESH_SHUTTING_DOWN` | The service is shutting down.                |
 
-## Rate Limits & Cache
+Every response includes `X-Request-Id`. Include that value when reporting an issue.
 
-Anonymous clients are rate limited to **60 requests per minute** per resolved IP, with a burst of 20. `429` responses include `Retry-After` and rate-limit headers.
+## Data Source and Availability
 
-Responses may be cached and temporarily stale. The API is not guaranteed to be real-time. Default cache windows:
+Data is normalized from publicly accessible Arma Reforger Workshop pages.
 
-| Resource | Fresh | Stale fallback |
-| --- | --- | --- |
-| Mod detail | 1 hour | 24 hours |
-| List / search | 10 minutes | 1 hour |
-| Not found | 10 minutes | — |
-
-The API does not expose a public cache-bypass flag. Refreshes are coalesced by normalized resource key, so repeated requests for the same cold or stale resource reuse one queued/running job instead of forcing repeated upstream scrapes.
-
-Cache behavior:
-
-| State | Response |
-| --- | --- |
-| Fresh cached data | `200 OK` with `X-Cache: HIT` |
-| Stale but serveable cached data | `200 OK` with `X-Cache: STALE`, stale body returned immediately, one background refresh queued |
-| Cold cache / missing cache data | `202 Accepted` with `Location`, `Retry-After`, `Cache-Control: no-store`, and a job status body |
-| Refresh queue full | `503 Service Unavailable` with `Retry-After` |
-
-Clients should honour `Retry-After`, `ETag`, and `Cache-Control`. For `202`, either poll the job URL from `Location` or retry the original resource URL after the suggested delay.
-
-Cache headers:
-
-| Header | Meaning |
-| --- | --- |
-| `X-Cache` | `MISS`, `HIT`, or `STALE` |
-| `X-Refresh-Status` | `none`, `queued`, `running`, or `failed` for the related refresh |
-| `X-Refresh-Job-Id` | Opaque job ID when a refresh job is associated with the response |
-| `X-Refresh-Failed-At` | UTC timestamp when the latest refresh failed while stale data remains serveable |
-| `Location` | Job status URL on `202 Accepted` |
-| `Retry-After` | Suggested retry delay for `202`, queue saturation, and rate limiting |
-| `Age` | Standard cache age in seconds |
-| `X-Cache-Age` | Same cache age in seconds, included for easier client parsing |
-| `X-Cache-Created-At` | UTC time when the cached response was stored |
-| `X-Cache-Expires-At` | UTC time when the response stops being fresh |
-| `X-Cache-Fresh-Seconds` | Seconds until the response stops being fresh |
-| `X-Cache-Stale-At` | UTC time after which the cached response will no longer be served |
-| `X-Cache-Stale-Seconds` | Seconds until the cached response becomes unusable |
-| `Cache-Control` | Browser/proxy cache hint for the response |
-| `ETag` | Weak validator for conditional requests |
-
-When `X-Cache` is `STALE`, the API serves the cached response and starts a background refresh if one is not already queued or running. If that refresh fails, stale data remains available until the stale-serving window ends, and the response includes failure metadata without exposing raw scraper errors.
-
-Cold-cache example:
-
-```bash
-curl -i 'https://api.reforgermods.net/v1/mods?search=radio'
-```
-
-```bash
-HTTP/1.1 202 Accepted
-Location: /v1/refresh/jobs/9f0b7d0f6fd4f88a8bb0e455f0b640247a93
-Retry-After: 2
-Cache-Control: no-store
-X-Cache: MISS
-X-Refresh-Status: queued
-```
-
-Stale response example:
-
-```bash
-HTTP/1.1 200 OK
-X-Cache: STALE
-X-Refresh-Status: queued
-X-Refresh-Job-Id: 9f0b7d0f6fd4f88a8bb0e455f0b640247a93
-```
-
-Saturation example:
-
-```bash
-HTTP/1.1 503 Service Unavailable
-Retry-After: 2
-Cache-Control: no-store
-X-Cache: MISS
-X-Refresh-Status: failed
-```
-
-Refresh job state is process-local. In a multi-instance deployment, use sticky routing for job polling or add a shared job store in a future version.
+Workshop data, fields, availability, and page structure can change without notice. The API is not an authoritative source for ownership, entitlement, moderation, platform accounts, or real-time Workshop state.
