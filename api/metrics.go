@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -42,8 +44,18 @@ type Metrics struct {
 	cacheMisses uint64
 	cacheStales uint64
 
-	scrapeTotal  uint64
-	scrapeErrors uint64
+	scrapeTotal    uint64
+	scrapeErrors   uint64
+	scrapeTimeouts uint64
+
+	refreshCreated       uint64
+	refreshDeduplicated  uint64
+	refreshSucceeded     uint64
+	refreshFailed        uint64
+	refreshExpired       uint64
+	refreshRejected      uint64
+	refreshQueueDepth    int
+	refreshActiveWorkers int
 
 	latestCaches  []MetricEvent
 	latestScrapes []MetricEvent
@@ -64,15 +76,16 @@ type MetricEvent struct {
 }
 
 type MetricsSnapshot struct {
-	StartedAt     time.Time             `json:"startedAt"`
-	GeneratedAt   time.Time             `json:"generatedAt"`
-	UptimeSeconds int64                 `json:"uptimeSeconds"`
-	Requests      RequestMetrics        `json:"requests"`
-	ResponseTime  ResponseTimeMetrics   `json:"responseTime"`
-	Cache         CacheMetricsSnapshot  `json:"cache"`
-	Scrapes       ScrapeMetricsSnapshot `json:"scrapes"`
-	Retention     RetentionMetrics      `json:"retention"`
-	Geography     GeographyMetrics      `json:"geography"`
+	StartedAt     time.Time              `json:"startedAt"`
+	GeneratedAt   time.Time              `json:"generatedAt"`
+	UptimeSeconds int64                  `json:"uptimeSeconds"`
+	Requests      RequestMetrics         `json:"requests"`
+	ResponseTime  ResponseTimeMetrics    `json:"responseTime"`
+	Cache         CacheMetricsSnapshot   `json:"cache"`
+	Scrapes       ScrapeMetricsSnapshot  `json:"scrapes"`
+	Refresh       RefreshMetricsSnapshot `json:"refresh"`
+	Retention     RetentionMetrics       `json:"retention"`
+	Geography     GeographyMetrics       `json:"geography"`
 }
 
 type RequestMetrics struct {
@@ -103,7 +116,19 @@ type CacheMetricsSnapshot struct {
 type ScrapeMetricsSnapshot struct {
 	Total        uint64        `json:"total"`
 	Errors       uint64        `json:"errors"`
+	Timeouts     uint64        `json:"timeouts"`
 	LatestEvents []MetricEvent `json:"latestEvents"`
+}
+
+type RefreshMetricsSnapshot struct {
+	Created       uint64 `json:"created"`
+	Deduplicated  uint64 `json:"deduplicated"`
+	Succeeded     uint64 `json:"succeeded"`
+	Failed        uint64 `json:"failed"`
+	Expired       uint64 `json:"expired"`
+	Rejected      uint64 `json:"rejected"`
+	QueueDepth    int    `json:"queueDepth"`
+	ActiveWorkers int    `json:"activeWorkers"`
 }
 
 type RetentionMetrics struct {
@@ -297,12 +322,39 @@ func (m *Metrics) RecordScrape(key string, statusCode int, duration time.Duratio
 	m.scrapeTotal++
 	if err != nil {
 		m.scrapeErrors++
+		if errors.Is(err, context.DeadlineExceeded) {
+			m.scrapeTimeouts++
+		}
 	}
 	m.rollupForLocked(event.At, hourBucket).recordScrape(err)
 	m.rollupForLocked(event.At, dayBucket).recordScrape(err)
 	m.rollupForLocked(event.At, monthBucket).recordScrape(err)
 	m.latestScrapes = appendLatestMetricEvent(m.latestScrapes, event)
 	m.pruneRetentionLocked(event.At)
+}
+
+func (m *Metrics) RecordRefreshEvent(event string, queueDepth int, activeWorkers int) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	switch event {
+	case "created":
+		m.refreshCreated++
+	case "deduplicated":
+		m.refreshDeduplicated++
+	case "succeeded":
+		m.refreshSucceeded++
+	case "failed":
+		m.refreshFailed++
+	case "expired":
+		m.refreshExpired++
+	case "rejected":
+		m.refreshRejected++
+	}
+	m.refreshQueueDepth = queueDepth
+	m.refreshActiveWorkers = activeWorkers
 }
 
 func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
@@ -341,7 +393,18 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 	scrapeMetrics := ScrapeMetricsSnapshot{
 		Total:        m.scrapeTotal,
 		Errors:       m.scrapeErrors,
+		Timeouts:     m.scrapeTimeouts,
 		LatestEvents: cloneMetricEvents(m.latestScrapes),
+	}
+	refreshMetrics := RefreshMetricsSnapshot{
+		Created:       m.refreshCreated,
+		Deduplicated:  m.refreshDeduplicated,
+		Succeeded:     m.refreshSucceeded,
+		Failed:        m.refreshFailed,
+		Expired:       m.refreshExpired,
+		Rejected:      m.refreshRejected,
+		QueueDepth:    m.refreshQueueDepth,
+		ActiveWorkers: m.refreshActiveWorkers,
 	}
 	retention := m.retentionLocked(now)
 	geography := m.geographyLocked()
@@ -363,6 +426,7 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 		ResponseTime:  responseTime,
 		Cache:         cacheMetrics,
 		Scrapes:       scrapeMetrics,
+		Refresh:       refreshMetrics,
 		Retention:     retention,
 		Geography:     geography,
 	}

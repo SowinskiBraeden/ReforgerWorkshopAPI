@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -141,9 +142,14 @@ func TestMetricsTracksCacheAndScrapes(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/v1/mods", nil)
 	w := httptest.NewRecorder()
 	cache.Serve(w, r, "v1:mods:metrics", time.Minute, time.Minute, fetch)
-	if w.Header().Get("X-Cache") != "MISS" {
-		t.Fatalf("first X-Cache = %q, want MISS", w.Header().Get("X-Cache"))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("first status = %d, want 202", w.Code)
 	}
+	var job RefreshJobSnapshot
+	if err := json.Unmarshal(w.Body.Bytes(), &job); err != nil {
+		t.Fatalf("failed to decode refresh job: %v", err)
+	}
+	waitForRefreshStatus(t, cache, job.ID, RefreshJobSucceeded)
 
 	w = httptest.NewRecorder()
 	cache.Serve(w, r, "v1:mods:metrics", time.Minute, time.Minute, fetch)

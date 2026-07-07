@@ -50,6 +50,9 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	if err := a.Shutdown(ctx); err != nil {
+		zap.S().Warnw("refresh manager shutdown did not complete cleanly", "error", err)
+	}
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}

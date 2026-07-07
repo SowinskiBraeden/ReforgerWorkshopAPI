@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -29,33 +31,31 @@ type CachedResponse struct {
 }
 
 type ResponseCache struct {
-	cfg      config.Config
-	metrics  *Metrics
-	mu       sync.Mutex
-	entries  map[string]*cacheEntry
-	inflight map[string]*inflightFetch
-	order    []string
-	sem      chan struct{}
-	now      func() time.Time
+	cfg     config.Config
+	metrics *Metrics
+	mu      sync.Mutex
+	entries map[string]*cacheEntry
+	order   []string
+	now     func() time.Time
+	refresh *refreshManager
 }
 
 type cacheEntry struct {
-	response  CachedResponse
-	createdAt time.Time
-	expiresAt time.Time
-	staleAt   time.Time
-	etag      string
-}
-
-type inflightFetch struct {
-	done chan struct{}
-	resp CachedResponse
+	response        CachedResponse
+	createdAt       time.Time
+	expiresAt       time.Time
+	staleAt         time.Time
+	etag            string
+	refreshStatus   RefreshJobStatus
+	refreshJobID    string
+	refreshFailedAt *time.Time
 }
 
 type CacheSnapshot struct {
-	Entries       int         `json:"entries"`
-	MaxEntries    int         `json:"maxEntries"`
-	LatestEntries []CacheInfo `json:"latestEntries"`
+	Entries       int                    `json:"entries"`
+	MaxEntries    int                    `json:"maxEntries"`
+	LatestEntries []CacheInfo            `json:"latestEntries"`
+	Refresh       RefreshManagerSnapshot `json:"refresh"`
 }
 
 type CacheInfo struct {
@@ -69,6 +69,8 @@ type CacheInfo struct {
 	FreshSeconds  int       `json:"freshSeconds"`
 	StaleSeconds  int       `json:"staleSeconds"`
 	CurrentStatus string    `json:"currentStatus"`
+	RefreshStatus string    `json:"refreshStatus,omitempty"`
+	RefreshJobID  string    `json:"refreshJobId,omitempty"`
 }
 
 func NewResponseCache(cfg config.Config, metrics ...*Metrics) *ResponseCache {
@@ -80,64 +82,58 @@ func NewResponseCache(cfg config.Config, metrics ...*Metrics) *ResponseCache {
 	if len(metrics) > 0 {
 		collector = metrics[0]
 	}
-	return &ResponseCache{
-		cfg:      cfg,
-		metrics:  collector,
-		entries:  make(map[string]*cacheEntry),
-		inflight: make(map[string]*inflightFetch),
-		sem:      make(chan struct{}, parallel),
-		now:      time.Now,
+	cache := &ResponseCache{
+		cfg:     cfg,
+		metrics: collector,
+		entries: make(map[string]*cacheEntry),
+		now:     time.Now,
 	}
+	cache.refresh = newRefreshManager(
+		parallel,
+		cfg.CacheRefreshQueueSize,
+		cfg.CacheRefreshTimeout,
+		cfg.CacheRefreshJobRetention,
+		cfg.CacheRefreshRetryAfter,
+		collector,
+		cache.now,
+		cache.finishRefresh,
+	)
+	return cache
 }
 
 func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc) {
 	now := c.now()
 	if entry, status := c.lookup(key, now); entry != nil {
+		refreshStatus := RefreshJobStatus("none")
 		if status == "STALE" {
-			c.refreshAsync(key, ttl, stale, fetch, r.Header.Get("X-Request-Id"))
-		}
-		c.write(w, r, key, entry, status)
-		zap.S().Infow("cache served", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status)
-		return
-	}
-
-	call, owner := c.beginFetch(key)
-	if !owner {
-		select {
-		case <-call.done:
-			if entry, status := c.lookup(key, c.now()); entry != nil {
-				c.write(w, r, key, entry, status)
-				zap.S().Infow("cache served after wait", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status)
-				return
+			job, _, err := c.enqueueRefresh(r, key, ttl, stale, fetch)
+			switch {
+			case err == nil:
+				refreshStatus = job.Status
+				c.markRefreshQueued(key, job)
+				if updated, _ := c.lookup(key, c.now()); updated != nil {
+					entry = updated
+				}
+			case errors.Is(err, ErrRefreshQueueFull), errors.Is(err, ErrRefreshShutdown):
+				refreshStatus = RefreshJobFailed
+			default:
+				refreshStatus = RefreshJobFailed
 			}
-			c.writeFetchError(w, r, call.resp)
-			return
-		case <-r.Context().Done():
-			config.WriteError(w, r, http.StatusGatewayTimeout, "REQUEST_CANCELLED", "Request was cancelled before the upstream response was available.")
-			return
+		} else if entry.refreshStatus == RefreshJobFailed {
+			refreshStatus = RefreshJobFailed
 		}
+		c.write(w, r, key, entry, status, refreshStatus)
+		zap.S().Infow("cache served", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status, "refreshStatus", refreshStatus)
+		return
 	}
 
-	resp := c.fetchWithLimit(r.Context(), key, fetch)
-	if resp.TTL == 0 {
-		resp.TTL = ttl
-	}
-	if resp.Stale == 0 {
-		resp.Stale = stale
-	}
-	c.finishFetch(key, call, resp)
-	if resp.Err != nil {
-		c.writeFetchError(w, r, resp)
+	job, _, err := c.enqueueRefresh(r, key, ttl, stale, fetch)
+	if err != nil {
+		c.writeRefreshSaturated(w, r, err)
 		return
 	}
-	if entry, status := c.lookup(key, c.now()); entry != nil {
-		if status == "HIT" {
-			status = "MISS"
-		}
-		c.write(w, r, key, entry, status)
-		return
-	}
-	config.WriteError(w, r, http.StatusServiceUnavailable, "UPSTREAM_UNAVAILABLE", "Workshop data is temporarily unavailable.")
+	c.writeAccepted(w, r, job)
+	zap.S().Infow("cache miss accepted for background refresh", "requestId", r.Header.Get("X-Request-Id"), "key", key, "jobId", job.ID, "refreshStatus", job.Status)
 }
 
 func (c *ResponseCache) lookup(key string, now time.Time) (*cacheEntry, string) {
@@ -148,103 +144,106 @@ func (c *ResponseCache) lookup(key string, now time.Time) (*cacheEntry, string) 
 		return nil, "MISS"
 	}
 	if now.Before(entry.expiresAt) {
-		return entry, "HIT"
+		entryCopy := *entry
+		return &entryCopy, "HIT"
 	}
 	if now.Before(entry.staleAt) {
-		return entry, "STALE"
+		entryCopy := *entry
+		return &entryCopy, "STALE"
 	}
 	delete(c.entries, key)
 	return nil, "MISS"
 }
 
-func (c *ResponseCache) beginFetch(key string) (*inflightFetch, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if call := c.inflight[key]; call != nil {
-		return call, false
-	}
-	call := &inflightFetch{done: make(chan struct{})}
-	c.inflight[key] = call
-	return call, true
+func (c *ResponseCache) enqueueRefresh(r *http.Request, key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc) (RefreshJobSnapshot, bool, error) {
+	return c.refresh.Enqueue(RefreshRequest{
+		ResourceKey: key,
+		ResourceURL: resourceURL(r),
+		TTL:         ttl,
+		Stale:       stale,
+		Fetch:       RefreshFetchFunc(fetch),
+		RequestID:   r.Header.Get("X-Request-Id"),
+	})
 }
 
-func (c *ResponseCache) finishFetch(key string, call *inflightFetch, resp CachedResponse) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	call.resp = resp
-	if resp.Err == nil {
-		now := c.now()
-		if resp.StatusCode == 0 {
-			resp.StatusCode = http.StatusOK
-		}
-		entry := &cacheEntry{
-			response:  resp,
-			createdAt: now,
-			expiresAt: now.Add(resp.TTL),
-			staleAt:   now.Add(resp.TTL + resp.Stale),
-			etag:      weakETag(resp.Body),
-		}
-		c.entries[key] = entry
-		c.touchLocked(key)
-		c.evictLocked()
+func (c *ResponseCache) finishRefresh(job *refreshJob, resp CachedResponse, duration time.Duration) {
+	if resp.TTL == 0 {
+		resp.TTL = job.ttl
 	}
-	delete(c.inflight, key)
-	close(call.done)
-}
-
-func (c *ResponseCache) fetchWithLimit(ctx context.Context, key string, fetch CacheFetchFunc) CachedResponse {
-	start := c.now()
-	select {
-	case c.sem <- struct{}{}:
-		defer func() { <-c.sem }()
-	case <-ctx.Done():
-		resp := CachedResponse{Err: ctx.Err(), ErrorCode: "REQUEST_CANCELLED", Message: "Request was cancelled."}
-		c.metrics.RecordScrape(key, resp.StatusCode, c.now().Sub(start), resp.Err)
-		return resp
+	if resp.Stale == 0 {
+		resp.Stale = job.stale
 	}
-	fetchCtx, cancel := context.WithTimeout(ctx, c.cfg.CacheRefreshTimeout)
-	defer cancel()
-	resp := fetch(fetchCtx)
-	c.metrics.RecordScrape(key, resp.StatusCode, c.now().Sub(start), resp.Err)
-	return resp
-}
-
-func (c *ResponseCache) refreshAsync(key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc, requestID string) {
-	call, owner := c.beginFetch(key)
-	if !owner {
+	if resp.Err != nil {
+		c.markRefreshFailed(job)
+		c.metrics.RecordScrape(job.resourceKey, resp.StatusCode, duration, resp.Err)
+		zap.S().Warnw("cache refresh failed", "requestId", job.requestID, "jobId", job.id, "key", job.resourceKey, "durationMs", duration.Milliseconds())
 		return
 	}
-	go func() {
-		resp := c.fetchWithLimit(context.Background(), key, fetch)
-		if resp.TTL == 0 {
-			resp.TTL = ttl
-		}
-		if resp.Stale == 0 {
-			resp.Stale = stale
-		}
-		c.finishFetch(key, call, resp)
-		if resp.Err != nil {
-			zap.S().Warnw("cache background refresh failed", "requestId", requestID, "key", key, "error", resp.Err)
-		}
-	}()
+	c.storeResponse(job.resourceKey, resp, RefreshJobSucceeded, job.id)
+	c.metrics.RecordScrape(job.resourceKey, resp.StatusCode, duration, nil)
 }
 
-func (c *ResponseCache) write(w http.ResponseWriter, r *http.Request, key string, entry *cacheEntry, cacheStatus string) {
+func (c *ResponseCache) storeResponse(key string, resp CachedResponse, refreshStatus RefreshJobStatus, refreshJobID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.now()
+	if resp.StatusCode == 0 {
+		resp.StatusCode = http.StatusOK
+	}
+	entry := &cacheEntry{
+		response:      resp,
+		createdAt:     now,
+		expiresAt:     now.Add(resp.TTL),
+		staleAt:       now.Add(resp.TTL + resp.Stale),
+		etag:          weakETag(resp.Body),
+		refreshStatus: refreshStatus,
+		refreshJobID:  refreshJobID,
+	}
+	c.entries[key] = entry
+	c.touchLocked(key)
+	c.evictLocked()
+}
+
+func (c *ResponseCache) markRefreshFailed(job *refreshJob) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry := c.entries[job.resourceKey]
+	if entry == nil {
+		return
+	}
+	now := c.now().UTC()
+	entry.refreshStatus = RefreshJobFailed
+	entry.refreshJobID = job.id
+	entry.refreshFailedAt = &now
+}
+
+func (c *ResponseCache) markRefreshQueued(key string, job RefreshJobSnapshot) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry := c.entries[key]
+	if entry == nil {
+		return
+	}
+	entry.refreshStatus = job.Status
+	entry.refreshJobID = job.ID
+}
+
+func (c *ResponseCache) write(w http.ResponseWriter, r *http.Request, key string, entry *cacheEntry, cacheStatus string, refreshStatus RefreshJobStatus) {
 	now := c.now()
 	if match := r.Header.Get("If-None-Match"); match != "" && match == entry.etag {
-		c.setCacheHeaders(w, entry, cacheStatus, now)
+		c.setCacheHeaders(w, entry, cacheStatus, refreshStatus, now)
 		w.WriteHeader(http.StatusNotModified)
 		c.metrics.RecordCache(key, cacheStatus, http.StatusNotModified)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	c.setCacheHeaders(w, entry, cacheStatus, now)
+	c.setCacheHeaders(w, entry, cacheStatus, refreshStatus, now)
 	w.WriteHeader(entry.response.StatusCode)
 	_, _ = w.Write(entry.response.Body)
 	c.metrics.RecordCache(key, cacheStatus, entry.response.StatusCode)
 }
 
-func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry, cacheStatus string, now time.Time) {
+func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry, cacheStatus string, refreshStatus RefreshJobStatus, now time.Time) {
 	age := int(now.Sub(entry.createdAt).Seconds())
 	if age < 0 {
 		age = 0
@@ -268,22 +267,43 @@ func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry
 	w.Header().Set("X-Cache-Fresh-Seconds", strconv.Itoa(freshSeconds))
 	w.Header().Set("X-Cache-Stale-At", entry.staleAt.UTC().Format(time.RFC3339))
 	w.Header().Set("X-Cache-Stale-Seconds", strconv.Itoa(staleSeconds))
+	w.Header().Set("X-Refresh-Status", string(refreshStatus))
+	if entry.refreshJobID != "" {
+		w.Header().Set("X-Refresh-Job-Id", entry.refreshJobID)
+	}
+	if entry.refreshFailedAt != nil {
+		w.Header().Set("X-Refresh-Failed-At", entry.refreshFailedAt.UTC().Format(time.RFC3339))
+	}
 }
 
-func (c *ResponseCache) writeFetchError(w http.ResponseWriter, r *http.Request, resp CachedResponse) {
-	code := resp.ErrorCode
-	if code == "" {
-		code = "UPSTREAM_UNAVAILABLE"
+func (c *ResponseCache) writeAccepted(w http.ResponseWriter, r *http.Request, job RefreshJobSnapshot) {
+	location := jobLocation(job.ID)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Location", location)
+	w.Header().Set("Retry-After", strconv.Itoa(job.RetryAfterSeconds))
+	w.Header().Set("X-Cache", "MISS")
+	w.Header().Set("X-Refresh-Status", string(job.Status))
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(job)
+	c.metrics.RecordCache(job.ResourceURL, "MISS", http.StatusAccepted)
+}
+
+func (c *ResponseCache) writeRefreshSaturated(w http.ResponseWriter, r *http.Request, err error) {
+	w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds(c.cfg.CacheRefreshRetryAfter)))
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Cache", "MISS")
+	w.Header().Set("X-Refresh-Status", "failed")
+	status := http.StatusServiceUnavailable
+	code := "REFRESH_QUEUE_FULL"
+	message := "Refresh capacity is temporarily exhausted. Retry after the indicated delay."
+	if errors.Is(err, ErrRefreshShutdown) {
+		code = "REFRESH_SHUTTING_DOWN"
+		message = "Refresh service is shutting down."
 	}
-	message := resp.Message
-	if message == "" {
-		message = "Workshop data is temporarily unavailable."
-	}
-	status := resp.StatusCode
-	if status == 0 {
-		status = http.StatusServiceUnavailable
-	}
+	zap.S().Warnw("refresh request rejected", "requestId", r.Header.Get("X-Request-Id"), "path", r.URL.Path, "reason", code)
 	config.WriteError(w, r, status, code, message)
+	c.metrics.RecordCache(r.URL.Path, "MISS", status)
 }
 
 func (c *ResponseCache) touchLocked(key string) {
@@ -324,6 +344,7 @@ func (c *ResponseCache) Snapshot(limit int) CacheSnapshot {
 		Entries:       len(c.entries),
 		MaxEntries:    maxEntries,
 		LatestEntries: make([]CacheInfo, 0, minInt(limit, len(c.entries))),
+		Refresh:       c.refresh.Snapshot(),
 	}
 	if limit <= 0 {
 		return out
@@ -337,6 +358,20 @@ func (c *ResponseCache) Snapshot(limit int) CacheSnapshot {
 		out.LatestEntries = append(out.LatestEntries, cacheInfo(key, entry, now))
 	}
 	return out
+}
+
+func (c *ResponseCache) RefreshJob(id string) (RefreshJobSnapshot, bool) {
+	if c == nil || c.refresh == nil {
+		return RefreshJobSnapshot{}, false
+	}
+	return c.refresh.Get(id)
+}
+
+func (c *ResponseCache) Shutdown(ctx context.Context) error {
+	if c == nil || c.refresh == nil {
+		return nil
+	}
+	return c.refresh.Shutdown(ctx)
 }
 
 func cacheInfo(key string, entry *cacheEntry, now time.Time) CacheInfo {
@@ -369,19 +404,39 @@ func cacheInfo(key string, entry *cacheEntry, now time.Time) CacheInfo {
 		FreshSeconds:  freshSeconds,
 		StaleSeconds:  staleSeconds,
 		CurrentStatus: status,
+		RefreshStatus: string(entry.refreshStatus),
+		RefreshJobID:  entry.refreshJobID,
 	}
 }
 
 func cacheControl(entry *cacheEntry, now time.Time) string {
-	maxAge := int(time.Until(entry.expiresAt).Seconds())
+	maxAge := int(entry.expiresAt.Sub(now).Seconds())
 	if maxAge < 0 {
 		maxAge = 0
 	}
-	stale := int(time.Until(entry.staleAt).Seconds())
+	stale := int(entry.staleAt.Sub(now).Seconds())
 	if stale < 0 {
 		stale = 0
 	}
-	return fmt.Sprintf("public, max-age=%d, stale-if-error=%d", maxAge, stale)
+	staleWhileRevalidate := stale
+	if now.After(entry.expiresAt) {
+		staleWhileRevalidate = 0
+	}
+	return fmt.Sprintf("public, max-age=%d, stale-while-revalidate=%d, stale-if-error=%d", maxAge, staleWhileRevalidate, stale)
+}
+
+func resourceURL(r *http.Request) string {
+	if r.URL == nil {
+		return "/"
+	}
+	if r.URL.RawQuery == "" {
+		return r.URL.Path
+	}
+	return r.URL.Path + "?" + r.URL.RawQuery
+}
+
+func jobLocation(id string) string {
+	return "/v1/refresh/jobs/" + id
 }
 
 func weakETag(body []byte) string {

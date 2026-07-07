@@ -36,14 +36,17 @@ type Config struct {
 	AnonymousRateBurst          int
 	RateLimitClientTTL          time.Duration
 
-	CacheMaxEntries      int
-	ModCacheTTL          time.Duration
-	ModCacheStale        time.Duration
-	ListCacheTTL         time.Duration
-	ListCacheStale       time.Duration
-	NotFoundCacheTTL     time.Duration
-	CacheRefreshTimeout  time.Duration
-	CacheRefreshParallel int
+	CacheMaxEntries          int
+	ModCacheTTL              time.Duration
+	ModCacheStale            time.Duration
+	ListCacheTTL             time.Duration
+	ListCacheStale           time.Duration
+	NotFoundCacheTTL         time.Duration
+	CacheRefreshTimeout      time.Duration
+	CacheRefreshParallel     int
+	CacheRefreshQueueSize    int
+	CacheRefreshJobRetention time.Duration
+	CacheRefreshRetryAfter   time.Duration
 
 	UpstreamTimeout     time.Duration
 	UpstreamRetries     int
@@ -91,14 +94,17 @@ func New() *Config {
 		AnonymousRateBurst:          envInt("ANON_RATE_BURST", 20),
 		RateLimitClientTTL:          envDuration("RATE_LIMIT_CLIENT_TTL", 10*time.Minute),
 
-		CacheMaxEntries:      envInt("CACHE_MAX_ENTRIES", 1000),
-		ModCacheTTL:          envDuration("CACHE_MOD_TTL", time.Hour),
-		ModCacheStale:        envDuration("CACHE_MOD_STALE", 24*time.Hour),
-		ListCacheTTL:         envDuration("CACHE_LIST_TTL", 10*time.Minute),
-		ListCacheStale:       envDuration("CACHE_LIST_STALE", time.Hour),
-		NotFoundCacheTTL:     envDuration("CACHE_NOT_FOUND_TTL", 10*time.Minute),
-		CacheRefreshTimeout:  envDuration("CACHE_REFRESH_TIMEOUT", 20*time.Second),
-		CacheRefreshParallel: envInt("CACHE_REFRESH_CONCURRENCY", 8),
+		CacheMaxEntries:          envInt("CACHE_MAX_ENTRIES", 1000),
+		ModCacheTTL:              envDuration("CACHE_MOD_TTL", time.Hour),
+		ModCacheStale:            envDuration("CACHE_MOD_STALE", 24*time.Hour),
+		ListCacheTTL:             envDuration("CACHE_LIST_TTL", 10*time.Minute),
+		ListCacheStale:           envDuration("CACHE_LIST_STALE", time.Hour),
+		NotFoundCacheTTL:         envDuration("CACHE_NOT_FOUND_TTL", 10*time.Minute),
+		CacheRefreshTimeout:      envDuration("CACHE_REFRESH_TIMEOUT", 20*time.Second),
+		CacheRefreshParallel:     envInt("CACHE_REFRESH_CONCURRENCY", 8),
+		CacheRefreshQueueSize:    envInt("CACHE_REFRESH_QUEUE_SIZE", 64),
+		CacheRefreshJobRetention: envDuration("CACHE_REFRESH_JOB_RETENTION", 15*time.Minute),
+		CacheRefreshRetryAfter:   envDuration("CACHE_REFRESH_RETRY_AFTER", 2*time.Second),
 
 		UpstreamTimeout:     envDuration("UPSTREAM_TIMEOUT", 15*time.Second),
 		UpstreamRetries:     envInt("UPSTREAM_RETRIES", 2),

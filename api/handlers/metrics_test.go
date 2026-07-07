@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
+	"github.com/gorilla/mux"
 )
 
 func TestInternalMetricsRequiresTokenWhenConfigured(t *testing.T) {
@@ -80,6 +83,48 @@ func TestInternalMetricsPanelServesShellWithBasicAuth(t *testing.T) {
 	}
 	if got := w.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
+}
+
+func TestRefreshJobHandlerReturnsSafeJobStatus(t *testing.T) {
+	app := App{Config: testHandlerConfig()}
+	app.Metrics = api.NewMetrics()
+	app.Cache = api.NewResponseCache(app.Config, app.Metrics)
+	release := make(chan struct{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/mods", nil)
+	recorder := httptest.NewRecorder()
+	app.Cache.Serve(recorder, req, "v1:mods:job-route", time.Minute, time.Minute, func(ctx context.Context) api.CachedResponse {
+		select {
+		case <-release:
+			return api.CachedResponse{StatusCode: http.StatusOK, Body: []byte(`{"ok":true}`)}
+		case <-ctx.Done():
+			return api.CachedResponse{Err: ctx.Err()}
+		}
+	})
+	defer close(release)
+
+	var accepted api.RefreshJobSnapshot
+	if err := json.Unmarshal(recorder.Body.Bytes(), &accepted); err != nil {
+		t.Fatalf("failed to decode accepted job: %v", err)
+	}
+	r := httptest.NewRequest(http.MethodGet, "/v1/refresh/jobs/"+accepted.ID, nil)
+	r = mux.SetURLVars(r, map[string]string{"id": accepted.ID})
+	w := httptest.NewRecorder()
+	app.RefreshJobHandler(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("job status code = %d, want 200", w.Code)
+	}
+	if w.Header().Get("Retry-After") == "" {
+		t.Fatal("running/queued job response did not include Retry-After")
+	}
+	var body api.RefreshJobSnapshot
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode job response: %v", err)
+	}
+	if body.ID != accepted.ID || body.ResourceURL != "/v1/mods" {
+		t.Fatalf("job body = %+v, want same id and resource URL", body)
 	}
 }
 

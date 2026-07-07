@@ -22,6 +22,7 @@ GET /v1/mods
 GET /v1/mods/{page}
 GET /v1/mod/{id}
 GET /v1/search?search={query}
+GET /v1/refresh/jobs/{id}
 ```
 
 Examples:
@@ -72,7 +73,16 @@ The middleware is isolated around a rate-limit identity boundary so a future API
 
 ## Cache Behavior
 
-The service uses a bounded in-memory cache for the initial deployment. It caches successful responses and short-lived not-found responses, deduplicates concurrent cache misses for the same normalized key, and can serve stale data during refresh or upstream failure within the configured stale window.
+The service uses a bounded in-memory cache and a bounded background refresh queue for the initial deployment. Public API requests do not wait for slow Workshop scrapes.
+
+Cache states:
+
+- Fresh: cached data is inside its normal TTL. The API returns `200 OK` immediately with `X-Cache: HIT`.
+- Stale but serveable: cached data is past the fresh TTL but still inside the stale-serving window. The API returns stale data immediately with `200 OK`, `X-Cache: STALE`, and queues one coalesced background refresh for that resource.
+- Cold cache: no usable cached data exists. The API queues a refresh job and returns `202 Accepted` quickly with `X-Cache: MISS`, `Location`, `Retry-After`, and a compact job body.
+- Saturated: if the refresh queue is full and no existing job can be reused, the API returns `503 Service Unavailable` with `Retry-After`.
+
+Successful `200` response bodies keep the same shape as before. The `202` response means the client should poll the job endpoint or retry the original resource URL after `Retry-After`.
 
 Defaults:
 
@@ -84,25 +94,95 @@ CACHE_LIST_STALE=1h
 CACHE_NOT_FOUND_TTL=10m
 CACHE_MAX_ENTRIES=1000
 CACHE_REFRESH_CONCURRENCY=8
+CACHE_REFRESH_QUEUE_SIZE=64
+CACHE_REFRESH_TIMEOUT=20s
+CACHE_REFRESH_JOB_RETENTION=15m
+CACHE_REFRESH_RETRY_AFTER=2s
 ```
 
 Cache keys include API version, route shape, mod ID, page, normalized search text, and sort. Search strings are normalized and capped before cache-key creation to limit cardinality.
 
-Responses include `Cache-Control`, `ETag`, and `X-Cache` (`HIT`, `MISS`, or `STALE`). Users may not see Workshop updates immediately.
+Responses include `Cache-Control`, `ETag`, and `X-Cache` (`HIT`, `MISS`, or `STALE`). Users may not see Workshop updates immediately. Public clients cannot force repeated upstream scraping; refreshes for the same normalized resource are coalesced while queued or running.
 
 Freshness is also exposed in response headers:
 
 ```text
 Age
+ETag
+Cache-Control
+Location
+Retry-After
+X-Cache
 X-Cache-Age
 X-Cache-Created-At
 X-Cache-Expires-At
 X-Cache-Fresh-Seconds
 X-Cache-Stale-At
 X-Cache-Stale-Seconds
+X-Refresh-Status
+X-Refresh-Job-Id
+X-Refresh-Failed-At
 ```
 
 `Age` and `X-Cache-Age` show how many seconds old the cached response is. `X-Cache-Expires-At` and `X-Cache-Stale-At` show when the response stops being fresh and when it stops being serveable. Public clients cannot force a cache bypass; stale entries refresh in the background where possible.
+
+`X-Refresh-Status` is `none`, `queued`, `running`, or `failed` on resource responses. `X-Refresh-Failed-At` is included when the latest refresh failed but stale data remains serveable. Raw scraper errors and upstream URLs are not exposed.
+
+Example cold-cache response:
+
+```bash
+curl -i https://api.reforgermods.net/v1/mods?search=radio
+```
+
+```http
+HTTP/1.1 202 Accepted
+Location: /v1/refresh/jobs/9f0b7d0f6fd4f88a8bb0e455f0b640247a93
+Retry-After: 2
+Cache-Control: no-store
+X-Cache: MISS
+X-Refresh-Status: queued
+```
+
+```json
+{
+  "id": "9f0b7d0f6fd4f88a8bb0e455f0b640247a93",
+  "status": "queued",
+  "resource_url": "/v1/mods?search=radio",
+  "created_at": "2026-07-07T20:00:00Z",
+  "updated_at": "2026-07-07T20:00:00Z",
+  "retry_after_seconds": 2
+}
+```
+
+Poll the job:
+
+```bash
+curl https://api.reforgermods.net/v1/refresh/jobs/9f0b7d0f6fd4f88a8bb0e455f0b640247a93
+```
+
+Then retry the original resource URL. A successful refresh does not duplicate the mod payload in the job response.
+
+Example stale response:
+
+```http
+HTTP/1.1 200 OK
+X-Cache: STALE
+X-Refresh-Status: queued
+X-Refresh-Job-Id: 9f0b7d0f6fd4f88a8bb0e455f0b640247a93
+Cache-Control: public, max-age=0, stale-while-revalidate=0, stale-if-error=3582
+```
+
+Example saturation response:
+
+```http
+HTTP/1.1 503 Service Unavailable
+Retry-After: 2
+Cache-Control: no-store
+X-Cache: MISS
+X-Refresh-Status: failed
+```
+
+Job state is in process memory. In multi-instance deployments, a job created on one instance is not visible from another unless traffic is sticky or a shared job store is added in a future release.
 
 ## Upstream Scraping
 
@@ -137,6 +217,8 @@ CACHE_MOD_TTL=1h
 CACHE_LIST_TTL=10m
 UPSTREAM_TIMEOUT=15s
 UPSTREAM_CONCURRENCY=4
+CACHE_REFRESH_CONCURRENCY=8
+CACHE_REFRESH_QUEUE_SIZE=64
 ```
 
 CORS is not permissive by default. Set `CORS_ALLOWED_ORIGINS` to a comma-separated list of browser origins that should be allowed.

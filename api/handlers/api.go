@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
@@ -78,11 +80,19 @@ func (a *App) registerAPIRoutes(router *mux.Router, deprecated bool) {
 	router.Handle("/mods", wrap(a.ModsHandler)).Methods("GET")
 	router.Handle("/mods/{page}", wrap(a.ModsByPageHandler)).Methods("GET")
 	router.Handle("/search", wrap(a.SearchHandler)).Methods("GET")
+	router.Handle("/refresh/jobs/{id}", wrap(a.RefreshJobHandler)).Methods("GET")
 }
 
 func (a *App) Initialize() {
 	// initialize api router
 	a.Router = a.New()
+}
+
+func (a *App) Shutdown(ctx context.Context) error {
+	if a.Cache == nil {
+		return nil
+	}
+	return a.Cache.Shutdown(ctx)
 }
 
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +107,26 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	_, _ = io.Writer.Write(w, b)
+}
+
+func (a *App) RefreshJobHandler(w http.ResponseWriter, r *http.Request) {
+	if a.Cache == nil {
+		config.WriteError(w, r, http.StatusNotFound, "REFRESH_JOB_NOT_FOUND", "Refresh job was not found.")
+		return
+	}
+	id := strings.TrimSpace(mux.Vars(r)["id"])
+	job, ok := a.Cache.RefreshJob(id)
+	if !ok {
+		config.WriteError(w, r, http.StatusNotFound, "REFRESH_JOB_NOT_FOUND", "Refresh job was not found.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if job.Status == api.RefreshJobQueued || job.Status == api.RefreshJobRunning {
+		w.Header().Set("Retry-After", strconv.Itoa(job.RetryAfterSeconds))
+	}
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(job)
 }
 
 func (a *App) internalMetricsHandler(w http.ResponseWriter, r *http.Request) {
