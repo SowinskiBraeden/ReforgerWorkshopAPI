@@ -225,7 +225,7 @@ func GetMod(modURL string) *models.Mod {
 }
 
 func scenarioField(raw string, label string, nextLabel string) string {
-	value, _, found := strings.Cut(raw, label)
+	_, value, found := strings.Cut(raw, label)
 	if !found {
 		return ""
 	}

@@ -7,6 +7,28 @@ import (
 	"time"
 )
 
+func TestScenarioField(t *testing.T) {
+	raw := "Scenario ID{39AB5D9094E502AA}Missions/OG_Conflict.confGame modeConflictPlayer count64"
+
+	tests := []struct {
+		label     string
+		nextLabel string
+		want      string
+	}{
+		{"Scenario ID", "Game mode", "{39AB5D9094E502AA}Missions/OG_Conflict.conf"},
+		{"Game mode", "Player count", "Conflict"},
+		{"Player count", "", "64"},
+		{"Missing", "", ""},
+	}
+
+	for _, tt := range tests {
+		got := scenarioField(raw, tt.label, tt.nextLabel)
+		if got != tt.want {
+			t.Errorf("scenarioField(%q, %q): got %q, want %q", tt.label, tt.nextLabel, got, tt.want)
+		}
+	}
+}
+
 func TestScraperHonorsContextWhenConcurrencyIsExhausted(t *testing.T) {
 	ConfigureScraper(ScraperConfig{
 		Timeout:     time.Second,
