@@ -24,6 +24,9 @@
     .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+    .scroll-card { max-height: 340px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .scroll-card.tall { max-height: 390px; }
+    .card-scroll { min-height: 0; overflow: auto; padding-right: 4px; flex: 1 1 auto; }
     .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
     .value { margin-top: 8px; font-size: 28px; font-weight: 750; line-height: 1; }
     .small { color: var(--muted); font-size: 13px; margin-top: 8px; }
@@ -38,6 +41,12 @@
     .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
     .pill { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 7px 10px; font-size: 13px; color: var(--muted); }
     .pill strong { color: var(--text); }
+    .country-list { display: grid; gap: 8px; }
+    .country-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 90px; gap: 10px; align-items: center; font-size: 13px; }
+    .country-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .country-track { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+    .country-fill { height: 100%; background: var(--accent); min-width: 2px; }
+    .country-stats { color: var(--muted); text-align: right; }
     .retention { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 16px; align-items: stretch; }
     .chart-wrap { min-height: 240px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); overflow: hidden; }
     .chart { display: block; width: 100%; height: 240px; }
@@ -69,26 +78,29 @@
       <div class="card"><div class="label">Refresh Queue</div><div class="value" id="queueNow">0</div><div class="small" id="queueDetail">0 running</div></div>
     </section>
     <section class="grid two">
-      <div class="card"><div class="section-title"><h2>Top API Clients</h2><span class="status">today</span></div><table><thead><tr><th>Client</th><th>Requests</th></tr></thead><tbody id="topClients"></tbody></table></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Top API Clients</h2><span class="status">today</span></div><div class="card-scroll"><table><thead><tr><th>Client</th><th>Requests</th></tr></thead><tbody id="topClients"></tbody></table></div></div>
       <div class="card"><div class="section-title"><h2>Traffic Sources</h2></div><div class="pill-row" id="trafficSources"></div></div>
     </section>
     <section class="grid two">
-      <div class="card"><div class="section-title"><h2>Top Endpoints</h2><span class="status">today</span></div><table><thead><tr><th>Endpoint</th><th>Group</th><th>Requests</th></tr></thead><tbody id="topEndpoints"></tbody></table></div>
-      <div class="card"><div class="section-title"><h2>Top Cache Keys</h2><span class="status">today</span></div><table><thead><tr><th>Key</th><th>Requests</th></tr></thead><tbody id="topCacheKeys"></tbody></table></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Top Endpoints</h2><span class="status">today</span></div><div class="card-scroll"><table><thead><tr><th>Endpoint</th><th>Group</th><th>Requests</th></tr></thead><tbody id="topEndpoints"></tbody></table></div></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Top Cache Keys</h2><span class="status">today</span></div><div class="card-scroll"><table><thead><tr><th>Key</th><th>Requests</th></tr></thead><tbody id="topCacheKeys"></tbody></table></div></div>
     </section>
-    <section class="card"><div class="section-title"><h2>Cache by Endpoint Group</h2></div><table><thead><tr><th>Group</th><th>Hit %</th><th>Hits</th><th>Stale</th><th>Misses</th><th>Refresh</th></tr></thead><tbody id="cacheGroups"></tbody></table></section>
     <section class="grid two">
-      <div class="card"><div class="section-title"><h2>Scrape Error Reasons</h2></div><table><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody id="scrapeReasons"></tbody></table></div>
-      <div class="card"><div class="section-title"><h2>Slow Refreshes</h2><span class="status" id="refreshAverage"></span></div><table><thead><tr><th>Resource</th><th>Status</th><th>Duration</th><th>Reason</th></tr></thead><tbody id="slowRefreshes"></tbody></table></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Country Origin</h2><span class="status">requests today</span></div><div class="card-scroll"><div class="country-list" id="countryOrigin"></div></div></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Cache by Endpoint Group</h2></div><div class="card-scroll"><table><thead><tr><th>Group</th><th>Hit %</th><th>Hits</th><th>Stale</th><th>Misses</th><th>Refresh</th></tr></thead><tbody id="cacheGroups"></tbody></table></div></div>
     </section>
-    <section class="card"><div class="section-title"><h2>Client Summaries</h2></div><table><thead><tr><th>Client</th><th>Requests</th><th>Sources</th><th>Groups</th><th>Cache</th><th>202</th><th>Errors</th></tr></thead><tbody id="clientSummaries"></tbody></table></section>
+    <section class="grid two">
+      <div class="card scroll-card"><div class="section-title"><h2>Scrape Error Reasons</h2></div><div class="card-scroll"><table><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody id="scrapeReasons"></tbody></table></div></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Slow Refreshes</h2><span class="status" id="refreshAverage"></span></div><div class="card-scroll"><table><thead><tr><th>Resource</th><th>Status</th><th>Duration</th><th>Reason</th></tr></thead><tbody id="slowRefreshes"></tbody></table></div></div>
+    </section>
+    <section class="card scroll-card tall"><div class="section-title"><h2>Client Summaries</h2></div><div class="card-scroll"><table><thead><tr><th>Client</th><th>Requests</th><th>Sources</th><th>Groups</th><th>Cache</th><th>202</th><th>Errors</th></tr></thead><tbody id="clientSummaries"></tbody></table></div></section>
     <section class="card">
       <div class="section-title"><h2>Retention</h2><span class="status" id="retentionLabel"></span></div>
       <div class="retention"><div class="chart-wrap"><svg class="chart" id="retentionChart" viewBox="0 0 800 240" preserveAspectRatio="none"></svg></div><div><div class="card"><div class="label">Total</div><div class="value" id="retentionTotal">0</div></div></div></div>
     </section>
     <section class="grid two">
-      <div class="card"><div class="section-title"><h2>Latest Cache Entries</h2><span class="status" id="entryCount"></span></div><table><thead><tr><th>Key</th><th>Status</th><th>Age</th><th>Fresh</th><th>Stale</th></tr></thead><tbody id="cacheEntries"></tbody></table></div>
-      <div class="card"><div class="section-title"><h2>Latest Scrapes</h2><span class="status" id="scrapeCount"></span></div><table><thead><tr><th>Time</th><th>Key</th><th>Duration</th><th>Status</th></tr></thead><tbody id="latestScrapes"></tbody></table></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Latest Cache Entries</h2><span class="status" id="entryCount"></span></div><div class="card-scroll"><table><thead><tr><th>Key</th><th>Status</th><th>Age</th><th>Fresh</th><th>Stale</th></tr></thead><tbody id="cacheEntries"></tbody></table></div></div>
+      <div class="card scroll-card"><div class="section-title"><h2>Latest Scrapes</h2><span class="status" id="scrapeCount"></span></div><div class="card-scroll"><table><thead><tr><th>Time</th><th>Key</th><th>Duration</th><th>Status</th></tr></thead><tbody id="latestScrapes"></tbody></table></div></div>
     </section>
     <div class="status" id="status"></div>
   </main>
@@ -121,6 +133,7 @@
       renderTraffic(data.trafficSources || {});
       rows('topEndpoints', (data.topEndpointsToday || []).map(x => [code(x.method + ' ' + x.path), esc(x.endpointGroup), fmt.format(x.requests || 0)]), 3);
       rows('topCacheKeys', (data.topCacheKeysToday || []).map(x => [code(x.key), fmt.format(x.requests || 0)]), 2);
+      renderGeography(data.geography && data.geography.countries ? data.geography.countries : []);
       rows('cacheGroups', Object.entries(data.cacheByEndpoint || {}).sort((a,b) => (b[1].total || 0) - (a[1].total || 0)).map(([k,v]) => [esc(k), Math.round(v.hitPercent || 0) + '%', fmt.format(v.hits || 0), fmt.format(v.stales || 0), fmt.format(v.misses || 0), fmt.format(v.refreshQueued || 0) + ' queued / ' + fmt.format(v.refreshFailed || 0) + ' failed']), 6);
       rows('scrapeReasons', Object.entries(data.scrapeErrorsByReason || {}).sort((a,b) => b[1]-a[1]).map(([k,v]) => [esc(k), fmt.format(v)]), 2);
       rows('slowRefreshes', (queue.slowestRecentRefreshes || []).map(x => [code(x.key), esc(x.status), fmt.format(x.durationMs || 0) + ' ms', esc(x.reason || '')]), 4);
@@ -133,6 +146,22 @@
     function renderTraffic(sources) {
       const labels = [['external','External'], ['ownPanel','Own panel'], ['internalLoopback','Loopback'], ['internal','Internal'], ['unknown','Unknown']];
       document.getElementById('trafficSources').innerHTML = labels.map(([key,label]) => '<span class="pill">' + label + ': <strong>' + fmt.format(sources[key] || 0) + '</strong></span>').join('');
+    }
+    function renderGeography(countries) {
+      const visible = (countries || []).filter(country => country && country.requests && ((country.requests.today || 0) > 0 || (country.requests.thisMonth || 0) > 0)).slice(0, 12);
+      const max = Math.max(1, ...visible.map(country => country.requests.today || 0));
+      document.getElementById('countryOrigin').innerHTML = visible.map(country => {
+        const width = Math.max(2, Math.round(((country.requests.today || 0) / max) * 100));
+        return '<div class="country-row"><div class="country-name">' + esc(countryName(country.countryCode)) + '</div><div class="country-track"><div class="country-fill" style="width:' + width + '%"></div></div><div class="country-stats">' + fmt.format(country.requests.today || 0) + ' today<br>' + fmt.format(country.uniqueClientNetworks.today || 0) + ' networks</div></div>';
+      }).join('') || '<div class="status">No country data yet.</div>';
+    }
+    function countryName(code) {
+      if (!code || code === 'ZZ') return 'Unknown';
+      try {
+        return (window.countryNames || (window.countryNames = new Intl.DisplayNames(undefined, { type: 'region' }))).of(code) || code;
+      } catch {
+        return code;
+      }
     }
     function renderRetention(data) {
       if (!data) return;
