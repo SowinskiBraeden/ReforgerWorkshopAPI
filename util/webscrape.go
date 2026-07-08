@@ -224,6 +224,19 @@ func GetMod(modURL string) *models.Mod {
 	return mod
 }
 
+func scenarioField(raw string, label string, nextLabel string) string {
+	value, _, found := strings.Cut(raw, label)
+	if !found {
+		return ""
+	}
+
+	if nextLabel != "" {
+		value, _, _ = strings.Cut(value, nextLabel)
+	}
+
+	return strings.TrimSpace(value)
+}
+
 func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
 	if err := acquireScraper(ctx); err != nil {
 		return nil, err
@@ -370,53 +383,57 @@ func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
 
 	// Mod Scenarios
 	c.OnHTML("section nav.mb-4", func(e *colly.HTMLElement) {
-		// fmt.Printf("%s\n", e.Text)
-		// This is really slow
-		if strings.Contains(e.Text, "Scenarios") {
-			var names []string
-			var descriptions []string
-			var scenarioIDs []string
-			var gamemodes []string
-			var playerCounts []int
-			var imageURLs []string
+		if !strings.Contains(e.Text, "Scenarios") {
+			return
+		}
 
-			c1 := newCollector(baseURL)
+		c1 := newCollector(baseURL)
 
-			c1.OnHTML("section div.grid article h2", func(e1 *colly.HTMLElement) {
-				names = append(names, e1.Text)
-			})
-
-			c1.OnHTML("section div.grid article p", func(e1 *colly.HTMLElement) {
-				descriptions = append(descriptions, e1.Text)
-			})
-
-			c1.OnHTML("section div.grid article div dl", func(e1 *colly.HTMLElement) {
-				scenarioID := strings.Split(strings.Split(e1.Text, "Scenario ID")[1], "Game mode")[0]
-				gamemode := strings.Split(strings.Split(e1.Text, "Game mode")[1], "Player count")[0]
-				playerCount, _ := strconv.Atoi(strings.Split(e1.Text, "Player count")[1])
-				scenarioIDs = append(scenarioIDs, scenarioID)
-				gamemodes = append(gamemodes, gamemode)
-				playerCounts = append(playerCounts, playerCount)
-			})
-
-			c1.OnHTML("section div.grid article img[src]", func(e1 *colly.HTMLElement) {
-				imageURLs = append(imageURLs, fmt.Sprintf("https://%s%s", baseURL, e1.Attr("src")))
-			})
-
-			if err := c1.Visit(fmt.Sprintf("%s/scenarios", modURL)); err != nil {
-				zap.S().Warnw("failed to scrape scenarios", "error", err)
+		c1.OnHTML("section div.grid article", func(e1 *colly.HTMLElement) {
+			scenario := models.Scenario{
+				Name:        strings.TrimSpace(e1.DOM.Find("h2").First().Text()),
+				Description: strings.TrimSpace(e1.DOM.Find("p").First().Text()),
 			}
 
-			for i := 0; i < len(names); i++ {
-				mod.Scenarios = append(mod.Scenarios, models.Scenario{
-					Name:        names[i],
-					Description: descriptions[i],
-					ScenarioID:  scenarioIDs[i],
-					Gamemode:    gamemodes[i],
-					PlayerCount: playerCounts[i],
-					ImageURL:    imageURLs[i],
-				})
+			if imageURL, exists := e1.DOM.Find("img[src]").First().Attr("src"); exists {
+				imageURL = strings.TrimSpace(imageURL)
+				if imageURL != "" {
+					scenario.ImageURL = fmt.Sprintf("https://%s%s", baseURL, imageURL)
+				}
 			}
+
+			details := strings.Join(
+				strings.Fields(e1.DOM.Find("dl").First().Text()),
+				" ",
+			)
+
+			scenario.ScenarioID = scenarioField(
+				details,
+				"Scenario ID",
+				"Game mode",
+			)
+			scenario.Gamemode = scenarioField(
+				details,
+				"Game mode",
+				"Player count",
+			)
+
+			if rawCount := scenarioField(details, "Player count", ""); rawCount != "" {
+				if count, err := strconv.Atoi(rawCount); err == nil {
+					scenario.PlayerCount = count
+				}
+			}
+
+			// Skip empty cards or changed upstream markup we cannot identify.
+			if scenario.Name == "" && scenario.ScenarioID == "" {
+				return
+			}
+
+			mod.Scenarios = append(mod.Scenarios, scenario)
+		})
+
+		if err := c1.Visit(fmt.Sprintf("%s/scenarios", modURL)); err != nil {
+			zap.S().Warnw("failed to scrape scenarios", "error", err)
 		}
 	})
 

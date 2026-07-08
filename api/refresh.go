@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -242,12 +244,49 @@ func (m *refreshManager) worker(workerID int) {
 func (m *refreshManager) runJob(workerID int, job *refreshJob) {
 	m.markRunning(job)
 	start := m.now()
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			duration := m.now().Sub(start)
+
+			resp := CachedResponse{
+				Err:       fmt.Errorf("scraper panic while refreshing resource"),
+				ErrorCode: "UPSTREAM_UNAVAILABLE",
+				Message:   "Workshop data is temporarily unavailable.",
+			}
+
+			status := m.complete(job, resp, duration)
+
+			zap.S().Errorw(
+				"refresh job panicked",
+				"requestId", job.requestID,
+				"jobId", job.id,
+				"resourceKey", job.resourceKey,
+				"status", status,
+				"worker", workerID,
+				"panic", recovered,
+				"stack", string(debug.Stack()),
+			)
+		}
+	}()
+
 	ctx, cancel := context.WithTimeout(m.ctx, m.timeout)
 	resp := job.fetch(ctx)
 	cancel()
+
 	duration := m.now().Sub(start)
 	status := m.complete(job, resp, duration)
-	zap.S().Infow("refresh job finished", "requestId", job.requestID, "jobId", job.id, "resourceKey", job.resourceKey, "status", status, "statusCode", resp.StatusCode, "durationMs", duration.Milliseconds(), "worker", workerID)
+
+	zap.S().Infow(
+		"refresh job finished",
+		"requestId", job.requestID,
+		"jobId", job.id,
+		"resourceKey", job.resourceKey,
+		"status", status,
+		"statusCode", resp.StatusCode,
+		"durationMs", duration.Milliseconds(),
+		"worker", workerID,
+	)
 }
 
 func (m *refreshManager) markRunning(job *refreshJob) {
