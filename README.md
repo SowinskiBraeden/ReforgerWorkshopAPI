@@ -1,12 +1,18 @@
 # Reforger Mods API
 
-Reforger Mods API is a read-only API for discovering Arma Reforger Workshop mod metadata without making every downstream client scrape the public Workshop page directly.
+Reforger Mods API is an unofficial, read-only API and public documentation site for working with Arma Reforger Workshop mod metadata without making every downstream client scrape the public Workshop page directly.
 
 This is a Cedarline product and an independent, unofficial project. It is not affiliated with or endorsed by Bohemia Interactive. Data is normalized and cached from publicly accessible Arma Reforger Workshop pages at `reforger.armaplatform.com/workshop`; upstream availability, fields, layout, sorting, and rate limits may change without notice.
 
 Do not treat this API as an authoritative source for ownership, entitlement, moderation, identity, or platform account data. Cached responses may be stale by design. Permanent API stability is not guaranteed until versioned endpoints are explicitly stabilized.
 
 ## Current API
+
+Public site and documentation:
+
+```text
+https://reforgermods.net
+```
 
 Public API base URL:
 
@@ -204,8 +210,11 @@ Copy `.env.example` to `.env` for local development.
 Important variables:
 
 ```text
-PORT=8000
+BIND_ADDRESS=0.0.0.0:8000
 FULL_URL=https://api.reforgermods.net
+PUBLIC_BASE_URL=https://reforgermods.net
+API_BASE_URL=https://api.reforgermods.net
+PUBLIC_CANONICAL_REDIRECTS=true
 LOG_DIR=logs
 LOG_TO_STDOUT=true
 LOG_RETENTION_DAYS=14
@@ -220,6 +229,8 @@ UPSTREAM_CONCURRENCY=4
 CACHE_REFRESH_CONCURRENCY=8
 CACHE_REFRESH_QUEUE_SIZE=64
 ```
+
+`FULL_URL` is retained as the legacy API origin fallback. New deployments should set `PUBLIC_BASE_URL` for public pages, canonical links, robots.txt, and sitemap.xml, and `API_BASE_URL` for machine API examples and generated API links. Set `PUBLIC_CANONICAL_REDIRECTS=true` only when the reverse proxy sends the original host and both public and API hostnames are routed correctly. Canonical redirects are applied only to public HTML routes, not API JSON routes.
 
 CORS is not permissive by default. Set `CORS_ALLOWED_ORIGINS` to a comma-separated list of browser origins that should be allowed.
 
@@ -268,6 +279,8 @@ ln -sfn /opt/reforgermods-api/releases/<release> /opt/reforgermods-api/current
 sudo systemctl restart reforger-mods-api
 ```
 
+The Dockerfile copies `static/` into the runtime image. Server-rendered public pages are compiled into the Go binary and reference lightweight static CSS and icon assets from that directory.
+
 ## Local Development
 
 ```bash
@@ -300,7 +313,16 @@ Recommended topology:
 Internet -> Cloudflare -> Nginx/Caddy on the host -> Reforger Mods API on a private port
 ```
 
+Preferred hostname split:
+
+```text
+https://reforgermods.net      -> public site and documentation
+https://api.reforgermods.net  -> machine API endpoints
+```
+
 Bind the Go service privately where possible and expose only the reverse proxy publicly. Do not expose debug, profiling, metrics, or future admin/cache-purge endpoints publicly by default. No persistent storage is used by the current in-memory cache, so there is no backup requirement for cache data.
+
+Public pages are served by the Go application at `/`, `/arma-reforger-mods/`, `/arma-reforger-mods-api/`, `/docs/`, `/docs/mod-structures/`, `/docs/methodology/`, `/docs/changelog/`, `/privacy/`, and `/terms/`. API endpoints include `X-Robots-Tag: noindex, nofollow, noarchive` so raw JSON does not compete with documentation pages in search results.
 
 Health behavior:
 
@@ -311,6 +333,8 @@ GET /v1/health
 The health endpoint verifies the API process is alive. It does not scrape the Workshop and does not prove upstream availability.
 
 The server uses read, write, idle, and read-header timeouts and shuts down gracefully on SIGINT/SIGTERM.
+
+See [deploy/README.md](/home/flami/Projects/ReforgerWorkshopAPI/deploy/README.md) for the launch checklist, reverse-proxy notes, sitemap validation, and manual Search Console steps.
 
 ## Footer Attribution
 

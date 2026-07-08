@@ -1,0 +1,22 @@
+[Unit]
+Description=Reforger Mods API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=reforgermods
+Group=reforgermods
+WorkingDirectory=/opt/reforgermods-api/current
+EnvironmentFile=/etc/reforgermods-api.env
+ExecStart=/opt/reforgermods-api/current/reforgermods-api
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/reforgermods-api /var/lib/reforgermods-api
+
+[Install]
+WantedBy=multi-user.target

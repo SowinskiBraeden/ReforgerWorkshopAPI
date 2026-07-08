@@ -1,8 +1,13 @@
 var u = new URL(window.location.href);
 var d = u.searchParams.get('page');
+var defaultPage = document.body ? document.body.getAttribute('data-default-page') : '';
 var a = '';
-var navKey = d || 'home';
-var siteUrl = 'https://reforgermods.net/';
+var navKey = d || defaultPage || document.body?.getAttribute('data-nav-key') || 'home';
+var siteUrl = (document.body && document.body.getAttribute('data-site-url')) || 'https://reforgermods.net/';
+if (siteUrl.charAt(siteUrl.length - 1) !== '/') {
+  siteUrl += '/';
+}
+var apiBaseUrl = (document.body && document.body.getAttribute('data-api-base-url')) || 'https://api.reforgermods.net';
 var pageMeta = {
   home: {
     title: 'Arma Reforger Mods API & Workshop Data | Reforger Mods API',
@@ -36,14 +41,16 @@ var pageMeta = {
   }
 };
 var meta = pageMeta[navKey] || pageMeta.home;
-document.title = meta.title;
-setMeta('description', meta.description);
-setMeta('og:title', meta.title, true);
-setMeta('og:description', meta.description, true);
-setMeta('og:url', meta.canonical, true);
-setMeta('twitter:title', meta.title);
-setMeta('twitter:description', meta.description);
-setCanonical(meta.canonical);
+if (d) {
+  document.title = meta.title;
+  setMeta('description', meta.description);
+  setMeta('og:title', meta.title, true);
+  setMeta('og:description', meta.description, true);
+  setMeta('og:url', meta.canonical, true);
+  setMeta('twitter:title', meta.title);
+  setMeta('twitter:description', meta.description);
+  setCanonical(meta.canonical);
+}
 
 document.querySelectorAll('[data-nav-page]').forEach(function(link) {
   if (link.getAttribute('data-nav-page') === navKey) {
@@ -51,7 +58,12 @@ document.querySelectorAll('[data-nav-page]').forEach(function(link) {
   }
 });
 try { document.querySelector('a[href="?page='+d+'"] button').classList.add('docs-nav-active'); } catch {}
-if(d) { a = './static/pages/'+d+'.md' } else { a = './static/pages/Documentation.md' }
+if(d) { a = '/static/pages/'+d+'.md' } else if (defaultPage) { a = '/static/pages/'+defaultPage+'.md' }
+if (!a) {
+  document.querySelectorAll('code').forEach(function(code) {
+    code.innerHTML = code.innerHTML.replaceAll('https://api.reforgermods.net', apiBaseUrl);
+  });
+} else {
 fetch(a)
   .then(b => {
     if (!b.ok) {
@@ -73,6 +85,7 @@ fetch(a)
       window.location="?page=Error"
     }
   });
+}
 
 function setMeta(name, content, property) {
   var selector = property ? 'meta[property="' + name + '"]' : 'meta[name="' + name + '"]';

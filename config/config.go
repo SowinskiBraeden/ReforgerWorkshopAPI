@@ -20,9 +20,12 @@ import (
 
 // Config holds the project config values
 type Config struct {
-	BaseURL     string
-	FullURL     string
-	BindAddress string
+	BaseURL                  string
+	FullURL                  string
+	PublicBaseURL            string
+	APIBaseURL               string
+	PublicCanonicalRedirects bool
+	BindAddress              string
 
 	LogDir      string
 	LogToStdout bool
@@ -81,10 +84,17 @@ func New() *Config {
 	}
 	_ = zap.ReplaceGlobals(logger)
 
+	fullURL := strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/")
+	apiBaseURL := strings.TrimRight(envString("API_BASE_URL", fullURL), "/")
+	publicBaseURL := strings.TrimRight(envString("PUBLIC_BASE_URL", fullURL), "/")
+
 	cfg := &Config{
-		BaseURL:     envString("BASE_URL", "localhost"),
-		FullURL:     strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/"),
-		BindAddress: envString("BIND_ADDRESS", "0.0.0.0:8000"),
+		BaseURL:                  envString("BASE_URL", "localhost"),
+		FullURL:                  apiBaseURL,
+		PublicBaseURL:            publicBaseURL,
+		APIBaseURL:               apiBaseURL,
+		PublicCanonicalRedirects: envBool("PUBLIC_CANONICAL_REDIRECTS", false),
+		BindAddress:              envString("BIND_ADDRESS", "0.0.0.0:8000"),
 
 		LogDir:      envString("LOG_DIR", "logs"),
 		LogToStdout: envBool("LOG_TO_STDOUT", true),
@@ -136,7 +146,8 @@ func GetFullURL() string {
 		return current.FullURL
 	}
 	_ = godotenv.Load()
-	return strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/")
+	fullURL := strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/")
+	return strings.TrimRight(envString("API_BASE_URL", fullURL), "/")
 }
 
 // ErrorStatus is a useful function that will log, write http headers and body for a

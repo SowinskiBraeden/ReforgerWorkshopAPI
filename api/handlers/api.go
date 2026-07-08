@@ -33,25 +33,35 @@ func (a *App) New() *mux.Router {
 
 	router := mux.NewRouter()
 
-	// apiCreate := r.PathPrefix("/api").Subrouter()
-
 	// Serve static files
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+	router.PathPrefix("/static/").Handler(staticFileHandler())
 
 	router.HandleFunc("/ads.txt", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/ads.txt")
 	})
-	router.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/robots.txt")
-	})
-	router.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/sitemap.xml")
-	})
-
-	// Serve index page on all unhandled routes
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/index.html")
-	})
+	router.HandleFunc("/robots.txt", a.serveRobots).Methods("GET", "HEAD")
+	router.HandleFunc("/sitemap.xml", a.serveSitemap).Methods("GET", "HEAD")
+	router.HandleFunc("/", a.servePublicPage("home")).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods/", a.servePublicPage("mods")).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods", a.servePublicPage("mods")).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods-api/", a.servePublicPage("api")).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods-api", a.servePublicPage("api")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/", a.servePublicPage("docs")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs", a.servePublicPage("docs")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mod-structures/", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mod-structures", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mods/", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mods", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/methodology/", a.servePublicPage("methodology")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/methodology", a.servePublicPage("methodology")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/changelog/", a.servePublicPage("changelog")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/changelog", a.servePublicPage("changelog")).Methods("GET", "HEAD")
+	router.HandleFunc("/changelog/", a.servePublicPage("changelog")).Methods("GET", "HEAD")
+	router.HandleFunc("/changelog", a.servePublicPage("changelog")).Methods("GET", "HEAD")
+	router.HandleFunc("/privacy/", a.servePublicPage("privacy")).Methods("GET", "HEAD")
+	router.HandleFunc("/privacy", a.servePublicPage("privacy")).Methods("GET", "HEAD")
+	router.HandleFunc("/terms/", a.servePublicPage("terms")).Methods("GET", "HEAD")
+	router.HandleFunc("/terms", a.servePublicPage("terms")).Methods("GET", "HEAD")
 
 	a.Metrics = api.NewMetrics()
 
@@ -87,6 +97,7 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/internal/metrics/panel", a.internalMetricsPanelHandler).Methods("GET")
 	v1.HandleFunc("/internal/metrics", a.internalMetricsHandler).Methods("GET")
 	v1.HandleFunc("/internal/metrics/panel", a.internalMetricsPanelHandler).Methods("GET")
+	router.NotFoundHandler = http.HandlerFunc(a.serveNotFound)
 
 	return router
 }
@@ -165,6 +176,7 @@ func (a *App) RefreshJobHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) internalMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 	if !a.Config.InternalMetricsEnabled {
 		config.WriteError(w, r, http.StatusNotFound, "NOT_FOUND", "Not found.")
 		return
@@ -183,6 +195,7 @@ func (a *App) internalMetricsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) internalMetricsPanelHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 	if !a.Config.InternalMetricsEnabled {
 		config.WriteError(w, r, http.StatusNotFound, "NOT_FOUND", "Not found.")
 		return

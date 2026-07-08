@@ -77,6 +77,7 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		countryCode := ""
 		r.Header.Set("X-Request-Id", requestID)
 		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		recorder.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 		recorder.Header().Set("X-Request-Id", requestID)
 		defer func() {
 			latency := time.Since(start)
