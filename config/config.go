@@ -56,8 +56,10 @@ type Config struct {
 	UpstreamConcurrency int
 	UpstreamUserAgent   string
 
-	InternalMetricsEnabled bool
-	InternalMetricsToken   string
+	InternalMetricsEnabled   bool
+	InternalMetricsToken     string
+	MetricsOwnClientPatterns []string
+	MetricsInternalCIDRs     string
 
 	MetricsPersistenceEnabled bool
 	MetricsStatePath          string
@@ -127,6 +129,11 @@ func New() *Config {
 
 		InternalMetricsEnabled: envBool("INTERNAL_METRICS_ENABLED", true),
 		InternalMetricsToken:   strings.TrimSpace(os.Getenv("INTERNAL_METRICS_TOKEN")),
+		MetricsOwnClientPatterns: envCSVWithDefault(
+			"METRICS_OWN_CLIENT_PATTERNS",
+			[]string{"node", "ReforgerPanel", "DZRPanel"},
+		),
+		MetricsInternalCIDRs: envString("METRICS_INTERNAL_CIDRS", "127.0.0.1/32,::1/128"),
 
 		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", false),
 		MetricsStatePath:          envString("METRICS_STATE_PATH", ""),
@@ -317,4 +324,12 @@ func envCSV(key string) []string {
 		}
 	}
 	return out
+}
+
+func envCSVWithDefault(key string, fallback []string) []string {
+	values := envCSV(key)
+	if len(values) == 0 {
+		return append([]string(nil), fallback...)
+	}
+	return values
 }

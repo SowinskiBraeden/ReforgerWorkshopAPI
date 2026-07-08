@@ -21,13 +21,14 @@ import (
 type CacheFetchFunc func(context.Context) CachedResponse
 
 type CachedResponse struct {
-	StatusCode int
-	Body       []byte
-	TTL        time.Duration
-	Stale      time.Duration
-	Err        error
-	ErrorCode  string
-	Message    string
+	StatusCode     int
+	Body           []byte
+	TTL            time.Duration
+	Stale          time.Duration
+	Err            error
+	ErrorCode      string
+	Message        string
+	PanicRecovered bool
 }
 
 type ResponseCache struct {
@@ -132,7 +133,7 @@ func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string
 		c.writeRefreshSaturated(w, r, err)
 		return
 	}
-	c.writeAccepted(w, r, job)
+	c.writeAccepted(w, r, key, job)
 	zap.S().Infow("cache miss accepted for background refresh", "requestId", r.Header.Get("X-Request-Id"), "key", key, "jobId", job.ID, "refreshStatus", job.Status)
 }
 
@@ -175,12 +176,18 @@ func (c *ResponseCache) finishRefresh(job *refreshJob, resp CachedResponse, dura
 	}
 	if resp.Err != nil {
 		c.markRefreshFailed(job)
-		c.metrics.RecordScrape(job.resourceKey, resp.StatusCode, duration, resp.Err)
+		reason := ClassifyScrapeError(resp.Err, resp.StatusCode)
+		if resp.PanicRecovered {
+			reason = "panic_recovered"
+		}
+		c.metrics.RecordScrapeResult(job.resourceKey, resp.StatusCode, duration, resp.Err, reason)
+		c.metrics.RecordRefreshCompletion(job.resourceKey, RefreshJobFailed, duration, reason, resp.PanicRecovered)
 		zap.S().Warnw("cache refresh failed", "requestId", job.requestID, "jobId", job.id, "key", job.resourceKey, "durationMs", duration.Milliseconds())
 		return
 	}
 	c.storeResponse(job.resourceKey, resp, RefreshJobSucceeded, job.id)
-	c.metrics.RecordScrape(job.resourceKey, resp.StatusCode, duration, nil)
+	c.metrics.RecordScrapeResult(job.resourceKey, resp.StatusCode, duration, nil, "")
+	c.metrics.RecordRefreshCompletion(job.resourceKey, RefreshJobSucceeded, duration, "", false)
 }
 
 func (c *ResponseCache) storeResponse(key string, resp CachedResponse, refreshStatus RefreshJobStatus, refreshJobID string) {
@@ -276,7 +283,7 @@ func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry
 	}
 }
 
-func (c *ResponseCache) writeAccepted(w http.ResponseWriter, r *http.Request, job RefreshJobSnapshot) {
+func (c *ResponseCache) writeAccepted(w http.ResponseWriter, r *http.Request, key string, job RefreshJobSnapshot) {
 	location := jobLocation(job.ID)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -286,7 +293,7 @@ func (c *ResponseCache) writeAccepted(w http.ResponseWriter, r *http.Request, jo
 	w.Header().Set("X-Refresh-Status", string(job.Status))
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(job)
-	c.metrics.RecordCache(job.ResourceURL, "MISS", http.StatusAccepted)
+	c.metrics.RecordCache(key, "MISS", http.StatusAccepted)
 }
 
 func (c *ResponseCache) writeRefreshSaturated(w http.ResponseWriter, r *http.Request, err error) {

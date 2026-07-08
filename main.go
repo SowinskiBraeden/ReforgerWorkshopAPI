@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const version string = "1.1.1"
+const version string = "1.1.2"
 
 func main() {
 	a := handlers.App{}

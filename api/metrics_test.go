@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -168,3 +171,140 @@ func TestMetricsTracksCacheAndScrapes(t *testing.T) {
 		t.Fatalf("cache entries = %d latest=%d, want 1 latest entry", snapshot.Cache.Entries, len(snapshot.Cache.LatestEntries))
 	}
 }
+
+func TestNormalizeUserAgent(t *testing.T) {
+	cases := map[string]string{
+		"GATZSteamModPlugin/1.0 (+https://gatzgamehosting.com)": "GATZSteamModPlugin/1.0",
+		"node":                                 "node",
+		"curl/8.21.0":                          "curl/8.21.0",
+		"Mozilla/5.0 Chrome/120 Safari/537.36": "browser",
+		"":                                     "unknown",
+	}
+	for raw, want := range cases {
+		if got := NormalizeUserAgent(raw); got != want {
+			t.Fatalf("NormalizeUserAgent(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
+func TestEndpointNormalizationAndGrouping(t *testing.T) {
+	if got := NormalizeEndpointPath("/v1/mod/5965550F24A0C152"); got != "/v1/mod/{id}" {
+		t.Fatalf("normalized mod path = %q", got)
+	}
+	if got := NormalizeEndpointPath("/v1/mods/12"); got != "/v1/mods/{page}" {
+		t.Fatalf("normalized mods page path = %q", got)
+	}
+	if got := EndpointGroupForRequest("/v1/mods", "search=radio&sort=newest"); got != "search" {
+		t.Fatalf("search group = %q", got)
+	}
+	if got := EndpointGroupForCacheKey("v1:mod:5965550F24A0C152"); got != "mod_detail" {
+		t.Fatalf("cache group = %q", got)
+	}
+}
+
+func TestMetricsAcceptedFlowAndClientSummaries(t *testing.T) {
+	metrics := NewMetrics()
+	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
+	metrics.now = func() time.Time { return now }
+	metrics.mu.Lock()
+	metrics.resetRequestWindowsLocked(now)
+	metrics.mu.Unlock()
+
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration: 50 * time.Millisecond, ClientIP: "203.0.113.10", CountryCode: "US",
+		UserAgent: "GATZSteamModPlugin/1.0 (+https://gatzgamehosting.com)", Source: TrafficSourceExternal,
+		Method: "GET", Path: "/v1/mods", RawQuery: "search=radio", StatusCode: http.StatusAccepted, CacheStatus: "MISS",
+	})
+	metrics.RecordCache("v1:mods:1:radio:newest", "MISS", http.StatusAccepted)
+	metrics.RecordRefreshCompletion("v1:mods:1:radio:newest", RefreshJobSucceeded, 420*time.Millisecond, "", false)
+	metrics.RecordCache("v1:mods:1:radio:newest", "HIT", http.StatusOK)
+
+	snapshot := metrics.Snapshot(nil)
+	if snapshot.AcceptedFlow.Accepted != 1 || snapshot.AcceptedFlow.Succeeded != 1 || snapshot.AcceptedFlow.LaterHit != 1 {
+		t.Fatalf("accepted flow = %+v, want accepted/succeeded/laterHit", snapshot.AcceptedFlow)
+	}
+	if len(snapshot.Clients.TopUserAgentsToday) != 1 || snapshot.Clients.TopUserAgentsToday[0].Name != "GATZSteamModPlugin/1.0" {
+		t.Fatalf("clients = %+v, want GATZ", snapshot.Clients.TopUserAgentsToday)
+	}
+	if snapshot.TrafficSources.External != 1 {
+		t.Fatalf("traffic sources = %+v, want external=1", snapshot.TrafficSources)
+	}
+	if len(snapshot.ClientSummaries) != 1 || snapshot.ClientSummaries[0].Accepted202 != 1 {
+		t.Fatalf("client summaries = %+v, want accepted202", snapshot.ClientSummaries)
+	}
+	if snapshot.CacheByEndpoint["search"].Misses != 1 || snapshot.CacheByEndpoint["search"].Hits != 1 {
+		t.Fatalf("cache by endpoint = %+v, want search hit/miss", snapshot.CacheByEndpoint)
+	}
+}
+
+func TestScrapeErrorReasonClassification(t *testing.T) {
+	if got := ClassifyScrapeError(context.DeadlineExceeded, 0); got != "upstream_timeout" {
+		t.Fatalf("deadline reason = %q", got)
+	}
+	if got := ClassifyScrapeError(nil, http.StatusNotFound); got != "not_found" {
+		t.Fatalf("404 reason = %q", got)
+	}
+	if got := ClassifyScrapeError(assertErr("strconv.Atoi: parsing broken"), 0); got != "parser_error" {
+		t.Fatalf("parser reason = %q", got)
+	}
+	metrics := NewMetrics()
+	metrics.RecordScrapeResult("v1:mods:1", 0, time.Millisecond, assertErr("scraper panic while refreshing resource"), "panic_recovered")
+	snapshot := metrics.Snapshot(nil)
+	if snapshot.ScrapeErrorsByReason["panic_recovered"] != 1 {
+		t.Fatalf("scrape reasons = %+v, want panic_recovered", snapshot.ScrapeErrorsByReason)
+	}
+}
+
+func TestMetricsPrunesTrackedClients(t *testing.T) {
+	metrics := NewMetrics()
+	for i := 0; i < metricsMaxTrackedClients+20; i++ {
+		metrics.RecordRequestMetric(RequestMetricDetails{UserAgent: "client-" + strconv.Itoa(i), Source: TrafficSourceExternal, Method: "GET", Path: "/v1/health", StatusCode: http.StatusOK})
+	}
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
+	if len(metrics.userAgents) > metricsMaxTrackedClients {
+		t.Fatalf("tracked clients = %d, want <= %d", len(metrics.userAgents), metricsMaxTrackedClients)
+	}
+}
+
+func TestMetricsStoreLoadsOldStateWithoutNewFields(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "metrics.json")
+	oldState := `{
+		"version": 1,
+		"savedAt": "2026-07-08T00:00:00Z",
+		"totalRequests": 7,
+		"requestDayKey": "2026-07-08",
+		"requestsToday": 7,
+		"requestWeekKey": "2026-W28",
+		"requestsThisWeek": 7,
+		"requestMonthKey": "2026-07",
+		"requestsThisMonth": 7,
+		"cacheHits": 2,
+		"cacheMisses": 3,
+		"cacheStales": 1
+	}`
+	if err := os.WriteFile(path, []byte(oldState), 0600); err != nil {
+		t.Fatalf("write old state: %v", err)
+	}
+	store, err := NewMetricsStore(path, time.Second)
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	metrics := NewMetrics()
+	metrics.now = func() time.Time { return time.Date(2026, 7, 8, 1, 0, 0, 0, time.UTC) }
+	if err := store.Load(metrics); err != nil {
+		t.Fatalf("load old state: %v", err)
+	}
+	snapshot := metrics.Snapshot(nil)
+	if snapshot.Requests.Total != 7 || snapshot.Cache.Hits != 2 {
+		t.Fatalf("snapshot = %+v, want old totals restored", snapshot)
+	}
+	if snapshot.Clients.TopUserAgentsToday == nil {
+		t.Fatal("new client metrics should default to an empty slice/map, not crash")
+	}
+}
+
+type assertErr string
+
+func (e assertErr) Error() string { return string(e) }

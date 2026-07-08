@@ -244,12 +244,28 @@ type metricsPersistentState struct {
 	ScrapeErrors   uint64 `json:"scrapeErrors"`
 	ScrapeTimeouts uint64 `json:"scrapeTimeouts"`
 
-	RefreshCreated      uint64 `json:"refreshCreated"`
-	RefreshDeduplicated uint64 `json:"refreshDeduplicated"`
-	RefreshSucceeded    uint64 `json:"refreshSucceeded"`
-	RefreshFailed       uint64 `json:"refreshFailed"`
-	RefreshExpired      uint64 `json:"refreshExpired"`
-	RefreshRejected     uint64 `json:"refreshRejected"`
+	RefreshCreated            uint64                `json:"refreshCreated"`
+	RefreshDeduplicated       uint64                `json:"refreshDeduplicated"`
+	RefreshSucceeded          uint64                `json:"refreshSucceeded"`
+	RefreshFailed             uint64                `json:"refreshFailed"`
+	RefreshExpired            uint64                `json:"refreshExpired"`
+	RefreshRejected           uint64                `json:"refreshRejected"`
+	RefreshCompletedToday     uint64                `json:"refreshCompletedToday"`
+	RefreshFailedToday        uint64                `json:"refreshFailedToday"`
+	RefreshPanicToday         uint64                `json:"refreshPanicToday"`
+	RefreshDurationTotalNanos int64                 `json:"refreshDurationTotalNanos"`
+	RefreshDurationCount      uint64                `json:"refreshDurationCount"`
+	RefreshDurationsMs        []int64               `json:"refreshDurationsMs"`
+	SlowestRefreshes          []RefreshEventSummary `json:"slowestRefreshes"`
+
+	AcceptedFlow         persistentAcceptedFlowState              `json:"acceptedFlow"`
+	UserAgents           map[string]persistentWindowCounter       `json:"userAgents"`
+	TrafficSources       map[string]uint64                        `json:"trafficSources"`
+	Endpoints            map[string]persistentEndpointMetricState `json:"endpoints"`
+	CacheByEndpoint      map[string]persistentCacheGroupState     `json:"cacheByEndpoint"`
+	CacheKeys            map[string]persistentCacheKeyMetricState `json:"cacheKeys"`
+	ClientSummaries      map[string]persistentClientMetricState   `json:"clientSummaries"`
+	ScrapeErrorsByReason map[string]uint64                        `json:"scrapeErrorsByReason"`
 
 	LatestCaches  []MetricEvent `json:"latestCaches"`
 	LatestScrapes []MetricEvent `json:"latestScrapes"`
@@ -258,6 +274,62 @@ type metricsPersistentState struct {
 	HourBuckets  map[string]persistentMetricBucketState   `json:"hourBuckets"`
 	DayBuckets   map[string]persistentMetricBucketState   `json:"dayBuckets"`
 	MonthBuckets map[string]persistentMetricBucketState   `json:"monthBuckets"`
+}
+
+type persistentWindowCounter struct {
+	Total     uint64 `json:"total"`
+	Today     uint64 `json:"today"`
+	ThisWeek  uint64 `json:"thisWeek"`
+	ThisMonth uint64 `json:"thisMonth"`
+}
+
+type persistentEndpointMetricState struct {
+	Method string                  `json:"method"`
+	Path   string                  `json:"path"`
+	Group  string                  `json:"group"`
+	Counts persistentWindowCounter `json:"counts"`
+}
+
+type persistentCacheGroupState struct {
+	Hits          uint64 `json:"hits"`
+	Misses        uint64 `json:"misses"`
+	Stales        uint64 `json:"stales"`
+	RefreshQueued uint64 `json:"refreshQueued"`
+	RefreshFailed uint64 `json:"refreshFailed"`
+}
+
+type persistentCacheKeyMetricState struct {
+	Key    string                  `json:"key"`
+	Counts persistentWindowCounter `json:"counts"`
+}
+
+type persistentClientMetricState struct {
+	Name           string                  `json:"name"`
+	Counts         persistentWindowCounter `json:"counts"`
+	LastSeen       time.Time               `json:"lastSeen"`
+	Countries      map[string]uint64       `json:"countries"`
+	Sources        map[string]uint64       `json:"sources"`
+	EndpointGroups map[string]uint64       `json:"endpointGroups"`
+	Cache          CacheRollup             `json:"cache"`
+	Accepted202    uint64                  `json:"accepted202"`
+	Errors         uint64                  `json:"errors"`
+}
+
+type persistentAcceptedFlowState struct {
+	Accepted       uint64                                     `json:"accepted"`
+	Succeeded      uint64                                     `json:"succeeded"`
+	Failed         uint64                                     `json:"failed"`
+	Expired        uint64                                     `json:"expired"`
+	PanicRecovered uint64                                     `json:"panicRecovered"`
+	LaterHit       uint64                                     `json:"laterHit"`
+	Resources      map[string]persistentAcceptedResourceState `json:"resources"`
+}
+
+type persistentAcceptedResourceState struct {
+	Key      string    `json:"key"`
+	Created  time.Time `json:"created"`
+	Resolved bool      `json:"resolved"`
+	LaterHit bool      `json:"laterHit"`
 }
 
 type persistentLocationMetricState struct {
@@ -341,12 +413,27 @@ func (m *Metrics) persistentState() metricsPersistentState {
 		ScrapeErrors:   m.scrapeErrors,
 		ScrapeTimeouts: m.scrapeTimeouts,
 
-		RefreshCreated:      m.refreshCreated,
-		RefreshDeduplicated: m.refreshDeduplicated,
-		RefreshSucceeded:    m.refreshSucceeded,
-		RefreshFailed:       m.refreshFailed,
-		RefreshExpired:      m.refreshExpired,
-		RefreshRejected:     m.refreshRejected,
+		RefreshCreated:            m.refreshCreated,
+		RefreshDeduplicated:       m.refreshDeduplicated,
+		RefreshSucceeded:          m.refreshSucceeded,
+		RefreshFailed:             m.refreshFailed,
+		RefreshExpired:            m.refreshExpired,
+		RefreshRejected:           m.refreshRejected,
+		RefreshCompletedToday:     m.refreshCompletedToday,
+		RefreshFailedToday:        m.refreshFailedToday,
+		RefreshPanicToday:         m.refreshPanicToday,
+		RefreshDurationTotalNanos: int64(m.refreshDurationTotal),
+		RefreshDurationCount:      m.refreshDurationCount,
+		RefreshDurationsMs:        append([]int64(nil), m.refreshDurationsMs...),
+		SlowestRefreshes:          cloneRefreshEvents(m.slowestRefreshes),
+		AcceptedFlow:              persistentAcceptedFlow(m.acceptedFlow),
+		UserAgents:                persistentWindowCounters(m.userAgents),
+		TrafficSources:            cloneStringUint64Map(m.trafficSources),
+		Endpoints:                 persistentEndpoints(m.endpoints),
+		CacheByEndpoint:           persistentCacheGroups(m.cacheByEndpoint),
+		CacheKeys:                 persistentCacheKeys(m.cacheKeys),
+		ClientSummaries:           persistentClientSummaries(m.clientSummaries),
+		ScrapeErrorsByReason:      cloneStringUint64Map(m.scrapeErrorsByReason),
 
 		LatestCaches:  cloneMetricEvents(m.latestCaches),
 		LatestScrapes: cloneMetricEvents(m.latestScrapes),
@@ -404,6 +491,27 @@ func (m *Metrics) restorePersistentState(state metricsPersistentState) {
 	m.refreshFailed = state.RefreshFailed
 	m.refreshExpired = state.RefreshExpired
 	m.refreshRejected = state.RefreshRejected
+	m.refreshCompletedToday = state.RefreshCompletedToday
+	m.refreshFailedToday = state.RefreshFailedToday
+	m.refreshPanicToday = state.RefreshPanicToday
+	m.refreshDurationTotal = time.Duration(state.RefreshDurationTotalNanos)
+	m.refreshDurationCount = state.RefreshDurationCount
+	m.refreshDurationsMs = append([]int64(nil), state.RefreshDurationsMs...)
+	if len(m.refreshDurationsMs) > metricsRecentRefreshesLimit {
+		m.refreshDurationsMs = m.refreshDurationsMs[len(m.refreshDurationsMs)-metricsRecentRefreshesLimit:]
+	}
+	m.slowestRefreshes = cloneRefreshEvents(state.SlowestRefreshes)
+	if len(m.slowestRefreshes) > metricsSlowRefreshesLimit {
+		m.slowestRefreshes = m.slowestRefreshes[:metricsSlowRefreshesLimit]
+	}
+	m.acceptedFlow = restoreAcceptedFlow(state.AcceptedFlow)
+	m.userAgents = restoreWindowCounters(state.UserAgents)
+	m.trafficSources = cloneStringUint64Map(state.TrafficSources)
+	m.endpoints = restoreEndpoints(state.Endpoints)
+	m.cacheByEndpoint = restoreCacheGroups(state.CacheByEndpoint)
+	m.cacheKeys = restoreCacheKeys(state.CacheKeys)
+	m.clientSummaries = restoreClientSummaries(state.ClientSummaries)
+	m.scrapeErrorsByReason = cloneStringUint64Map(state.ScrapeErrorsByReason)
 
 	// Live values belong to the new process and must not survive restart.
 	m.refreshQueueDepth = 0
@@ -541,6 +649,156 @@ func restoreRollup(stored persistentMetricRollup) metricRollup {
 		scrapes:      stored.Scrapes,
 		scrapeErrors: stored.ScrapeErrors,
 	}
+}
+
+func persistentWindowCounters(in map[string]*windowCounter) map[string]persistentWindowCounter {
+	out := make(map[string]persistentWindowCounter, len(in))
+	for key, counter := range in {
+		if counter != nil {
+			out[key] = persistentWindowCounter{
+				Total: counter.total, Today: counter.today, ThisWeek: counter.thisWeek, ThisMonth: counter.thisMonth,
+			}
+		}
+	}
+	return out
+}
+
+func restoreWindowCounters(in map[string]persistentWindowCounter) map[string]*windowCounter {
+	out := make(map[string]*windowCounter, len(in))
+	for key, counter := range in {
+		key = sanitizeMetricKey(key, "unknown", 100)
+		out[key] = &windowCounter{total: counter.Total, today: counter.Today, thisWeek: counter.ThisWeek, thisMonth: counter.ThisMonth}
+	}
+	pruneWindowCounters(out, metricsMaxTrackedClients)
+	return out
+}
+
+func persistentEndpoints(in map[string]*endpointMetricState) map[string]persistentEndpointMetricState {
+	out := make(map[string]persistentEndpointMetricState, len(in))
+	for key, endpoint := range in {
+		if endpoint != nil {
+			out[key] = persistentEndpointMetricState{
+				Method: endpoint.method, Path: endpoint.path, Group: endpoint.group, Counts: persistentCounter(endpoint.counts),
+			}
+		}
+	}
+	return out
+}
+
+func restoreEndpoints(in map[string]persistentEndpointMetricState) map[string]*endpointMetricState {
+	out := make(map[string]*endpointMetricState, len(in))
+	for key, endpoint := range in {
+		out[key] = &endpointMetricState{
+			method: endpoint.Method, path: endpoint.Path, group: endpoint.Group, counts: restoreCounter(endpoint.Counts),
+		}
+	}
+	pruneEndpoints(out, metricsMaxTrackedEndpoints)
+	return out
+}
+
+func persistentCacheGroups(in map[string]*cacheGroupState) map[string]persistentCacheGroupState {
+	out := make(map[string]persistentCacheGroupState, len(in))
+	for key, group := range in {
+		if group != nil {
+			out[key] = persistentCacheGroupState{Hits: group.hits, Misses: group.misses, Stales: group.stales, RefreshQueued: group.refreshQueued, RefreshFailed: group.refreshFailed}
+		}
+	}
+	return out
+}
+
+func restoreCacheGroups(in map[string]persistentCacheGroupState) map[string]*cacheGroupState {
+	out := make(map[string]*cacheGroupState, len(in))
+	for key, group := range in {
+		out[key] = &cacheGroupState{hits: group.Hits, misses: group.Misses, stales: group.Stales, refreshQueued: group.RefreshQueued, refreshFailed: group.RefreshFailed}
+	}
+	return out
+}
+
+func persistentCacheKeys(in map[string]*cacheKeyMetricState) map[string]persistentCacheKeyMetricState {
+	out := make(map[string]persistentCacheKeyMetricState, len(in))
+	for key, value := range in {
+		if value != nil {
+			out[key] = persistentCacheKeyMetricState{Key: value.key, Counts: persistentCounter(value.counts)}
+		}
+	}
+	return out
+}
+
+func restoreCacheKeys(in map[string]persistentCacheKeyMetricState) map[string]*cacheKeyMetricState {
+	out := make(map[string]*cacheKeyMetricState, len(in))
+	for key, value := range in {
+		displayKey := NormalizeCacheMetricKey(value.Key)
+		if displayKey == "" || displayKey == "unknown" {
+			displayKey = NormalizeCacheMetricKey(key)
+		}
+		out[key] = &cacheKeyMetricState{key: displayKey, counts: restoreCounter(value.Counts)}
+	}
+	pruneCacheKeys(out, metricsMaxTrackedCacheKeys)
+	return out
+}
+
+func persistentClientSummaries(in map[string]*clientMetricState) map[string]persistentClientMetricState {
+	out := make(map[string]persistentClientMetricState, len(in))
+	for key, client := range in {
+		if client != nil {
+			out[key] = persistentClientMetricState{
+				Name: client.name, Counts: persistentCounter(client.counts), LastSeen: client.lastSeen.UTC(),
+				Countries: cloneStringUint64Map(client.countries), Sources: cloneStringUint64Map(client.sources), EndpointGroups: cloneStringUint64Map(client.endpointGroups),
+				Cache: client.cache, Accepted202: client.accepted202, Errors: client.errors,
+			}
+		}
+	}
+	return out
+}
+
+func restoreClientSummaries(in map[string]persistentClientMetricState) map[string]*clientMetricState {
+	out := make(map[string]*clientMetricState, len(in))
+	for key, client := range in {
+		name := NormalizeUserAgent(client.Name)
+		if name == "unknown" {
+			name = NormalizeUserAgent(key)
+		}
+		out[name] = &clientMetricState{
+			name: name, counts: restoreCounter(client.Counts), lastSeen: client.LastSeen.UTC(),
+			countries: cloneStringUint64Map(client.Countries), sources: cloneStringUint64Map(client.Sources), endpointGroups: cloneStringUint64Map(client.EndpointGroups),
+			cache: client.Cache, accepted202: client.Accepted202, errors: client.Errors,
+		}
+	}
+	pruneClients(out, metricsMaxTrackedClients)
+	return out
+}
+
+func persistentAcceptedFlow(in acceptedFlowState) persistentAcceptedFlowState {
+	out := persistentAcceptedFlowState{
+		Accepted: in.accepted, Succeeded: in.succeeded, Failed: in.failed, Expired: in.expired, PanicRecovered: in.panicRecovered, LaterHit: in.laterHit,
+		Resources: make(map[string]persistentAcceptedResourceState, len(in.resources)),
+	}
+	for key, resource := range in.resources {
+		if resource != nil {
+			out.Resources[key] = persistentAcceptedResourceState{Key: resource.key, Created: resource.created.UTC(), Resolved: resource.resolved, LaterHit: resource.laterHit}
+		}
+	}
+	return out
+}
+
+func restoreAcceptedFlow(in persistentAcceptedFlowState) acceptedFlowState {
+	out := acceptedFlowState{
+		accepted: in.Accepted, succeeded: in.Succeeded, failed: in.Failed, expired: in.Expired, panicRecovered: in.PanicRecovered, laterHit: in.LaterHit,
+		resources: make(map[string]*acceptedResourceState, len(in.Resources)),
+	}
+	for key, resource := range in.Resources {
+		out.resources[key] = &acceptedResourceState{key: resource.Key, created: resource.Created.UTC(), resolved: resource.Resolved, laterHit: resource.LaterHit}
+	}
+	pruneAcceptedResources(out.resources, metricsMaxTrackedCacheKeys)
+	return out
+}
+
+func persistentCounter(counter windowCounter) persistentWindowCounter {
+	return persistentWindowCounter{Total: counter.total, Today: counter.today, ThisWeek: counter.thisWeek, ThisMonth: counter.thisMonth}
+}
+
+func restoreCounter(counter persistentWindowCounter) windowCounter {
+	return windowCounter{total: counter.Total, today: counter.Today, thisWeek: counter.ThisWeek, thisMonth: counter.ThisMonth}
 }
 
 func fingerprintSetToSlice(values map[string]struct{}) []string {

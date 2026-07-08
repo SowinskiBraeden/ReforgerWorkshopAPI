@@ -250,9 +250,10 @@ func (m *refreshManager) runJob(workerID int, job *refreshJob) {
 			duration := m.now().Sub(start)
 
 			resp := CachedResponse{
-				Err:       fmt.Errorf("scraper panic while refreshing resource"),
-				ErrorCode: "UPSTREAM_UNAVAILABLE",
-				Message:   "Workshop data is temporarily unavailable.",
+				Err:            fmt.Errorf("scraper panic while refreshing resource"),
+				ErrorCode:      "UPSTREAM_UNAVAILABLE",
+				Message:        "Workshop data is temporarily unavailable.",
+				PanicRecovered: true,
 			}
 
 			status := m.complete(job, resp, duration)
@@ -395,6 +396,7 @@ func (m *refreshManager) snapshotLocked(job *refreshJob) RefreshJobSnapshot {
 func (m *refreshManager) recordRefreshMetricLocked(event string) {
 	if m.metrics != nil {
 		m.metrics.RecordRefreshEvent(event, len(m.queue), m.active)
+		m.metrics.RecordRefreshSnapshot(len(m.queue), cap(m.queue), m.active, m.workers)
 	}
 }
 

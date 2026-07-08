@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Internal Metrics | Reforger Mods API</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/reforger-mods-favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/assets/reforger-mods-favicon-64.png">
+  <link rel="apple-touch-icon" href="/static/assets/reforger-mods-favicon-256.png">
+  <style>
+    :root { color-scheme: dark; --bg: #0b1118; --panel: #111a24; --panel-2: #162231; --text: #e8eef5; --muted: #8fa2b7; --line: #253446; --accent: #26c29a; --warn: #f4b860; --bad: #ff6b6b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    header { position: sticky; top: 0; z-index: 1; background: rgba(11, 17, 24, .92); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+    .wrap { max-width: 1380px; margin: 0 auto; padding: 20px; }
+    .top { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .sub { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button { height: 36px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0 10px; }
+    button { cursor: pointer; background: var(--accent); border-color: var(--accent); color: #06120f; font-weight: 700; }
+    main.wrap { display: grid; gap: 18px; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+    .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .value { margin-top: 8px; font-size: 28px; font-weight: 750; line-height: 1; }
+    .small { color: var(--muted); font-size: 13px; margin-top: 8px; }
+    .section-title { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    code { color: var(--accent); word-break: break-all; }
+    .status { color: var(--muted); font-size: 13px; }
+    .error { color: var(--bad); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 7px 10px; font-size: 13px; color: var(--muted); }
+    .pill strong { color: var(--text); }
+    .retention { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 16px; align-items: stretch; }
+    .chart-wrap { min-height: 240px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); overflow: hidden; }
+    .chart { display: block; width: 100%; height: 240px; }
+    .chart-grid { stroke: rgba(143, 162, 183, .18); stroke-width: 1; }
+    .chart-axis { fill: var(--muted); font-size: 11px; }
+    .chart-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-dot { fill: var(--panel-2); stroke: var(--accent); stroke-width: 2; }
+    @media (max-width: 1000px) { .grid, .grid.two, .grid.three, .retention { grid-template-columns: 1fr; } .top { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <div>
+        <h1>Internal Metrics</h1>
+        <div class="sub" id="meta">Loading metrics...</div>
+      </div>
+      <div class="controls">
+        <select id="window"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option></select>
+        <button id="refresh">Refresh</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="grid">
+      <div class="card"><div class="label">Requests Today</div><div class="value" id="requestsToday">0</div><div class="small" id="requestsTotal">0 total</div></div>
+      <div class="card"><div class="label">Cache Hit Rate</div><div class="value" id="cacheRate">0%</div><div class="small" id="cacheCounts">0 hits / 0 misses / 0 stale</div></div>
+      <div class="card"><div class="label">202 Flow</div><div class="value" id="acceptedCount">0</div><div class="small" id="acceptedDetail">0 succeeded / 0 failed</div></div>
+      <div class="card"><div class="label">Refresh Queue</div><div class="value" id="queueNow">0</div><div class="small" id="queueDetail">0 running</div></div>
+    </section>
+    <section class="grid two">
+      <div class="card"><div class="section-title"><h2>Top API Clients</h2><span class="status">today</span></div><table><thead><tr><th>Client</th><th>Requests</th></tr></thead><tbody id="topClients"></tbody></table></div>
+      <div class="card"><div class="section-title"><h2>Traffic Sources</h2></div><div class="pill-row" id="trafficSources"></div></div>
+    </section>
+    <section class="grid two">
+      <div class="card"><div class="section-title"><h2>Top Endpoints</h2><span class="status">today</span></div><table><thead><tr><th>Endpoint</th><th>Group</th><th>Requests</th></tr></thead><tbody id="topEndpoints"></tbody></table></div>
+      <div class="card"><div class="section-title"><h2>Top Cache Keys</h2><span class="status">today</span></div><table><thead><tr><th>Key</th><th>Requests</th></tr></thead><tbody id="topCacheKeys"></tbody></table></div>
+    </section>
+    <section class="card"><div class="section-title"><h2>Cache by Endpoint Group</h2></div><table><thead><tr><th>Group</th><th>Hit %</th><th>Hits</th><th>Stale</th><th>Misses</th><th>Refresh</th></tr></thead><tbody id="cacheGroups"></tbody></table></section>
+    <section class="grid two">
+      <div class="card"><div class="section-title"><h2>Scrape Error Reasons</h2></div><table><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody id="scrapeReasons"></tbody></table></div>
+      <div class="card"><div class="section-title"><h2>Slow Refreshes</h2><span class="status" id="refreshAverage"></span></div><table><thead><tr><th>Resource</th><th>Status</th><th>Duration</th><th>Reason</th></tr></thead><tbody id="slowRefreshes"></tbody></table></div>
+    </section>
+    <section class="card"><div class="section-title"><h2>Client Summaries</h2></div><table><thead><tr><th>Client</th><th>Requests</th><th>Sources</th><th>Groups</th><th>Cache</th><th>202</th><th>Errors</th></tr></thead><tbody id="clientSummaries"></tbody></table></section>
+    <section class="card">
+      <div class="section-title"><h2>Retention</h2><span class="status" id="retentionLabel"></span></div>
+      <div class="retention"><div class="chart-wrap"><svg class="chart" id="retentionChart" viewBox="0 0 800 240" preserveAspectRatio="none"></svg></div><div><div class="card"><div class="label">Total</div><div class="value" id="retentionTotal">0</div></div></div></div>
+    </section>
+    <section class="grid two">
+      <div class="card"><div class="section-title"><h2>Latest Cache Entries</h2><span class="status" id="entryCount"></span></div><table><thead><tr><th>Key</th><th>Status</th><th>Age</th><th>Fresh</th><th>Stale</th></tr></thead><tbody id="cacheEntries"></tbody></table></div>
+      <div class="card"><div class="section-title"><h2>Latest Scrapes</h2><span class="status" id="scrapeCount"></span></div><table><thead><tr><th>Time</th><th>Key</th><th>Duration</th><th>Status</th></tr></thead><tbody id="latestScrapes"></tbody></table></div>
+    </section>
+    <div class="status" id="status"></div>
+  </main>
+  <script>
+    const fmt = new Intl.NumberFormat();
+    const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' });
+    document.getElementById('refresh').addEventListener('click', load);
+    document.getElementById('window').addEventListener('change', () => renderRetention(window.latestMetrics));
+    async function load() {
+      const res = await fetch('/internal/metrics', { cache: 'no-store', credentials: 'same-origin' });
+      if (!res.ok) { document.getElementById('status').innerHTML = '<span class="error">Metrics request failed: ' + res.status + '</span>'; return; }
+      window.latestMetrics = await res.json();
+      render(window.latestMetrics);
+    }
+    function render(data) {
+      document.getElementById('meta').textContent = 'Generated ' + new Date(data.generatedAt).toLocaleString() + ' · uptime ' + fmt.format(data.uptimeSeconds) + 's';
+      document.getElementById('requestsToday').textContent = fmt.format(data.requests.today || 0);
+      document.getElementById('requestsTotal').textContent = fmt.format(data.requests.total || 0) + ' total · ' + fmt.format(data.requests.thisWeek || 0) + ' week';
+      const cacheTotal = Math.max(1, (data.cache.hits || 0) + (data.cache.misses || 0) + (data.cache.stales || 0));
+      document.getElementById('cacheRate').textContent = Math.round(((data.cache.hits || 0) + (data.cache.stales || 0)) / cacheTotal * 100) + '%';
+      document.getElementById('cacheCounts').textContent = fmt.format(data.cache.hits || 0) + ' hits / ' + fmt.format(data.cache.misses || 0) + ' misses / ' + fmt.format(data.cache.stales || 0) + ' stale';
+      const accepted = data.acceptedFlow || {};
+      document.getElementById('acceptedCount').textContent = fmt.format(accepted.accepted || 0);
+      document.getElementById('acceptedDetail').textContent = fmt.format(accepted.succeeded || 0) + ' succeeded / ' + fmt.format(accepted.failed || 0) + ' failed / ' + fmt.format(accepted.laterHit || 0) + ' later HIT';
+      const queue = data.refreshQueue || {};
+      document.getElementById('queueNow').textContent = fmt.format(queue.queuedNow || 0);
+      document.getElementById('queueDetail').textContent = fmt.format(queue.runningNow || 0) + ' running · ' + fmt.format(queue.workers || 0) + ' workers · cap ' + fmt.format(queue.queueCapacity || 0);
+      document.getElementById('refreshAverage').textContent = Math.round(queue.averageRefreshMs || 0) + ' ms avg · p95 ' + fmt.format(queue.p95RefreshMs || 0) + ' ms';
+      rows('topClients', (data.clients && data.clients.topUserAgentsToday || []).map(x => [code(x.name), fmt.format(x.requests || 0)]), 2);
+      renderTraffic(data.trafficSources || {});
+      rows('topEndpoints', (data.topEndpointsToday || []).map(x => [code(x.method + ' ' + x.path), esc(x.endpointGroup), fmt.format(x.requests || 0)]), 3);
+      rows('topCacheKeys', (data.topCacheKeysToday || []).map(x => [code(x.key), fmt.format(x.requests || 0)]), 2);
+      rows('cacheGroups', Object.entries(data.cacheByEndpoint || {}).sort((a,b) => (b[1].total || 0) - (a[1].total || 0)).map(([k,v]) => [esc(k), Math.round(v.hitPercent || 0) + '%', fmt.format(v.hits || 0), fmt.format(v.stales || 0), fmt.format(v.misses || 0), fmt.format(v.refreshQueued || 0) + ' queued / ' + fmt.format(v.refreshFailed || 0) + ' failed']), 6);
+      rows('scrapeReasons', Object.entries(data.scrapeErrorsByReason || {}).sort((a,b) => b[1]-a[1]).map(([k,v]) => [esc(k), fmt.format(v)]), 2);
+      rows('slowRefreshes', (queue.slowestRecentRefreshes || []).map(x => [code(x.key), esc(x.status), fmt.format(x.durationMs || 0) + ' ms', esc(x.reason || '')]), 4);
+      rows('clientSummaries', (data.clientSummaries || []).map(c => [code(c.name), fmt.format(c.requestsToday || 0), compactMap(c.sources), compactMap(c.endpointGroups), fmt.format(c.cache?.hits || 0) + '/' + fmt.format(c.cache?.misses || 0) + '/' + fmt.format(c.cache?.stales || 0), fmt.format(c.accepted202 || 0), fmt.format(c.errors || 0)]), 7);
+      renderRetention(data);
+      renderCacheEntries(data.cache.latestEntries || []);
+      renderScrapes(data.scrapes.latestEvents || []);
+      document.getElementById('status').textContent = '';
+    }
+    function renderTraffic(sources) {
+      const labels = [['external','External'], ['ownPanel','Own panel'], ['internalLoopback','Loopback'], ['internal','Internal'], ['unknown','Unknown']];
+      document.getElementById('trafficSources').innerHTML = labels.map(([key,label]) => '<span class="pill">' + label + ': <strong>' + fmt.format(sources[key] || 0) + '</strong></span>').join('');
+    }
+    function renderRetention(data) {
+      if (!data) return;
+      const view = data.retention[document.getElementById('window').value];
+      const buckets = view.buckets || [];
+      const values = buckets.map(b => Number(b.requests || 0));
+      const total = values.reduce((sum, value) => sum + value, 0);
+      const peak = Math.max(1, ...values);
+      document.getElementById('retentionLabel').textContent = view.window + ' · ' + view.bucketSize + ' buckets';
+      document.getElementById('retentionTotal').textContent = fmt.format(total);
+      const svg = document.getElementById('retentionChart');
+      if (!buckets.length) { svg.innerHTML = '<text x="400" y="124" text-anchor="middle" class="chart-axis">No retained requests yet.</text>'; return; }
+      const width = 800, height = 240, pad = {top:18,right:22,bottom:34,left:50}, iw = width-pad.left-pad.right, ih = height-pad.top-pad.bottom;
+      const x = i => pad.left + (buckets.length === 1 ? iw/2 : i/(buckets.length-1)*iw), y = v => pad.top + ih - Number(v || 0)/peak*ih;
+      const pts = buckets.map((b,i) => [x(i), y(b.requests), b.requests || 0]);
+      const path = pts.map((p,i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+      const grid = [0,.5,1].map(step => { const gy = pad.top + ih - step*ih; return '<line class="chart-grid" x1="'+pad.left+'" y1="'+gy+'" x2="'+(width-pad.right)+'" y2="'+gy+'"></line><text class="chart-axis" x="12" y="'+(gy+4)+'">'+fmt.format(Math.round(peak*step))+'</text>'; }).join('');
+      svg.innerHTML = grid + '<path class="chart-line" d="' + path + '"></path>' + pts.filter(p => p[2] > 0).map(p => '<circle class="chart-dot" cx="'+p[0]+'" cy="'+p[1]+'" r="4"></circle>').join('');
+    }
+    function renderCacheEntries(entries) { document.getElementById('entryCount').textContent = fmt.format(entries.length) + ' shown'; rows('cacheEntries', entries.map(e => [code(e.key), esc(e.currentStatus), (e.ageSeconds || 0) + 's', (e.freshSeconds || 0) + 's', (e.staleSeconds || 0) + 's']), 5); }
+    function renderScrapes(events) { document.getElementById('scrapeCount').textContent = fmt.format(events.length) + ' shown'; rows('latestScrapes', events.map(e => [timeFmt.format(new Date(e.at)), code(e.key || ''), (e.durationMs || 0) + ' ms', e.error ? '<span class="error">' + esc(e.error) + '</span>' : esc(e.statusCode || 'ok')]), 4); }
+    function rows(id, data, cols) { document.getElementById(id).innerHTML = data.map(row => '<tr>' + row.map(cell => '<td>' + cell + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="' + cols + '">No data yet.</td></tr>'; }
+    function compactMap(map) { return Object.entries(map || {}).sort((a,b) => b[1]-a[1]).slice(0,3).map(([k,v]) => esc(k) + ':' + fmt.format(v)).join('<br>') || ''; }
+    function code(value) { return '<code>' + esc(value) + '</code>'; }
+    function esc(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c])); }
+    load();
+    setInterval(load, 30000);
+  </script>
+</body>
+</html>

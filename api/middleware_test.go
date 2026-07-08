@@ -83,6 +83,29 @@ func TestCountryCodeIgnoresSpoofedHeadersFromUntrustedRemote(t *testing.T) {
 	}
 }
 
+func TestTrafficSourceClassification(t *testing.T) {
+	cfg := testConfig()
+	cfg.MetricsOwnClientPatterns = []string{"ReforgerPanel"}
+	cfg.MetricsInternalCIDRs = "10.0.0.0/8,127.0.0.1/32,::1/128"
+	m := NewMiddleware(cfg)
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	if got := m.TrafficSource(r, "127.0.0.1"); got != TrafficSourceInternalLoopback {
+		t.Fatalf("loopback source = %q, want %q", got, TrafficSourceInternalLoopback)
+	}
+	if got := m.TrafficSource(r, "10.1.2.3"); got != TrafficSourceInternal {
+		t.Fatalf("internal source = %q, want %q", got, TrafficSourceInternal)
+	}
+	r.Header.Set("User-Agent", "ReforgerPanel/1.0")
+	if got := m.TrafficSource(r, "203.0.113.10"); got != TrafficSourceOwnPanel {
+		t.Fatalf("own-panel source = %q, want %q", got, TrafficSourceOwnPanel)
+	}
+	r.Header.Set("User-Agent", "curl/8.21.0")
+	if got := m.TrafficSource(r, "8.8.8.8"); got != TrafficSourceExternal {
+		t.Fatalf("external source = %q, want %q", got, TrafficSourceExternal)
+	}
+}
+
 func TestMiddlewareReturnsRequestIDHeader(t *testing.T) {
 	cfg := testConfig()
 	m := NewMiddleware(cfg)

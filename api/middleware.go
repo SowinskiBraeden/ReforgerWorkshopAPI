@@ -27,12 +27,14 @@ type MiddlewareConfig struct {
 }
 
 type MiddlewareChain struct {
-	cfg              config.Config
-	metrics          *Metrics
-	identityResolver IdentityResolver
-	trustedProxies   []*net.IPNet
-	clients          map[string]*rateClient
-	mu               sync.Mutex
+	cfg               config.Config
+	metrics           *Metrics
+	identityResolver  IdentityResolver
+	trustedProxies    []*net.IPNet
+	internalCIDRs     []*net.IPNet
+	ownClientPatterns []string
+	clients           map[string]*rateClient
+	mu                sync.Mutex
 }
 
 type rateClient struct {
@@ -48,10 +50,12 @@ func NewMiddleware(cfg config.Config, metrics ...*Metrics) *MiddlewareChain {
 		collector = metrics[0]
 	}
 	m := &MiddlewareChain{
-		cfg:            cfg,
-		metrics:        collector,
-		trustedProxies: parseTrustedProxies(cfg.TrustedProxyCIDRs),
-		clients:        make(map[string]*rateClient),
+		cfg:               cfg,
+		metrics:           collector,
+		trustedProxies:    parseTrustedProxies(cfg.TrustedProxyCIDRs),
+		internalCIDRs:     parseTrustedProxies(cfg.MetricsInternalCIDRs),
+		ownClientPatterns: normalizeClientPatterns(cfg.MetricsOwnClientPatterns),
+		clients:           make(map[string]*rateClient),
 	}
 	m.identityResolver = func(_ *http.Request, clientIP string) RateIdentity {
 		return RateIdentity{
@@ -87,7 +91,19 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 			if countryCode == "" {
 				countryCode = m.CountryCode(r)
 			}
-			m.metrics.RecordRequestDetails(latency, clientIP, countryCode)
+			m.metrics.RecordRequestMetric(RequestMetricDetails{
+				Duration:      latency,
+				ClientIP:      clientIP,
+				CountryCode:   countryCode,
+				UserAgent:     r.UserAgent(),
+				Source:        m.TrafficSource(r, clientIP),
+				Method:        r.Method,
+				Path:          r.URL.Path,
+				RawQuery:      r.URL.RawQuery,
+				StatusCode:    recorder.statusCode,
+				CacheStatus:   recorder.Header().Get("X-Cache"),
+				EndpointGroup: EndpointGroupForRequest(r.URL.Path, r.URL.RawQuery),
+			})
 			zap.S().Infow("request completed",
 				"requestId", requestID,
 				"clientIP", clientIP,
@@ -187,6 +203,55 @@ func (m *MiddlewareChain) CountryCode(r *http.Request) string {
 		return "ZZ"
 	}
 	return requestCountryCodeFromHeaders(r)
+}
+
+func (m *MiddlewareChain) TrafficSource(r *http.Request, clientIP string) string {
+	if userAgentMatches(r.UserAgent(), m.ownClientPatterns) {
+		return TrafficSourceOwnPanel
+	}
+	ip := net.ParseIP(strings.TrimSpace(clientIP))
+	if ip == nil {
+		return TrafficSourceUnknown
+	}
+	if ip.IsLoopback() {
+		return TrafficSourceInternalLoopback
+	}
+	for _, cidr := range m.internalCIDRs {
+		if cidr.Contains(ip) {
+			if ip.IsLoopback() {
+				return TrafficSourceInternalLoopback
+			}
+			return TrafficSourceInternal
+		}
+	}
+	if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return TrafficSourceInternal
+	}
+	return TrafficSourceExternal
+}
+
+func normalizeClientPatterns(patterns []string) []string {
+	out := make([]string, 0, len(patterns))
+	for _, pattern := range patterns {
+		pattern = strings.ToLower(strings.TrimSpace(pattern))
+		if pattern != "" {
+			out = append(out, pattern)
+		}
+	}
+	return out
+}
+
+func userAgentMatches(userAgent string, patterns []string) bool {
+	userAgent = strings.ToLower(strings.TrimSpace(userAgent))
+	if userAgent == "" {
+		return false
+	}
+	for _, pattern := range patterns {
+		if pattern != "" && strings.Contains(userAgent, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 func requestCountryCodeFromHeaders(r *http.Request) string {
