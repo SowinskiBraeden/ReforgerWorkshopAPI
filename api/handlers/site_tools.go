@@ -20,6 +20,7 @@ var toolPages = []publicPage{
 		Title:       "Arma Reforger Mods | Workshop Mod Browser",
 		Description: "Search Arma Reforger Workshop mods, view details and dependencies, copy mod IDs, and add mods to a server config.json with a free mod browser.",
 		H1:          "Arma Reforger Mod Browser",
+		Keywords:    []string{"Arma Reforger mods", "Arma Reforger Workshop browser", "Reforger mod search", "Workshop mod dependencies", "Arma Reforger mod IDs", "config.json mods"},
 		ChangeFreq:  "daily",
 		Priority:    "0.9",
 		ToolName:    "Arma Reforger Mod Browser",
@@ -51,6 +52,7 @@ var toolPages = []publicPage{
 		Title:       "Arma Reforger config.json Validator | Reforger Mods API",
 		Description: "Validate an Arma Reforger server config.json in your browser. Catch JSON syntax errors, invalid ports, duplicate mod IDs, and malformed mods entries before starting your server.",
 		H1:          "Arma Reforger config.json Validator",
+		Keywords:    []string{"Arma Reforger config validator", "config.json validator", "Arma Reforger server config", "Reforger JSON validator", "Arma Reforger mod ID validation"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.9",
 		ToolName:    "Arma Reforger Config Validator",
@@ -78,6 +80,7 @@ var toolPages = []publicPage{
 		Title:       "Arma Reforger Config Generator | Server config.json Builder",
 		Description: "Build an Arma Reforger server config.json with a form-based editor, a managed mods list, live JSON preview, validation, and export. Free and browser-based.",
 		H1:          "Arma Reforger Server Config Generator",
+		Keywords:    []string{"Arma Reforger config generator", "Arma Reforger config.json builder", "server config generator", "Reforger config editor", "Arma Reforger server tools"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.9",
 		ToolName:    "Arma Reforger Config Generator",
@@ -105,6 +108,7 @@ var toolPages = []publicPage{
 		Title:       "Arma Reforger Mod Manager | Edit the config.json Mods List",
 		Description: "Manage the mods array of an Arma Reforger server config.json. Add mods by ID, resolve names from the Workshop, reorder and remove entries, and export the result.",
 		H1:          "Arma Reforger Mod Manager",
+		Keywords:    []string{"Arma Reforger mod manager", "config.json mods manager", "Arma Reforger dependencies", "Workshop mod list editor", "Reforger server mods"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.85",
 		ToolName:    "Arma Reforger Mod Manager",
@@ -132,6 +136,7 @@ var toolPages = []publicPage{
 		Title:       "Reforger Mods API Quickstart | Arma Reforger Workshop Data API",
 		Description: "Get started with the Reforger Mods API in minutes. Base URL, mod search and detail endpoints, 202 Accepted handling, and copy-paste examples in curl and Python.",
 		H1:          "Reforger Mods API Quickstart",
+		Keywords:    []string{"Reforger Mods API quickstart", "Arma Reforger API", "Workshop data API", "Arma Reforger mod search API", "202 Accepted refresh jobs"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.9",
 		FullWidth:   true,
@@ -179,6 +184,7 @@ func (a *App) serveModDetailPage(w http.ResponseWriter, r *http.Request) {
 		Title:       "Arma Reforger Mod " + id + " | Reforger Mods API",
 		Description: "Details for Arma Reforger Workshop mod " + id + ": author, version, size, dependencies, scenarios, and a ready-to-copy config.json mods entry.",
 		H1:          "Arma Reforger Mod " + id,
+		Keywords:    []string{"Arma Reforger mod " + id, "Workshop mod details", "Arma Reforger mod dependencies", "config.json mod entry"},
 		FullWidth:   true,
 		Content:     modDetailContent(id),
 		Scripts:     []string{"/static/tools/common.js", "/static/tools/mod-detail.js"},
@@ -208,6 +214,19 @@ const modBrowserHTML = htmltemplate.HTML(`<h1>Arma Reforger Mod Browser</h1>
 <div class="tool-panel" id="mod-browser">
   <form id="mb-form" class="tool-toolbar" role="search">
     <input id="mb-search" class="form-control" type="search" placeholder="Search Workshop mods by name..." aria-label="Search mods" autocomplete="off" maxlength="120">
+    <select id="mb-category" class="form-select" aria-label="Filter by category">
+      <option value="">All categories</option>
+      <option value="MISC">Miscellaneous</option>
+      <option value="GAMEPLAY">Gameplay</option>
+      <option value="WEAPON">Weapons</option>
+      <option value="VEHICLE">Vehicles</option>
+      <option value="TERRAIN">Maps / terrain</option>
+      <option value="EQUIPMENT">Equipment</option>
+      <option value="FACTION">Factions</option>
+      <option value="SCENARIO">Scenarios</option>
+      <option value="AI">AI</option>
+      <option value="AUDIO">Audio</option>
+    </select>
     <select id="mb-sort" class="form-select" aria-label="Sort order">
       <option value="">Workshop default</option>
       <option value="popularity">Most popular</option>
@@ -215,6 +234,10 @@ const modBrowserHTML = htmltemplate.HTML(`<h1>Arma Reforger Mod Browser</h1>
       <option value="subscribers">Most subscribers</option>
       <option value="version_size">Version size</option>
     </select>
+    <div class="btn-group mb-view-toggle" role="group" aria-label="Result view">
+      <button id="mb-view-card" class="btn btn-outline-secondary active" type="button" data-view="card" aria-pressed="true" title="Card view"><i class="bi bi-grid-3x3-gap"></i></button>
+      <button id="mb-view-list" class="btn btn-outline-secondary" type="button" data-view="list" aria-pressed="false" title="List view"><i class="bi bi-list-ul"></i></button>
+    </div>
     <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search</button>
   </form>
   <div id="mb-status" class="tool-status" role="status"></div>
@@ -224,7 +247,7 @@ const modBrowserHTML = htmltemplate.HTML(`<h1>Arma Reforger Mod Browser</h1>
 </div>
 <h2>What you can do here</h2>
 <ul>
-  <li>Search Arma Reforger Workshop mods by name and sort by popularity, newest, or subscribers.</li>
+  <li>Search Arma Reforger Workshop mods by name or exact Workshop ID, filter by category, and sort by popularity, newest, subscribers, or version size.</li>
   <li>Copy a mod ID, or copy a ready-made <code>config.json</code> mods entry, from any result card.</li>
   <li>Send a mod into the <a href="/config-generator/">config builder</a> with one click; your working mod list lives in the <a href="/mod-manager/">mod manager</a>.</li>
   <li>Open a mod detail page for dependencies, scenarios, versions, and the official Workshop link.</li>
@@ -296,11 +319,27 @@ const configGeneratorHTML = htmltemplate.HTML(`<h1>Arma Reforger Server Config G
   </div>
   <div class="row g-4 cg-layout">
     <div class="col-xl-6">
+      <div id="cg-tabs" class="cg-tabs" role="tablist" aria-label="Config sections"></div>
       <div id="cg-form"></div>
-      <h2 class="tool-section-title">Mods</h2>
-      <p class="cg-field-help mb-2">Search the Workshop by name, paste a mod ID, or send mods over from the <a href="/arma-reforger-mods/">mod browser</a>.</p>
-      <div id="cg-mod-search"></div>
-      <div id="cg-mods"></div>
+      <section id="cg-mod-section" class="cg-section-panel d-none">
+        <h2 class="tool-section-title">Mods</h2>
+        <p class="cg-field-help mb-2">Search the Workshop by name, paste a mod ID, or send mods over from the <a href="/arma-reforger-mods/">mod browser</a>.</p>
+        <div id="cg-mod-search"></div>
+        <div id="cg-mods"></div>
+      </section>
+      <section id="cg-startup-section" class="cg-section-panel d-none">
+        <h2 class="tool-section-title">Startup command</h2>
+        <p class="cg-field-help mb-3">Build the command used to launch the dedicated server. These parameters are separate from <code>config.json</code>; copy them into your startup script or host panel.</p>
+        <div id="cg-startup-form"></div>
+        <div class="mt-3">
+          <label class="form-label" for="cg-startup-command">Generated command line</label>
+          <pre class="startup-command"><code id="cg-startup-command"></code></pre>
+        </div>
+        <div class="tool-toolbar mt-2">
+          <button id="cg-copy-startup" class="btn btn-primary" type="button"><i class="bi bi-clipboard"></i> Copy command</button>
+          <button id="cg-reset-startup" class="btn btn-outline-secondary" type="button"><i class="bi bi-arrow-counterclockwise"></i> Reset startup params</button>
+        </div>
+      </section>
     </div>
     <div class="col-xl-6">
       <div class="cg-preview-sticky">

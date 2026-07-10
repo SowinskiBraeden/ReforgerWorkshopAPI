@@ -5,6 +5,7 @@
   var RM = window.RM;
   var form = document.getElementById('mb-form');
   var searchInput = document.getElementById('mb-search');
+  var categorySelect = document.getElementById('mb-category');
   var sortSelect = document.getElementById('mb-sort');
   var statusEl = document.getElementById('mb-status');
   var resultsEl = document.getElementById('mb-results');
@@ -18,11 +19,16 @@
     var params = new URLSearchParams(window.location.search);
     var page = parseInt(params.get('page'), 10);
     var sort = params.get('sort') || '';
+    var category = (params.get('category') || params.get('tags') || '').trim().toUpperCase();
+    var view = params.get('view') || localStorage.getItem('rm.modBrowser.view') || 'card';
     var validSorts = ['popularity', 'newest', 'subscribers', 'version_size'];
+    var validViews = ['card', 'list'];
     return {
       search: (params.get('search') || '').trim().slice(0, 120),
+      category: category.slice(0, 40),
       sort: validSorts.indexOf(sort) !== -1 ? sort : '',
-      page: page > 0 ? page : 1
+      page: page > 0 ? page : 1,
+      view: validViews.indexOf(view) !== -1 ? view : 'card'
     };
   }
 
@@ -31,8 +37,10 @@
   function stateToQuery(s) {
     var params = new URLSearchParams();
     if (s.search) params.set('search', s.search);
+    if (s.category) params.set('category', s.category);
     if (s.sort) params.set('sort', s.sort);
     if (s.page > 1) params.set('page', String(s.page));
+    if (s.view === 'list') params.set('view', s.view);
     var q = params.toString();
     return q ? '?' + q : '';
   }
@@ -49,6 +57,7 @@
   function apiPath() {
     var params = new URLSearchParams();
     if (state.search) params.set('search', state.search);
+    if (state.category) params.set('tags', state.category);
     if (state.sort) params.set('sort', state.sort);
     var q = params.toString();
     return '/v1/mods/' + state.page + (q ? '?' + q : '');
@@ -64,6 +73,7 @@
   }
 
   function renderSkeletons() {
+    applyViewClass();
     var card = '<div class="mod-card-skeleton" aria-hidden="true"><div class="skeleton-block skeleton-image"></div>' +
       '<div class="skeleton-body"><div class="skeleton-block skeleton-line w-75"></div>' +
       '<div class="skeleton-block skeleton-line w-50"></div><div class="skeleton-block skeleton-line"></div></div></div>';
@@ -76,11 +86,16 @@
     renderSkeletons();
     paginationEl.innerHTML = '';
     try {
-      var result = await RM.fetchJSONCached(apiPath(), {
-        onWait: function () {
-          if (seq === requestSeq) setStatus(spinner('Fetching fresh Workshop data…'));
-        }
-      });
+      var result;
+      if (RM.isModId(state.search)) {
+        result = await loadSingleMod(state.search, seq);
+      } else {
+        result = await RM.fetchJSONCached(apiPath(), {
+          onWait: function () {
+            if (seq === requestSeq) setStatus(spinner('Fetching fresh Workshop data…'));
+          }
+        });
+      }
       if (seq !== requestSeq) return;
       render(result);
     } catch (err) {
@@ -104,17 +119,41 @@
     }
   }
 
+  async function loadSingleMod(id, seq) {
+    var mod = await RM.fetchMod(id, {
+      onWait: function () {
+        if (seq === requestSeq) setStatus(spinner('Fetching fresh Workshop data…'));
+      }
+    });
+    return {
+      data: {
+        data: [mod],
+        meta: {
+          totalMods: 1,
+          shownMods: 1,
+          currentPage: 1,
+          totalPages: 1,
+          modsIndexStart: 1,
+          modsIndexEnd: 1
+        }
+      },
+      cache: ''
+    };
+  }
+
   function render(result) {
     var body = result.data || {};
     var mods = body.data || [];
     var meta = body.meta || {};
+    applyViewClass();
 
     var summary = '';
     if (meta.totalMods) {
       summary = 'Showing <strong>' + RM.esc((meta.modsIndexStart || 1).toLocaleString()) + '&ndash;' +
         RM.esc((meta.modsIndexEnd || mods.length).toLocaleString()) + '</strong> of <strong>' +
         RM.esc(meta.totalMods.toLocaleString()) + '</strong> mods' +
-        (state.search ? ' for <strong>' + RM.esc(state.search) + '</strong>' : '');
+        (state.search ? ' for <strong>' + RM.esc(state.search) + '</strong>' : '') +
+        (state.category ? ' in <strong>' + RM.esc(categoryLabel(state.category)) + '</strong>' : '');
     }
     if (result.cache === 'STALE') {
       setStatus((summary ? summary + ' &middot; ' : '') + '<i class="bi bi-clock-history"></i> cached results, refreshing in the background');
@@ -131,6 +170,23 @@
     resultsEl.innerHTML = mods.map(cardHTML).join('');
     bindCards();
     renderPagination(meta);
+  }
+
+  function categoryLabel(value) {
+    if (!categorySelect) return value;
+    for (var i = 0; i < categorySelect.options.length; i++) {
+      if (categorySelect.options[i].value === value) return categorySelect.options[i].textContent;
+    }
+    return value;
+  }
+
+  function applyViewClass() {
+    resultsEl.className = state.view === 'list' ? 'mod-grid mod-grid-list' : 'mod-grid';
+    document.querySelectorAll('.mb-view-toggle [data-view]').forEach(function (btn) {
+      var active = btn.getAttribute('data-view') === state.view;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
   }
 
   function detailPath(id) {
@@ -242,9 +298,11 @@
 
   function applySearch() {
     var newSearch = searchInput.value.trim().slice(0, 120);
+    var newCategory = categorySelect ? categorySelect.value : '';
     var newSort = sortSelect.value;
-    if (newSearch === state.search && newSort === state.sort) return;
+    if (newSearch === state.search && newCategory === state.category && newSort === state.sort) return;
     state.search = newSearch;
+    state.category = newCategory;
     state.sort = newSort;
     state.page = 1;
     pushState();
@@ -256,18 +314,33 @@
     applySearch();
   });
   searchInput.addEventListener('input', RM.debounce(applySearch, 400));
+  if (categorySelect) categorySelect.addEventListener('change', applySearch);
   sortSelect.addEventListener('change', applySearch);
+  document.querySelectorAll('.mb-view-toggle [data-view]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = btn.getAttribute('data-view');
+      if (next === state.view) return;
+      state.view = next;
+      try { localStorage.setItem('rm.modBrowser.view', next); } catch (e) {}
+      applyViewClass();
+      pushState();
+    });
+  });
 
   window.addEventListener('popstate', function () {
     state = readStateFromURL();
     searchInput.value = state.search;
+    if (categorySelect) categorySelect.value = state.category;
     sortSelect.value = state.sort;
+    applyViewClass();
     load();
   });
 
   // Initial render: sync controls with the (normalized) URL and load.
   searchInput.value = state.search;
+  if (categorySelect) categorySelect.value = state.category;
   sortSelect.value = state.sort;
+  applyViewClass();
   pushState(true);
   load();
 })();

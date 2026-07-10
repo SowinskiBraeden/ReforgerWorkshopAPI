@@ -45,9 +45,13 @@ func TestPublicPagesRenderIndexableMetadata(t *testing.T) {
 			body := rec.Body.String()
 			assertContains(t, body, "<title>"+page.Title+"</title>")
 			assertContains(t, body, `meta name="description" content="`+page.Description+`"`)
+			assertContains(t, body, `meta name="keywords" content="`+pageKeywords(page)+`"`)
+			assertContains(t, body, `meta name="date" content="`+pageLastMod(page)+`"`)
 			assertContains(t, body, `rel="canonical" href="https://reforgermods.test`+page.Path+`"`)
 			assertContains(t, body, "<h1>"+page.H1+"</h1>")
 			assertContains(t, body, `<meta name="robots" content="index, follow, max-image-preview:large">`)
+			assertContains(t, body, `<meta property="og:updated_time" content="`+pageLastMod(page)+`">`)
+			assertContains(t, body, `"@type":"WebPage"`)
 			assertContains(t, body, `href="/static/index.css"`)
 			if page.FullWidth {
 				assertContains(t, body, `tool-content-full`)
@@ -86,7 +90,57 @@ func TestRobotsAndSitemapUseConfiguredPublicOrigin(t *testing.T) {
 	}
 	for _, page := range publicPages {
 		assertContains(t, sitemapRec.Body.String(), "<loc>https://reforgermods.test"+page.Path+"</loc>")
+		assertContains(t, sitemapRec.Body.String(), "<lastmod>"+pageLastMod(page)+"</lastmod>")
 	}
+}
+
+func TestToolPagesHaveSEOEnhancements(t *testing.T) {
+	app := testSiteApp(t)
+	for _, page := range toolPages {
+		t.Run(page.Path, func(t *testing.T) {
+			if len(page.Keywords) < 3 {
+				t.Fatalf("%s has %d keywords, want at least 3", page.Path, len(page.Keywords))
+			}
+
+			req := httptest.NewRequest(http.MethodGet, page.Path, nil)
+			req.Host = "reforgermods.test"
+			rec := httptest.NewRecorder()
+			app.Router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			body := rec.Body.String()
+			assertContains(t, body, `meta name="keywords" content="`+pageKeywords(page)+`"`)
+			assertContains(t, body, `"@type":"SearchAction"`)
+			assertContains(t, body, `"@type":"FAQPage"`)
+			if page.ToolName != "" {
+				assertContains(t, body, `"@id":"https://reforgermods.test`+page.Path+`#tool"`)
+				assertContains(t, body, `"isAccessibleForFree":true`)
+				assertContains(t, body, `"applicationCategory":"UtilitiesApplication"`)
+			}
+		})
+	}
+}
+
+func TestModDetailPageHasIndexableMetadata(t *testing.T) {
+	app := testSiteApp(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/arma-reforger-mods/5965550F24A0C152/", nil)
+	req.Host = "reforgermods.test"
+	rec := httptest.NewRecorder()
+	app.Router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	assertContains(t, body, `<title>Arma Reforger Mod 5965550F24A0C152 | Reforger Mods API</title>`)
+	assertContains(t, body, `rel="canonical" href="https://reforgermods.test/arma-reforger-mods/5965550F24A0C152/"`)
+	assertContains(t, body, `meta name="keywords" content="Arma Reforger mod 5965550F24A0C152`)
+	assertContains(t, body, `"@type":"WebPage"`)
+	assertContains(t, body, `"@type":"BreadcrumbList"`)
+	assertContains(t, body, `"name":"Arma Reforger Mods"`)
 }
 
 func TestAPIRoutesRemainJSONAndNoIndex(t *testing.T) {

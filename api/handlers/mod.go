@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
@@ -19,18 +20,23 @@ import (
 type parameters struct {
 	search string
 	sort   string
+	tags   []string
 }
 
 // Add additional url parameters to links if exists
 func addLinkParams(links map[string]string, link string, params parameters) map[string]string {
+	values := url.Values{}
 	if params.search != "" {
-		links[link] = fmt.Sprintf("%s?search=%s", links[link], url.QueryEscape(params.search))
+		values.Set("search", params.search)
 	}
-
-	if params.sort != "" && params.search != "" {
-		links[link] = fmt.Sprintf("%s&sort=%s", links[link], url.QueryEscape(params.sort))
-	} else if params.sort != "" {
-		links[link] = fmt.Sprintf("%s?sort=%s", links[link], url.QueryEscape(params.sort))
+	if params.sort != "" {
+		values.Set("sort", params.sort)
+	}
+	for _, tag := range params.tags {
+		values.Add("tags", tag)
+	}
+	if encoded := values.Encode(); encoded != "" {
+		links[link] = links[link] + "?" + encoded
 	}
 
 	return links
@@ -90,14 +96,19 @@ func (a *App) serveModsPage(w http.ResponseWriter, r *http.Request, pageNumber i
 	sort := api.NormalizeSort(r.URL.Query().Get("sort"), map[string]bool{
 		SortPopular: true, SortNewest: true, SortSubscribers: true, SortVersionSize: true,
 	})
+	tags := r.URL.Query()["tags"]
+	if category := r.URL.Query().Get("category"); category != "" {
+		tags = append(tags, category)
+	}
+	tags = api.NormalizeTags(tags, 40)
 	if r.URL.Query().Get("search") != "" && search == "" {
 		config.WriteError(w, r, http.StatusBadRequest, "INVALID_SEARCH", "Search query is empty after normalization.")
 		return
 	}
 
-	key := api.CacheKey("v1", "mods", strconv.Itoa(pageNumber), search, sort)
+	key := api.CacheKey("v1", "mods", strconv.Itoa(pageNumber), search, sort, strings.Join(tags, ","))
 	a.Cache.Serve(w, r, key, a.Config.ListCacheTTL, a.Config.ListCacheStale, func(ctx context.Context) api.CachedResponse {
-		results, err := util.ScrapeModsContext(ctx, pageNumber, search, sort, []string{})
+		results, err := util.ScrapeModsContext(ctx, pageNumber, search, sort, tags)
 		if err != nil {
 			return api.CachedResponse{Err: err, ErrorCode: "UPSTREAM_UNAVAILABLE", Message: "Workshop list data is temporarily unavailable."}
 		}
@@ -107,7 +118,7 @@ func (a *App) serveModsPage(w http.ResponseWriter, r *http.Request, pageNumber i
 			return api.CachedResponse{StatusCode: http.StatusNotFound, Body: b, TTL: a.Config.NotFoundCacheTTL, Stale: 0}
 		}
 
-		links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort})
+		links := makeLinks(results.CurrentPage, results.TotalPages, parameters{search: search, sort: sort, tags: tags})
 
 		b, err := json.Marshal(models.ModsPreviewsResponse{
 			Status: "success",

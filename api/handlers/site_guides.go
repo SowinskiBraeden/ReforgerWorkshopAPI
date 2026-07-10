@@ -16,6 +16,7 @@ var guidePages = []publicPage{
 		Title:       "Arma Reforger Server and API Guides | Reforger Mods API",
 		Description: "Practical guides for Arma Reforger server admins and developers: config.json reference, adding mods, troubleshooting startup failures, and integrating the Reforger Mods API.",
 		H1:          "Guides",
+		Keywords:    []string{"Arma Reforger guides", "Arma Reforger server guide", "config.json guide", "Reforger Mods API guide", "Arma Reforger modding server"},
 		ChangeFreq:  "weekly",
 		Priority:    "0.8",
 		FullWidth:   true,
@@ -27,6 +28,7 @@ var guidePages = []publicPage{
 		Title:       "Arma Reforger config.json Explained | Server Config Guide",
 		Description: "What every major field in an Arma Reforger server config.json does: network and ports, A2S, RCON, game settings, scenarioId, gameProperties, mods, and operating options.",
 		H1:          "Arma Reforger config.json Explained",
+		Keywords:    []string{"Arma Reforger config.json", "Arma Reforger server config", "gameProperties", "operating config", "scenarioId", "joinQueue"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		FullWidth:   true,
@@ -38,6 +40,7 @@ var guidePages = []publicPage{
 		Title:       "How to Add Mods to an Arma Reforger Server | Step by Step",
 		Description: "Add Workshop mods to an Arma Reforger dedicated server: find the mod ID, write the game.mods entry in config.json, handle dependencies, and verify the server loads them.",
 		H1:          "How to Add Mods to an Arma Reforger Server",
+		Keywords:    []string{"add mods to Arma Reforger server", "Arma Reforger game.mods", "Workshop mod ID", "Arma Reforger mod dependencies", "config.json mods"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		FullWidth:   true,
@@ -49,6 +52,7 @@ var guidePages = []publicPage{
 		Title:       "Arma Reforger config.json Troubleshooting | Common Errors",
 		Description: "Fix the most common Arma Reforger server config.json problems: JSON syntax errors, trailing commas, smart quotes, misplaced mods arrays, bad ports, and scenario ID mistakes.",
 		H1:          "Arma Reforger config.json Troubleshooting",
+		Keywords:    []string{"Arma Reforger config errors", "config.json troubleshooting", "Arma Reforger server startup", "scenarioId errors", "JSON syntax errors"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		FullWidth:   true,
@@ -60,6 +64,7 @@ var guidePages = []publicPage{
 		Title:       "Running Arma Reforger Server Mods | Dependencies and Updates",
 		Description: "How mods behave on an Arma Reforger dedicated server: how downloads work, what dependencies mean for your mod list, version pinning, and keeping a modded server stable.",
 		H1:          "Running Arma Reforger Server Mods",
+		Keywords:    []string{"Arma Reforger server mods", "mod dependencies", "Workshop mod updates", "Arma Reforger version pinning", "modded server stability"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		FullWidth:   true,
@@ -71,6 +76,7 @@ var guidePages = []publicPage{
 		Title:       "Reforger Mods API Integration Guide | Build on Workshop Data",
 		Description: "Integrate the Reforger Mods API into your app or server tool: endpoints, pagination, caching and ETags, client identity, rate limits, and robust error handling.",
 		H1:          "Reforger Mods API Integration Guide",
+		Keywords:    []string{"Reforger Mods API integration", "Arma Reforger Workshop API", "API pagination", "ETag caching", "API rate limits"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		FullWidth:   true,
@@ -82,6 +88,7 @@ var guidePages = []publicPage{
 		Title:       "Handling 202 Accepted and Refresh Jobs | Reforger Mods API",
 		Description: "How the Reforger Mods API cold-cache flow works: why you get 202 Accepted, how to use Retry-After, when to poll the refresh job URL, and retry patterns that will not get rate limited.",
 		H1:          "Handling 202 Accepted and Refresh Jobs",
+		Keywords:    []string{"202 Accepted", "Reforger Mods API refresh jobs", "Retry-After", "cold cache API", "Arma Reforger API retries"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		FullWidth:   true,
@@ -126,37 +133,37 @@ const guideConfigJSONHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide
 }</code></pre>
 <h2>Network settings</h2>
 <ul>
-  <li><code>bindAddress</code> / <code>bindPort</code> — the address and UDP port the server process listens on. <code>0.0.0.0</code> listens on all interfaces; the conventional game port is <code>2001</code>.</li>
-  <li><code>publicAddress</code> / <code>publicPort</code> — what gets advertised to players. Behind NAT or a proxy, set these to the externally reachable address and port. An empty <code>publicAddress</code> lets the backend detect it.</li>
-  <li><code>a2s</code> — an object with <code>address</code> and <code>port</code> for Steam-style server queries, so hosting panels and server lists can query state.</li>
+  <li><code>bindAddress</code> / <code>bindPort</code> - the address and UDP port the server process listens on. <code>0.0.0.0</code> listens on all interfaces; the conventional game port is <code>2001</code>.</li>
+  <li><code>publicAddress</code> / <code>publicPort</code> - what gets advertised to players. Behind NAT or a proxy, set these to the externally reachable address and port. An empty <code>publicAddress</code> lets the backend detect it.</li>
+  <li><code>a2s</code> - an object with <code>address</code> and <code>port</code> for Steam-style server queries, so hosting panels and server lists can query state.</li>
 </ul>
 <h2>RCON</h2>
 <p>The optional <code>rcon</code> object enables remote administration. It needs an <code>address</code>, a <code>port</code>, and a <code>password</code>; the official docs also describe <code>permission</code> (admin or monitor), <code>maxClients</code>, and address allow and deny lists. Keep the password out of screenshots and pastebins: the <a href="/config-validator/">validator</a> never uploads your config, but other tools might.</p>
 <h2>The game object</h2>
 <ul>
-  <li><code>name</code> — the server name shown in the browser list.</li>
-  <li><code>password</code> — join password for players; <code>passwordAdmin</code> — password for in-game admin login.</li>
-  <li><code>admins</code> — an array of player identifiers that get admin rights automatically; the accepted identifier formats are listed in the official docs.</li>
-  <li><code>scenarioId</code> — required. The scenario the server runs, in the form <code>{GUID}Missions/File.conf</code>. Base-game scenario IDs are in the official docs; modded scenario IDs are shown on each mod page in the <a href="/arma-reforger-mods/">mod browser</a> when the Workshop lists them.</li>
-  <li><code>maxPlayers</code> — player limit; the engine supports up to 128 slots.</li>
-  <li><code>visible</code> — whether the server appears in the public server browser.</li>
-  <li><code>crossPlatform</code> and <code>supportedPlatforms</code> — enable console players. Platform identifiers include <code>PLATFORM_PC</code>, <code>PLATFORM_XBL</code>, and <code>PLATFORM_PSN</code>. Note that mods that are not console-compatible restrict who can join.</li>
-  <li><code>mods</code> — the Workshop mod list. Covered field by field in the <a href="/guides/how-to-add-mods/">adding mods guide</a>.</li>
-  <li><code>modsRequiredByDefault</code> — whether listed mods are mandatory for joining clients unless a mod entry overrides it.</li>
+  <li><code>name</code> - the server name shown in the browser list.</li>
+  <li><code>password</code> - join password for players; <code>passwordAdmin</code> - password for in-game admin login.</li>
+  <li><code>admins</code> - an array of player identifiers that get admin rights automatically; the accepted identifier formats are listed in the official docs.</li>
+  <li><code>scenarioId</code> - required. The scenario the server runs, in the form <code>{GUID}Missions/File.conf</code>. Base-game scenario IDs are in the official docs; modded scenario IDs are shown on each mod page in the <a href="/arma-reforger-mods/">mod browser</a> when the Workshop lists them.</li>
+  <li><code>maxPlayers</code> - player limit; the engine supports up to 128 slots.</li>
+  <li><code>visible</code> - whether the server appears in the public server browser.</li>
+  <li><code>crossPlatform</code> and <code>supportedPlatforms</code> - enable console players. Platform identifiers include <code>PLATFORM_PC</code>, <code>PLATFORM_XBL</code>, and <code>PLATFORM_PSN</code>. Note that mods that are not console-compatible restrict who can join.</li>
+  <li><code>mods</code> - the Workshop mod list. Covered field by field in the <a href="/guides/how-to-add-mods/">adding mods guide</a>.</li>
+  <li><code>modsRequiredByDefault</code> - whether listed mods are mandatory for joining clients unless a mod entry overrides it.</li>
 </ul>
 <h2>gameProperties</h2>
 <p>Inside <code>game</code>, the <code>gameProperties</code> object holds tuning options. Frequently used ones:</p>
 <ul>
-  <li><code>serverMaxViewDistance</code> and <code>networkViewDistance</code> — view distance limits; higher values cost server performance.</li>
-  <li><code>serverMinGrassDistance</code> — minimum grass render distance enforced on clients.</li>
-  <li><code>enableAI</code> — enables AI systems for scenarios that use AI.</li>
-  <li><code>disableThirdPerson</code> — force first person.</li>
-  <li><code>fastValidation</code> — speeds up client joins and is recommended by the official docs for most servers.</li>
-  <li><code>battlEye</code> — enable or disable BattlEye.</li>
-  <li><code>VONDisableUI</code> — hides the general voice-over-network UI when enabled.</li>
-  <li><code>VONDisableDirectSpeechUI</code> — hides the direct speech voice UI when enabled.</li>
-  <li><code>VONCanTransmitCrossFaction</code> — allows voice transmission across factions when enabled.</li>
-  <li><code>missionHeader</code> — scenario-specific overrides passed through to the mission. Leave it as an empty object unless the scenario documentation calls for specific keys.</li>
+  <li><code>serverMaxViewDistance</code> and <code>networkViewDistance</code> - view distance limits; higher values cost server performance.</li>
+  <li><code>serverMinGrassDistance</code> - minimum grass render distance enforced on clients.</li>
+  <li><code>enableAI</code> - enables AI systems for scenarios that use AI.</li>
+  <li><code>disableThirdPerson</code> - force first person.</li>
+  <li><code>fastValidation</code> - speeds up client joins and is recommended by the official docs for most servers.</li>
+  <li><code>battlEye</code> - enable or disable BattlEye.</li>
+  <li><code>VONDisableUI</code> - hides the general voice-over-network UI when enabled.</li>
+  <li><code>VONDisableDirectSpeechUI</code> - hides the direct speech voice UI when enabled.</li>
+  <li><code>VONCanTransmitCrossFaction</code> - allows voice transmission across factions when enabled.</li>
+  <li><code>missionHeader</code> - scenario-specific overrides passed through to the mission. Leave it as an empty object unless the scenario documentation calls for specific keys.</li>
 </ul>
 <p>Documented value ranges exist for the view distance and grass settings; the <a href="/config-validator/">validator</a> flags values outside them.</p>
 <h2>The operating object</h2>
@@ -177,7 +184,7 @@ const guideAddModsHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide-br
 <h1>How to Add Mods to an Arma Reforger Server</h1>
 <p class="landing-lede">Mods are added to an Arma Reforger dedicated server by listing them in the <code>game.mods</code> array of <code>config.json</code>. The server downloads listed mods from the Workshop at startup, and joining players download them automatically. Here is the whole process, start to finish.</p>
 <h2>1. Find the mod and its ID</h2>
-<p>Every Workshop mod has a 16-character hexadecimal ID, for example <code>5965550F24A0C152</code>. Find mods and copy their IDs in the <a href="/arma-reforger-mods/">mod browser</a> — every result card has a copy button for the ID and for a ready-made JSON entry — or take the ID from the mod page URL on the official Workshop.</p>
+<p>Every Workshop mod has a 16-character hexadecimal ID, for example <code>5965550F24A0C152</code>. Find mods and copy their IDs in the <a href="/arma-reforger-mods/">mod browser</a> - every result card has a copy button for the ID and for a ready-made JSON entry - or take the ID from the mod page URL on the official Workshop.</p>
 <h2>2. Write the mods entry</h2>
 <pre><code class="language-json">"game": {
   "mods": [
@@ -188,14 +195,14 @@ const guideAddModsHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide-br
   ]
 }</code></pre>
 <ul>
-  <li><code>modId</code> — required. The Workshop ID.</li>
-  <li><code>name</code> — optional and informational; it keeps the file readable but does not affect what is downloaded.</li>
-  <li><code>version</code> — optional. Pins a specific mod version instead of the latest. Leave it out unless you have a reason to pin.</li>
-  <li><code>required</code> — optional. Together with <code>game.modsRequiredByDefault</code> it controls whether joining clients must run the mod; see the <a href="` + officialServerConfigDocsURL + `" rel="noopener">official documentation</a> for the exact semantics.</li>
+  <li><code>modId</code> - required. The Workshop ID.</li>
+  <li><code>name</code> - optional and informational; it keeps the file readable but does not affect what is downloaded.</li>
+  <li><code>version</code> - optional. Pins a specific mod version instead of the latest. Leave it out unless you have a reason to pin.</li>
+  <li><code>required</code> - optional. Together with <code>game.modsRequiredByDefault</code> it controls whether joining clients must run the mod; see the <a href="` + officialServerConfigDocsURL + `" rel="noopener">official documentation</a> for the exact semantics.</li>
 </ul>
-<p>The <code>mods</code> array belongs <em>inside</em> the <code>game</code> object. A mods array at the top level of the file is silently ignored — one of the most common mistakes in the <a href="/guides/config-json-troubleshooting/">troubleshooting guide</a>.</p>
+<p>The <code>mods</code> array belongs <em>inside</em> the <code>game</code> object. A mods array at the top level of the file is silently ignored - one of the most common mistakes in the <a href="/guides/config-json-troubleshooting/">troubleshooting guide</a>.</p>
 <h2>3. Add dependencies</h2>
-<p>Some mods require other mods. Check the dependencies section on the mod detail page in the <a href="/arma-reforger-mods/">mod browser</a> and make sure each dependency is either in your list or known to be pulled in automatically. The <a href="/mod-manager/">mod manager</a> has a dependency check that compares your list against Workshop data and suggests anything missing — it suggests rather than auto-adds, because public dependency data can lag behind mod updates.</p>
+<p>Some mods require other mods. Check the dependencies section on the mod detail page in the <a href="/arma-reforger-mods/">mod browser</a> and make sure each dependency is either in your list or known to be pulled in automatically. The <a href="/mod-manager/">mod manager</a> has a dependency check that compares your list against Workshop data and suggests anything missing - it suggests rather than auto-adds, because public dependency data can lag behind mod updates.</p>
 <h2>4. Restart and verify</h2>
 <p>Restart the server after changing the mod list. On startup the server log shows each mod being resolved and downloaded; a mod that cannot be found or downloaded is logged with its ID. First startup after adding large mods takes longer because of the downloads.</p>
 <h2>Skip the hand-editing</h2>
@@ -203,14 +210,14 @@ const guideAddModsHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide-br
 
 const guideTroubleshootingHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>config.json Troubleshooting</span></nav>
 <h1>Arma Reforger config.json Troubleshooting</h1>
-<p class="landing-lede">When an Arma Reforger server exits at startup or ignores your settings, the cause is usually one of a handful of config.json problems. Work through this list from the top — or paste the file into the <a href="/config-validator/">config validator</a>, which detects most of these automatically and locally in your browser.</p>
+<p class="landing-lede">When an Arma Reforger server exits at startup or ignores your settings, the cause is usually one of a handful of config.json problems. Work through this list from the top - or paste the file into the <a href="/config-validator/">config validator</a>, which detects most of these automatically and locally in your browser.</p>
 <h2>1. Invalid JSON</h2>
 <p>The single most common failure. JSON is strict:</p>
 <ul>
   <li><strong>Trailing commas</strong> after the last element of an object or array are not allowed.</li>
   <li><strong>Comments</strong> (<code>//</code> or <code>/* */</code>) are not part of JSON. Remove them.</li>
-  <li><strong>Smart quotes</strong> — text pasted through chat apps or word processors often arrives with curly quotes instead of straight <code>"</code>. The server cannot parse them.</li>
-  <li><strong>Missing commas or brackets</strong> — one missing <code>}</code> can produce an error message pointing at a completely different line.</li>
+  <li><strong>Smart quotes</strong> - text pasted through chat apps or word processors often arrives with curly quotes instead of straight <code>"</code>. The server cannot parse them.</li>
+  <li><strong>Missing commas or brackets</strong> - one missing <code>}</code> can produce an error message pointing at a completely different line.</li>
 </ul>
 <p>The <a href="/config-validator/">validator</a> reports the line and column of the first syntax error, which is almost always faster than eyeballing the file.</p>
 <h2>2. Mods listed in the wrong place</h2>
@@ -228,15 +235,15 @@ const guideTroubleshootingHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb 
 <h2>6. RCON settings</h2>
 <p>If RCON is configured, it needs a valid <code>port</code> and a <code>password</code>; the official docs require the password to be non-trivial and contain no spaces. Remove the whole <code>rcon</code> object if you do not use RCON.</p>
 <h2>Still stuck?</h2>
-<p>Rebuild the file section by section in the <a href="/config-generator/">config generator</a> — import your broken config first; unknown fields are preserved — and compare against the field explanations in the <a href="/guides/arma-reforger-config-json/">config.json guide</a> and the <a href="` + officialServerConfigDocsURL + `" rel="noopener">official server documentation</a>.</p>`)
+<p>Rebuild the file section by section in the <a href="/config-generator/">config generator</a> - import your broken config first; unknown fields are preserved - and compare against the field explanations in the <a href="/guides/arma-reforger-config-json/">config.json guide</a> and the <a href="` + officialServerConfigDocsURL + `" rel="noopener">official server documentation</a>.</p>`)
 
 const guideServerModsHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>Running Server Mods</span></nav>
 <h1>Running Arma Reforger Server Mods</h1>
-<p class="landing-lede">A modded Arma Reforger server is easy to start and easy to break. This guide covers how mod loading actually behaves — downloads, dependencies, versions, and updates — so your mod list stays stable over time.</p>
+<p class="landing-lede">A modded Arma Reforger server is easy to start and easy to break. This guide covers how mod loading actually behaves - downloads, dependencies, versions, and updates - so your mod list stays stable over time.</p>
 <h2>How mod loading works</h2>
 <p>At startup, the server reads <code>game.mods</code> from <code>config.json</code>, downloads any listed Workshop mods it does not have locally, and loads them. Players joining the server automatically download the mods the server marks as required. You do not copy mod files around by hand; the mod list in the config is the source of truth. The mechanics of writing that list are in the <a href="/guides/how-to-add-mods/">adding mods guide</a>.</p>
 <h2>Dependencies</h2>
-<p>Mods can depend on other mods — a weapon pack depending on a shared framework, for example. The dependency information shown on Workshop pages (and surfaced on mod detail pages in the <a href="/arma-reforger-mods/">mod browser</a>) tells you what else a mod needs. Keeping dependencies explicit in your own list makes load order and updates predictable and makes it obvious why each mod is installed. The <a href="/mod-manager/">mod manager</a> compares your list against Workshop dependency data and suggests anything missing.</p>
+<p>Mods can depend on other mods - a weapon pack depending on a shared framework, for example. The dependency information shown on Workshop pages (and surfaced on mod detail pages in the <a href="/arma-reforger-mods/">mod browser</a>) tells you what else a mod needs. Keeping dependencies explicit in your own list makes load order and updates predictable and makes it obvious why each mod is installed. The <a href="/mod-manager/">mod manager</a> compares your list against Workshop dependency data and suggests anything missing.</p>
 <h2>Versions and pinning</h2>
 <p>By default the server uses the latest published version of each mod. A mod entry may pin a <code>version</code> instead. Pinning trades freshness for stability: you are immune to a broken update, but you must remember to unpin or bump versions deliberately. Pin only the mods that have burned you before, and record why.</p>
 <h2>When mods update</h2>
@@ -249,7 +256,7 @@ const guideServerModsHTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide
 <ul>
   <li>Keep <code>name</code> fields on entries so humans can read the list; names are informational only.</li>
   <li>Remove mods you no longer run. Dead weight slows downloads and widens the update surface.</li>
-  <li>Watch for duplicates after merging lists from different sources — the <a href="/config-validator/">validator</a> and <a href="/mod-manager/">mod manager</a> both flag them.</li>
+  <li>Watch for duplicates after merging lists from different sources - the <a href="/config-validator/">validator</a> and <a href="/mod-manager/">mod manager</a> both flag them.</li>
   <li>Keep a known-good copy of <code>config.json</code> so you can roll back a bad mod update quickly.</li>
 </ul>
 <p>Config-file details live in the <a href="/guides/arma-reforger-config-json/">config.json guide</a>; startup failures are covered in the <a href="/guides/config-json-troubleshooting/">troubleshooting guide</a>.</p>`)
@@ -264,7 +271,7 @@ GET /v1/mods/{page}                 specific page (positive integer)
 GET /v1/search?search={query}       convenience alias for first-page search
 GET /v1/mod/{mod_id}                full detail for one mod
 GET /v1/refresh/jobs/{id}           status of a background refresh job</code></pre>
-<p>List endpoints accept <code>search</code> and <code>sort</code> (<code>popularity</code>, <code>newest</code>, <code>subscribers</code>, <code>version_size</code>). Response shapes are documented in the <a href="/docs/mod-structures/">mod structures reference</a>, and the <a href="/arma-reforger-mods-api/">API reference</a> covers every header and error code.</p>
+<p>List endpoints accept <code>search</code>, <code>sort</code> (<code>popularity</code>, <code>newest</code>, <code>subscribers</code>, <code>version_size</code>), and Workshop tag filters through <code>tags</code> or the single-value <code>category</code> alias. Response shapes are documented in the <a href="/docs/mod-structures/">mod structures reference</a>, and the <a href="/arma-reforger-mods-api/">API reference</a> covers every header and error code.</p>
 <h2>Pagination</h2>
 <p>List responses include a <code>meta</code> object (<code>totalPages</code>, <code>currentPage</code>, <code>totalMods</code>) and a <code>links</code> object with ready-built <code>next</code> and <code>prev</code> URLs. Follow the links instead of constructing URLs yourself and your client will keep working if parameters evolve.</p>
 <h2>Identify your client</h2>
@@ -275,21 +282,21 @@ GET /v1/refresh/jobs/{id}           status of a background refresh job</code></p
 <ul>
   <li>Responses carry <code>Cache-Control</code>, <code>Age</code>, and <code>ETag</code>. Honor them: cache list responses for at least their <code>max-age</code>.</li>
   <li>Send <code>If-None-Match</code> with the last <code>ETag</code>; a <code>304 Not Modified</code> costs almost nothing on both sides.</li>
-  <li><code>X-Cache</code> tells you whether you got a <code>HIT</code>, <code>STALE</code>, or fresh data. Stale responses are intentional — the API serves them while refreshing in the background so your app never blocks on the upstream Workshop.</li>
+  <li><code>X-Cache</code> tells you whether you got a <code>HIT</code>, <code>STALE</code>, or fresh data. Stale responses are intentional - the API serves them while refreshing in the background so your app never blocks on the upstream Workshop.</li>
   <li>Do not vary query strings just to bust caches; it wastes your rate budget and everyone elses refresh capacity.</li>
 </ul>
 <h2>Handle every status</h2>
 <ul>
-  <li><code>200</code> — use the data.</li>
-  <li><code>202</code> — cold cache; a refresh job was queued. Wait <code>Retry-After</code> seconds and retry the same URL, a bounded number of times. Full pattern with code in the <a href="/guides/handling-202-refresh-jobs/">202 guide</a>.</li>
-  <li><code>304</code> — your cached copy is still valid.</li>
-  <li><code>404</code> — the mod or page does not exist; cache the negative result briefly rather than re-asking.</li>
-  <li><code>429</code> — you exceeded the rate limit (default 60 requests per minute per IP). Back off for <code>Retry-After</code>.</li>
-  <li><code>5xx</code> — treat as temporary; retry with backoff and surface a friendly error, not a crash.</li>
+  <li><code>200</code> - use the data.</li>
+  <li><code>202</code> - cold cache; a refresh job was queued. Wait <code>Retry-After</code> seconds and retry the same URL, a bounded number of times. Full pattern with code in the <a href="/guides/handling-202-refresh-jobs/">202 guide</a>.</li>
+  <li><code>304</code> - your cached copy is still valid.</li>
+  <li><code>404</code> - the mod or page does not exist; cache the negative result briefly rather than re-asking.</li>
+  <li><code>429</code> - you exceeded the rate limit (default 60 requests per minute per IP). Back off for <code>Retry-After</code>.</li>
+  <li><code>5xx</code> - treat as temporary; retry with backoff and surface a friendly error, not a crash.</li>
 </ul>
-<p>All errors share one JSON shape with a <code>code</code>, a <code>message</code>, and the <code>requestId</code> echoed from <code>X-Request-Id</code> — log that ID and include it when reporting problems.</p>
+<p>All errors share one JSON shape with a <code>code</code>, a <code>message</code>, and the <code>requestId</code> echoed from <code>X-Request-Id</code> - log that ID and include it when reporting problems.</p>
 <h2>Worked example</h2>
-<p>The <a href="/api/">quickstart</a> has a copy-paste Python function that implements retry-on-202 with a bounded attempt count. The web tools on this site — the <a href="/arma-reforger-mods/">mod browser</a> and the <a href="/config-validator/">validator</a> mod check — use the same pattern, so you can watch the behavior in your network tab.</p>`)
+<p>The <a href="/api/">quickstart</a> has a copy-paste Python function that implements retry-on-202 with a bounded attempt count. The web tools on this site - the <a href="/arma-reforger-mods/">mod browser</a> and the <a href="/config-validator/">validator</a> mod check - use the same pattern, so you can watch the behavior in your network tab.</p>`)
 
 const guide202HTML = htmltemplate.HTML(`<nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>202 and Refresh Jobs</span></nav>
 <h1>Handling 202 Accepted and Refresh Jobs</h1>
@@ -328,6 +335,6 @@ def fetch_with_refresh(url, max_attempts=4):
 
 mods = fetch_with_refresh("https://api.reforgermods.net/v1/mods?search=radio")</code></pre>
 <h2>When to poll the job URL instead</h2>
-<p>Polling <code>Location</code> is useful only when you want to display progress — a dashboard showing "queued, running, succeeded". Job statuses are <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, and <code>expired</code>. After <code>succeeded</code>, request the original <code>resource_url</code> again; after <code>failed</code>, back off and try the original URL later. Do not poll faster than the advertised <code>retry_after_seconds</code>.</p>
+<p>Polling <code>Location</code> is useful only when you want to display progress - a dashboard showing "queued, running, succeeded". Job statuses are <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, and <code>expired</code>. After <code>succeeded</code>, request the original <code>resource_url</code> again; after <code>failed</code>, back off and try the original URL later. Do not poll faster than the advertised <code>retry_after_seconds</code>.</p>
 <h2>Why the API works this way</h2>
 <p>Workshop pages can be slow or briefly unavailable. By decoupling your request from the upstream fetch, the API can answer instantly from cache, serve slightly stale data while revalidating, and shield the Workshop from request storms. The trade-off is this small retry dance on the very first request for a resource. Details on cache lifetimes are in the <a href="/arma-reforger-mods-api/">API reference</a>; the broader integration picture is in the <a href="/guides/api-integration/">integration guide</a>.</p>`)

@@ -143,7 +143,7 @@
       rows('topClients', clients.map(c => {
         const h = c.cache?.hits || 0, m = c.cache?.misses || 0, s = c.cache?.stales || 0;
         const total = h + m + s;
-        const hitPct = total > 0 ? Math.round((h + s) / total * 100) + '%' : '—';
+        const hitPct = total > 0 ? Math.round((h + s) / total * 100) + '%' : '-';
         return [code(c.name), fmt.format(c.requestsToday || 0), hitPct + ' (' + fmt.format(h) + 'h / ' + fmt.format(m) + 'm / ' + fmt.format(s) + 's)', fmt.format(c.accepted202 || 0), fmt.format(c.errors || 0)];
       }), 5);
     }

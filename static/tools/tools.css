@@ -294,9 +294,13 @@
 .mod-detail-layout {
   align-items: start;
   display: grid;
-  gap: clamp(1.5rem, 4vw, 2.75rem);
-  grid-template-columns: minmax(0, 2fr) minmax(320px, 0.9fr);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  grid-template-columns: minmax(0, 2.2fr) minmax(360px, 0.85fr);
   margin-top: 1.5rem;
+}
+
+#mod-detail {
+  max-width: min(100%, 90rem);
 }
 
 .mod-detail-main {
@@ -404,6 +408,17 @@
   font-size: 0.9rem;
   margin: 0;
   padding: 0.9rem 1rem;
+}
+
+.mod-official-description {
+  background: color-mix(in srgb, var(--site-accent) 5%, var(--site-panel-soft));
+  border: 1px solid var(--site-muted-border);
+  border-left: 3px solid var(--site-accent);
+  border-radius: 0.5rem;
+  color: var(--bs-body-color);
+  line-height: 1.65;
+  padding: 1rem 1.1rem;
+  white-space: pre-line;
 }
 
 .scenario-card {
@@ -730,6 +745,18 @@
   max-width: 980px;
 }
 
+#mod-browser .tool-toolbar {
+  max-width: none;
+}
+
+.mb-view-toggle {
+  flex: 0 0 auto;
+}
+
+.mb-view-toggle .btn {
+  min-width: 2.4rem;
+}
+
 #cg-mods,
 #mm-list {
   overflow-x: auto;
@@ -760,6 +787,37 @@
   border-color: var(--site-muted-border);
 }
 
+.mod-grid-list {
+  grid-template-columns: 1fr;
+}
+
+.mod-grid-list .mod-card,
+.mod-grid-list .mod-card-skeleton {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+}
+
+.mod-grid-list .mod-card > a,
+.mod-grid-list .mod-card-image,
+.mod-grid-list .mod-card-image-placeholder,
+.mod-grid-list .mod-card-skeleton .skeleton-image {
+  height: 100%;
+  min-height: 150px;
+}
+
+.mod-grid-list .mod-card-image,
+.mod-grid-list .mod-card-image-placeholder {
+  aspect-ratio: auto;
+}
+
+.mod-grid-list .mod-card-body {
+  padding: 1rem;
+}
+
+.mod-grid-list .mod-card-actions {
+  justify-content: flex-start;
+}
+
 .mod-list-table th {
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -774,6 +832,162 @@
 #cg-form fieldset {
   background: var(--site-panel-soft);
   border-color: var(--site-muted-border);
+}
+
+.cg-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.35rem;
+  border: 1px solid var(--site-muted-border);
+  border-radius: 0.65rem;
+  background: var(--site-panel-soft);
+}
+
+.cg-tab {
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--bs-body-color);
+  min-height: 2.35rem;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.cg-tab:hover,
+.cg-tab:focus-visible {
+  background: var(--bs-secondary-bg);
+}
+
+.cg-tab.active {
+  background: var(--site-accent);
+  color: #03140f;
+}
+
+.cg-section-panel {
+  border: 1px solid var(--site-muted-border);
+  border-radius: 0.6rem;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+  background: var(--site-panel-soft);
+}
+
+#cg-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+#cg-form legend {
+  grid-column: 1 / -1;
+}
+
+#cg-form .cg-switch {
+  align-items: center;
+  display: flex;
+  min-height: 2.75rem;
+  padding-left: 0;
+}
+
+.cg-switch .form-check-input,
+.startup-switch .form-check-input {
+  border: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+  height: 1.45rem;
+  margin-left: 0;
+  margin-right: 0.65rem;
+  width: 2.75rem;
+  background-color: color-mix(in srgb, var(--bs-secondary-bg) 80%, #000);
+  box-shadow: inset 0 0 0 1px var(--site-muted-border);
+}
+
+.cg-switch .form-check-input:checked,
+.startup-switch .form-check-input:checked {
+  background-color: var(--site-accent);
+  box-shadow: 0 0 0 1px var(--site-accent), 0 0 0.75rem var(--site-accent-dim);
+}
+
+.cg-switch .form-check-input:focus,
+.startup-switch .form-check-input:focus {
+  box-shadow: 0 0 0 0.18rem var(--site-accent-dim);
+}
+
+.cg-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.cg-platform-pill {
+  align-items: center;
+  border: 1px solid var(--site-muted-border);
+  border-radius: 0.45rem;
+  color: var(--bs-body-color);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.88rem;
+  font-weight: 600;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.8rem;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.cg-platform-pill:hover {
+  border-color: var(--site-accent);
+}
+
+.btn-check:checked + .cg-platform-pill {
+  background: var(--site-accent);
+  border-color: var(--site-accent);
+  box-shadow: 0 0 0.85rem var(--site-accent-dim);
+  color: #03140f;
+}
+
+.btn-check:focus-visible + .cg-platform-pill {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 2px;
+}
+
+.startup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.startup-switch {
+  align-self: end;
+  min-height: 2.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.startup-command {
+  background: #080b0d;
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--site-accent);
+  margin: 0;
+  overflow-x: auto;
+  padding: 0;
+}
+
+.startup-command code {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  display: block;
+  padding: 0.95rem 1rem;
+  white-space: pre;
 }
 
 @media (min-width: 1400px) {
@@ -820,6 +1034,20 @@
 
   .mod-search-row .btn {
     width: 100%;
+  }
+
+  .mod-grid-list .mod-card,
+  .mod-grid-list .mod-card-skeleton,
+  #cg-form fieldset,
+  .startup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mod-grid-list .mod-card > a,
+  .mod-grid-list .mod-card-image,
+  .mod-grid-list .mod-card-image-placeholder,
+  .mod-grid-list .mod-card-skeleton .skeleton-image {
+    min-height: 0;
   }
 }
 
@@ -1020,5 +1248,27 @@
 
   .mod-search-row .btn {
     width: 100%;
+  }
+}
+
+/* Keep list view full-width after the desktop card-grid media rules. */
+.mod-grid.mod-grid-list {
+  grid-template-columns: 1fr;
+}
+
+.mod-grid.mod-grid-list .mod-card,
+.mod-grid.mod-grid-list .mod-card-skeleton {
+  display: grid;
+  grid-template-columns: minmax(180px, 300px) minmax(0, 1fr);
+}
+
+.mod-grid.mod-grid-list .mod-card-body {
+  min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+  .mod-grid.mod-grid-list .mod-card,
+  .mod-grid.mod-grid-list .mod-card-skeleton {
+    grid-template-columns: 1fr;
   }
 }

@@ -221,7 +221,7 @@
         game.mods.forEach(function (mod, idx) {
           var path = 'game.mods[' + idx + ']';
           if (!isObject(mod)) {
-            add('error', path, 'Each entry must be an object like {"modId": "..."} — got ' + JSON.stringify(mod) + '.');
+            add('error', path, 'Each entry must be an object like {"modId": "..."} - got ' + JSON.stringify(mod) + '.');
             return;
           }
           if (typeof mod.modId !== 'string' || mod.modId.trim() === '') {

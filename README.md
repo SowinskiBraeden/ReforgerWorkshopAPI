@@ -60,11 +60,11 @@ Error responses use this shape:
 
 Besides the API and documentation, the website serves free browser tools for Arma Reforger server admins, all powered by the same API:
 
-- `/arma-reforger-mods/` — searchable Workshop mod browser with mod detail pages
-- `/config-generator/` — form-based server `config.json` builder with live preview and export
-- `/config-validator/` — local, in-browser `config.json` validation with optional mod ID checks
-- `/mod-manager/` — editor for the `game.mods` array with name resolution and dependency suggestions
-- `/guides/` — server config and API integration guides
+- `/arma-reforger-mods/` - searchable Workshop mod browser with mod detail pages
+- `/config-generator/` - form-based server `config.json` builder with live preview and export
+- `/config-validator/` - local, in-browser `config.json` validation with optional mod ID checks
+- `/mod-manager/` - editor for the `game.mods` array with name resolution and dependency suggestions
+- `/guides/` - server config and API integration guides
 
 Config editing happens client-side; configs are never uploaded.
 

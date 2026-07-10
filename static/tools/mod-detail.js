@@ -85,7 +85,7 @@
 
     if (mod.summary) html += '<section class="mod-detail-section"><h2>Summary</h2><p class="mod-summary-box">' + RM.esc(mod.summary) + '</p></section>';
     if (mod.description && mod.description !== mod.summary) {
-      html += '<section class="mod-detail-section"><h2>Description</h2><p style="white-space:pre-line">' + RM.esc(mod.description) + '</p></section>';
+      html += '<section class="mod-detail-section"><h2>Official Workshop description</h2><div class="mod-official-description">' + RM.esc(mod.description) + '</div></section>';
     }
 
     if (mod.scenarios && mod.scenarios.length) {

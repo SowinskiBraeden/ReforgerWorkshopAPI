@@ -98,11 +98,13 @@ curl https://api.reforgermods.net/v1/health
 | -------- | -------------------------------------------------------- |
 | `search` | Optional search text                                     |
 | `sort`   | `popularity`, `newest`, `subscribers`, or `version_size` |
+| `tags`   | Optional Workshop tag filter. Repeat to include multiple tags. |
+| `category` | Alias for a single `tags` value, used by the browser UI. |
 
 Example:
 
 ```bash
-curl 'https://api.reforgermods.net/v1/mods/2?search=radio&sort=newest'
+curl 'https://api.reforgermods.net/v1/mods/2?search=radio&sort=newest&tags=GAMEPLAY'
 ```
 
 Example response:
@@ -256,7 +258,7 @@ Workshop data is cached and may be temporarily stale. This allows the API to rem
 | ------------------- | ----------- | -------------- |
 | Mod detail          | 1 hour      | 24 hours       |
 | Mod list and search | 10 minutes  | 1 hour         |
-| Not found response  | 10 minutes  | —              |
+| Not found response  | 10 minutes  | -              |
 
 Useful response headers:
 
@@ -287,7 +289,7 @@ curl -H 'If-None-Match: W/"a1b2c3d4e5f6a7b8c9d0e1f2"' \
 
 ## Code Examples
 
-Complete request handling — including `202 Accepted` retries — in curl and Python.
+Complete request handling - including `202 Accepted` retries - in curl and Python.
 
 ### curl
 
@@ -361,6 +363,6 @@ Workshop data, fields, availability, and page structure can change without notic
 
 The API powers the web tools on this site, so you can watch real request handling in your browser network tab:
 
-* [Mod browser](/arma-reforger-mods/) — search, pagination, and 202 retries.
-* [Config validator](/config-validator/) — mod ID resolution with only IDs sent.
-* [Config generator](/config-generator/) and [mod manager](/mod-manager/) — building a server config.json from API data.
+* [Mod browser](/arma-reforger-mods/) - search, pagination, and 202 retries.
+* [Config validator](/config-validator/) - mod ID resolution with only IDs sent.
+* [Config generator](/config-generator/) and [mod manager](/mod-manager/) - building a server config.json from API data.

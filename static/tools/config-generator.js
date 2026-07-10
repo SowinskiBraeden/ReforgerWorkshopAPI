@@ -7,8 +7,13 @@
   'use strict';
 
   var RM = window.RM;
+  var tabsEl = document.getElementById('cg-tabs');
   var formEl = document.getElementById('cg-form');
+  var modSectionEl = document.getElementById('cg-mod-section');
   var modsEl = document.getElementById('cg-mods');
+  var startupSectionEl = document.getElementById('cg-startup-section');
+  var startupFormEl = document.getElementById('cg-startup-form');
+  var startupCommandEl = document.getElementById('cg-startup-command');
   var previewEl = document.getElementById('cg-preview');
   var validationEl = document.getElementById('cg-validation');
   var jsonEditPanel = document.getElementById('cg-json-edit');
@@ -16,6 +21,12 @@
   var jsonEditError = document.getElementById('cg-json-edit-error');
   if (!formEl) return;
   var jsonEditEditor = jsonEditInput ? RM.mountCodeEditor(jsonEditInput) : null;
+  var STARTUP_STORE_KEY = 'reforgermods.startupParams.v1';
+  var SECTION_STORE_KEY = 'reforgermods.configGenerator.section.v1';
+  var activeSection = 'network';
+  try {
+    activeSection = localStorage.getItem(SECTION_STORE_KEY) || activeSection;
+  } catch (e) { /* storage unavailable; default to the first tab */ }
 
   // Base-game scenario IDs from the official server documentation.
   var SCENARIO_SUGGESTIONS = [
@@ -27,6 +38,8 @@
 
   var SECTIONS = [
     {
+      key: 'network',
+      icon: 'diagram-3',
       legend: 'Network',
       fields: [
         { path: 'bindAddress', label: 'Bind address', type: 'text', help: '0.0.0.0 listens on all interfaces.' },
@@ -36,6 +49,8 @@
       ]
     },
     {
+      key: 'optional',
+      icon: 'broadcast',
       legend: 'A2S server queries',
       fields: [
         { path: 'a2s.address', label: 'A2S address', type: 'text' },
@@ -43,6 +58,8 @@
       ]
     },
     {
+      key: 'optional',
+      icon: 'terminal',
       legend: 'RCON (optional)',
       toggle: { path: 'rcon', label: 'Enable RCON', template: { address: '0.0.0.0', port: 19999, password: '', permission: 'admin' } },
       fields: [
@@ -53,6 +70,8 @@
       ]
     },
     {
+      key: 'game',
+      icon: 'gear',
       legend: 'Game',
       fields: [
         { path: 'game.name', label: 'Server name', type: 'text' },
@@ -67,6 +86,8 @@
       ]
     },
     {
+      key: 'properties',
+      icon: 'database',
       legend: 'Game properties',
       fields: [
         { path: 'game.gameProperties.enableAI', label: 'Enable AI', type: 'bool', help: 'Allows AI systems for scenarios that use AI.' },
@@ -83,6 +104,8 @@
       ]
     },
     {
+      key: 'operating',
+      icon: 'cpu',
       legend: 'Operating',
       fields: [
         { path: 'operating.enableAI', label: 'Enable operating AI', type: 'bool', help: 'Controls AI processing at the operating layer.' },
@@ -99,6 +122,50 @@
     { value: 'PLATFORM_XBL', label: 'Xbox' },
     { value: 'PLATFORM_PSN', label: 'PlayStation' }
   ];
+
+  var CONFIG_TABS = [
+    { key: 'network', icon: 'diagram-3', label: 'Network' },
+    { key: 'game', icon: 'gear', label: 'Game' },
+    { key: 'properties', icon: 'database', label: 'Properties' },
+    { key: 'mods', icon: 'list-check', label: 'Mods' },
+    { key: 'operating', icon: 'cpu', label: 'Operating' },
+    { key: 'optional', icon: 'sliders', label: 'Optional' },
+    { key: 'startup', icon: 'terminal', label: 'Startup' }
+  ];
+
+  var STARTUP_FIELDS = [
+    { key: 'executable', label: 'Server executable', type: 'text', placeholder: 'ArmaReforgerServer.exe' },
+    { key: 'configPath', label: 'Config path', type: 'text', placeholder: 'config.json' },
+    { key: 'profilePath', label: 'Profiles path', type: 'text', placeholder: 'profiles' },
+    { key: 'maxFPS', label: 'Max FPS', type: 'number', placeholder: '60' },
+    { key: 'logFile', label: 'Log file', type: 'text', placeholder: 'server.log' },
+    { key: 'headless', label: 'Headless mode', type: 'bool' },
+    { key: 'noLauncher', label: 'No launcher', type: 'bool' },
+    { key: 'checkSignatures', label: 'Check signatures', type: 'bool' },
+    { key: 'filePatching', label: 'File patching', type: 'bool' },
+    { key: 'scriptFileRead', label: 'Allow script file read', type: 'bool' },
+    { key: 'scriptFileWrite', label: 'Allow script file write', type: 'bool' },
+    { key: 'battleyePath', label: 'BattlEye path', type: 'text', placeholder: 'C:\\path\\to\\battleye' },
+    { key: 'battleyeServerConfig', label: 'BattlEye server config', type: 'text', placeholder: 'beserver_x64.cfg' }
+  ];
+
+  function defaultStartupParams() {
+    return {
+      executable: 'ArmaReforgerServer.exe',
+      configPath: 'config.json',
+      profilePath: '',
+      maxFPS: 60,
+      logFile: 'server.log',
+      headless: true,
+      noLauncher: true,
+      checkSignatures: false,
+      filePatching: false,
+      scriptFileRead: false,
+      scriptFileWrite: false,
+      battleyePath: '',
+      battleyeServerConfig: ''
+    };
+  }
 
   function getPath(obj, path) {
     var parts = path.split('.');
@@ -131,9 +198,38 @@
     return 'cg-f-' + path.replace(/\./g, '-');
   }
 
+  function allTabs() {
+    return CONFIG_TABS;
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = allTabs().map(function (tab) {
+      var active = tab.key === activeSection;
+      return '<button class="cg-tab' + (active ? ' active' : '') + '" type="button" role="tab" data-cg-tab="' + tab.key + '" aria-selected="' + (active ? 'true' : 'false') + '">' +
+        '<i class="bi bi-' + tab.icon + '"></i> ' + RM.esc(tab.label) + '</button>';
+    }).join('');
+    tabsEl.querySelectorAll('[data-cg-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        activeSection = btn.getAttribute('data-cg-tab');
+        try { localStorage.setItem(SECTION_STORE_KEY, activeSection); } catch (e) {}
+        renderForm();
+      });
+    });
+  }
+
   function renderForm() {
     var cfg = RM.ensureConfig();
-    var html = SECTIONS.map(function (section) {
+    if (!CONFIG_TABS.some(function (tab) { return tab.key === activeSection; })) activeSection = 'network';
+    renderTabs();
+    var sections = SECTIONS.filter(function (item) { return item.key === activeSection; });
+    modSectionEl.classList.toggle('d-none', activeSection !== 'mods');
+    startupSectionEl.classList.toggle('d-none', activeSection !== 'startup');
+    if (activeSection === 'startup') renderStartupForm();
+    if (!sections.length) {
+      formEl.innerHTML = '';
+      return;
+    }
+    var html = sections.map(function (section) {
       var enabled = true;
       var toggleHtml = '';
       if (section.toggle) {
@@ -155,7 +251,7 @@
     var id = fieldId(field.path);
     var help = field.help ? '<div class="cg-field-help">' + RM.esc(field.help) + '</div>' : '';
     if (field.type === 'bool') {
-      return '<div class="form-check form-switch mb-2">' +
+      return '<div class="form-check form-switch cg-switch mb-2">' +
         '<input class="form-check-input" type="checkbox" id="' + id + '" data-path="' + field.path + '" data-type="bool"' + (value === true ? ' checked' : '') + '>' +
         '<label class="form-check-label" for="' + id + '">' + RM.esc(field.label) + '</label>' + help + '</div>';
     }
@@ -168,14 +264,13 @@
     }
     if (field.type === 'platforms') {
       var selected = Array.isArray(value) ? value : [];
-      return '<div class="mb-2"><span class="form-label d-block">' + RM.esc(field.label) + '</span>' +
+      return '<div class="mb-2"><span class="form-label d-block">' + RM.esc(field.label) + '</span><div class="cg-platforms">' +
         PLATFORMS.map(function (platform) {
           var pid = id + '-' + platform.value;
-          return '<div class="form-check form-check-inline">' +
-            '<input class="form-check-input" type="checkbox" id="' + pid + '" data-platforms-path="' + field.path + '" value="' + platform.value + '"' +
+          return '<input class="btn-check" type="checkbox" id="' + pid + '" data-platforms-path="' + field.path + '" value="' + platform.value + '"' +
             (selected.indexOf(platform.value) !== -1 ? ' checked' : '') + '>' +
-            '<label class="form-check-label" for="' + pid + '">' + RM.esc(platform.label) + '</label></div>';
-        }).join('') + help + '</div>';
+            '<label class="cg-platform-pill" for="' + pid + '">' + RM.esc(platform.label) + '</label>';
+        }).join('') + '</div>' + help + '</div>';
     }
     if (field.type === 'scenario') {
       return '<div class="mb-2"><label class="form-label" for="' + id + '">' + RM.esc(field.label) + '</label>' +
@@ -246,6 +341,88 @@
         renderForm();
       });
     });
+  }
+
+  function loadStartupParams() {
+    try {
+      var raw = localStorage.getItem(STARTUP_STORE_KEY);
+      if (!raw) return defaultStartupParams();
+      var parsed = JSON.parse(raw);
+      return Object.assign(defaultStartupParams(), parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {});
+    } catch (e) {
+      return defaultStartupParams();
+    }
+  }
+
+  function saveStartupParams(params) {
+    try {
+      localStorage.setItem(STARTUP_STORE_KEY, JSON.stringify(params));
+    } catch (e) { /* private mode / quota; startup params still work in-page */ }
+  }
+
+  function renderStartupForm() {
+    if (!startupFormEl) return;
+    var params = loadStartupParams();
+    startupFormEl.innerHTML = '<div class="startup-grid">' + STARTUP_FIELDS.map(function (field) {
+      return startupFieldHTML(field, params[field.key]);
+    }).join('') + '</div>';
+    startupFormEl.querySelectorAll('[data-startup-key]').forEach(function (el) {
+      var handler = function () {
+        var next = loadStartupParams();
+        var key = el.getAttribute('data-startup-key');
+        if (el.getAttribute('data-type') === 'bool') {
+          next[key] = el.checked;
+        } else if (el.getAttribute('data-type') === 'number') {
+          next[key] = el.value.trim() === '' ? undefined : Number(el.value);
+        } else {
+          next[key] = el.value;
+        }
+        saveStartupParams(next);
+        renderStartupCommand(next);
+      };
+      el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', handler);
+    });
+    renderStartupCommand(params);
+  }
+
+  function startupFieldHTML(field, value) {
+    var id = 'cg-startup-' + field.key;
+    if (field.type === 'bool') {
+      return '<div class="form-check form-switch startup-switch">' +
+        '<input class="form-check-input" type="checkbox" id="' + id + '" data-startup-key="' + field.key + '" data-type="bool"' + (value === true ? ' checked' : '') + '>' +
+        '<label class="form-check-label" for="' + id + '">' + RM.esc(field.label) + '</label></div>';
+    }
+    return '<div><label class="form-label" for="' + id + '">' + RM.esc(field.label) + '</label>' +
+      '<input class="form-control" type="' + (field.type === 'number' ? 'number' : 'text') + '" id="' + id + '" data-startup-key="' + field.key + '" data-type="' + field.type + '" placeholder="' + RM.esc(field.placeholder || '') + '" value="' + RM.esc(value === undefined ? '' : value) + '"></div>';
+  }
+
+  function quoteArg(value) {
+    var text = String(value || '').trim();
+    if (!text) return '';
+    return /[\s"]/g.test(text) ? '"' + text.replace(/"/g, '\\"') + '"' : text;
+  }
+
+  function addValueArg(args, flag, value) {
+    var text = quoteArg(value);
+    if (text) args.push(flag + '=' + text);
+  }
+
+  function renderStartupCommand(params) {
+    params = params || loadStartupParams();
+    var args = [quoteArg(params.executable) || 'ArmaReforgerServer.exe'];
+    addValueArg(args, '-config', params.configPath);
+    addValueArg(args, '-profile', params.profilePath);
+    addValueArg(args, '-maxFPS', params.maxFPS);
+    addValueArg(args, '-logFile', params.logFile);
+    if (params.headless) args.push('-headless');
+    if (params.noLauncher) args.push('-noLauncher');
+    if (params.checkSignatures) args.push('-checkSignatures');
+    if (params.filePatching) args.push('-filePatching');
+    if (params.scriptFileRead) args.push('-scriptFileRead');
+    if (params.scriptFileWrite) args.push('-scriptFileWrite');
+    addValueArg(args, '-BEpath', params.battleyePath);
+    addValueArg(args, '-BEcfg', params.battleyeServerConfig);
+    if (startupCommandEl) startupCommandEl.textContent = args.join(' ');
   }
 
   function renderPreview() {
@@ -334,6 +511,14 @@
   });
   document.getElementById('cg-copy-mods').addEventListener('click', function () {
     RM.copyText(JSON.stringify(RM.configMods(RM.ensureConfig()), null, 2), this);
+  });
+  document.getElementById('cg-copy-startup').addEventListener('click', function () {
+    RM.copyText(startupCommandEl ? startupCommandEl.textContent : '', this);
+  });
+  document.getElementById('cg-reset-startup').addEventListener('click', function () {
+    var defaults = defaultStartupParams();
+    saveStartupParams(defaults);
+    renderStartupForm();
   });
 
   document.getElementById('cg-json-edit-toggle').addEventListener('click', function () {

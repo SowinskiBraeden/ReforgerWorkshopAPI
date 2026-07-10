@@ -17,6 +17,9 @@ type publicPage struct {
 	Title        string
 	Description  string
 	H1           string
+	Keywords     []string
+	LastMod      string
+	Image        string
 	ChangeFreq   string
 	Priority     string
 	MarkdownPage string
@@ -54,12 +57,17 @@ type sitePageData struct {
 	APIBaseURL     string
 	OfficialURL    string
 	StructuredData htmltemplate.JS
+	Keywords       string
+	LastMod        string
+	PageImageURL   string
 	Endpoints      []apiEndpointDoc
 	GeneratedAt    string
 	NoIndex        bool
 }
 
 const officialWorkshopURL = "https://reforger.armaplatform.com/workshop"
+const defaultPageLastMod = "2026-07-10"
+const defaultPageImagePath = "/static/assets/reforger-mods-favicon-256.png"
 
 // publicPages is the full sitemap-facing page registry: core pages defined
 // here, plus the interactive tool pages and guides defined in their own files.
@@ -72,6 +80,7 @@ var corePages = []publicPage{
 		Title:       "Arma Reforger Mods API and Server Admin Tools | Reforger Mods API",
 		Description: "Reforger Mods API is an unofficial, cached JSON data source for Arma Reforger Workshop mod metadata, with a free mod browser, config.json validator, and server config generator.",
 		H1:          "Arma Reforger mod data and server tools.",
+		Keywords:    []string{"Arma Reforger mods", "Reforger Mods API", "Arma Reforger Workshop API", "Arma Reforger server tools", "config.json tools"},
 		ChangeFreq:  "weekly",
 		Priority:    "1.0",
 		Content:     homeLandingHTML,
@@ -82,6 +91,7 @@ var corePages = []publicPage{
 		Title:        "Arma Reforger Mods API Documentation | Reforger Mods API",
 		Description:  "Use the unofficial Reforger Mods API to fetch cached Arma Reforger Workshop mod lists, search results, mod details, dependencies, and refresh-job status.",
 		H1:           "Arma Reforger Mods API",
+		Keywords:     []string{"Arma Reforger Mods API", "Arma Reforger Workshop data", "Workshop mod API", "mod metadata API", "Reforger API documentation"},
 		ChangeFreq:   "weekly",
 		Priority:     "0.95",
 		MarkdownPage: "documentation/api",
@@ -93,6 +103,7 @@ var corePages = []publicPage{
 		Title:        "Documentation | Reforger Mods API",
 		Description:  "Technical documentation for Reforger Mods API endpoints, authentication, rate limits, caching, ETags, stale responses, refresh jobs, errors, and acceptable use.",
 		H1:           "Reforger Mods API Documentation",
+		Keywords:     []string{"Reforger Mods API documentation", "Arma Reforger API docs", "Workshop API endpoints", "Reforger API rate limits"},
 		ChangeFreq:   "monthly",
 		Priority:     "0.85",
 		MarkdownPage: "documentation/api",
@@ -104,6 +115,7 @@ var corePages = []publicPage{
 		Title:        "Arma Reforger Mod Data Structures | Reforger Mods API",
 		Description:  "Reference for Arma Reforger Workshop mod preview, detail, dependency, and scenario JSON structures returned by Reforger Mods API.",
 		H1:           "Mod Structures",
+		Keywords:     []string{"Arma Reforger mod JSON", "Workshop mod structure", "mod dependency JSON", "Reforger API schema"},
 		ChangeFreq:   "monthly",
 		Priority:     "0.75",
 		MarkdownPage: "documentation/mods",
@@ -115,6 +127,7 @@ var corePages = []publicPage{
 		Title:        "Changelog | Reforger Mods API",
 		Description:  "Release notes for Reforger Mods API, including versioned endpoints, cache behavior, rate limiting, and reliability changes.",
 		H1:           "Changelog",
+		Keywords:     []string{"Reforger Mods API changelog", "API release notes", "Arma Reforger API updates"},
 		ChangeFreq:   "monthly",
 		Priority:     "0.5",
 		MarkdownPage: "documentation/changelog",
@@ -126,6 +139,7 @@ var corePages = []publicPage{
 		Title:       "Data Source and Methodology | Reforger Mods API",
 		Description: "How Reforger Mods API retrieves, caches, and exposes unofficial Arma Reforger Workshop mod metadata, including freshness expectations and known limitations.",
 		H1:          "Data Source and Methodology",
+		Keywords:    []string{"Arma Reforger Workshop scraping", "Reforger mod metadata", "API cache methodology", "Workshop data freshness"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.7",
 		Content:     methodologyHTML,
@@ -136,6 +150,7 @@ var corePages = []publicPage{
 		Title:        "Privacy Policy | Reforger Mods API",
 		Description:  "Privacy policy for Reforger Mods API, an independent Arma Reforger Workshop metadata API.",
 		H1:           "Privacy Policy",
+		Keywords:     []string{"Reforger Mods API privacy", "Arma Reforger tools privacy"},
 		ChangeFreq:   "yearly",
 		Priority:     "0.3",
 		MarkdownPage: "privacy",
@@ -147,6 +162,7 @@ var corePages = []publicPage{
 		Title:        "Terms of Service | Reforger Mods API",
 		Description:  "Terms of service for Reforger Mods API, an independent Arma Reforger Workshop metadata API.",
 		H1:           "Terms of Service",
+		Keywords:     []string{"Reforger Mods API terms", "Arma Reforger tools terms"},
 		ChangeFreq:   "yearly",
 		Priority:     "0.3",
 		MarkdownPage: "terms",
@@ -157,9 +173,9 @@ var corePages = []publicPage{
 func endpointDocs() []apiEndpointDoc {
 	return []apiEndpointDoc{
 		{Method: "GET", Path: "/v1/health", Summary: "Process health check. It does not request Workshop data.", Parameters: "None.", CachePolicy: "no-store"},
-		{Method: "GET", Path: "/v1/mods", Summary: "First page of Arma Reforger Workshop mod previews.", Parameters: "Optional search text and sort.", CachePolicy: "List cache TTL plus stale serving window."},
-		{Method: "GET", Path: "/v1/mods/{page}", Summary: "A specific page of Workshop mod previews.", Parameters: "page must be a positive integer; optional search and sort.", CachePolicy: "List cache TTL plus stale serving window."},
-		{Method: "GET", Path: "/v1/search?search={query}", Summary: "Convenience route for first-page search results.", Parameters: "search text; optional sort.", CachePolicy: "Same response shape and cache policy as /v1/mods."},
+		{Method: "GET", Path: "/v1/mods", Summary: "First page of Arma Reforger Workshop mod previews.", Parameters: "Optional search text, sort, and tags/category filter.", CachePolicy: "List cache TTL plus stale serving window."},
+		{Method: "GET", Path: "/v1/mods/{page}", Summary: "A specific page of Workshop mod previews.", Parameters: "page must be a positive integer; optional search, sort, and tags/category filter.", CachePolicy: "List cache TTL plus stale serving window."},
+		{Method: "GET", Path: "/v1/search?search={query}", Summary: "Convenience route for first-page search results.", Parameters: "search text; optional sort and tags/category filter.", CachePolicy: "Same response shape and cache policy as /v1/mods."},
 		{Method: "GET", Path: "/v1/mod/{mod_id}", Summary: "Detailed metadata for one Workshop mod.", Parameters: "mod_id accepts letters, numbers, underscores, and dashes.", CachePolicy: "Mod cache TTL plus stale serving window."},
 		{Method: "GET", Path: "/v1/refresh/jobs/{id}", Summary: "Status for a background refresh job returned from a 202 response.", Parameters: "refresh job id from Location or response body.", CachePolicy: "no-store"},
 	}
@@ -251,6 +267,9 @@ func (a *App) renderPublicPage(w http.ResponseWriter, r *http.Request, page publ
 		APIBaseURL:     apiBaseURL,
 		OfficialURL:    officialWorkshopURL,
 		StructuredData: structuredData(page, canonical, publicBaseURL),
+		Keywords:       pageKeywords(page),
+		LastMod:        pageLastMod(page),
+		PageImageURL:   pageImageURL(page, publicBaseURL),
 		Endpoints:      endpointDocs(),
 		GeneratedAt:    time.Now().UTC().Format("2006-01-02"),
 		NoIndex:        noIndex,
@@ -278,16 +297,30 @@ func (a *App) serveRobots(w http.ResponseWriter, r *http.Request) {
 func (a *App) serveSitemap(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=300")
+	pages := make([]sitemapPage, 0, len(publicPages))
+	for _, page := range publicPages {
+		pages = append(pages, sitemapPage{
+			Path:       page.Path,
+			LastMod:    pageLastMod(page),
+			ChangeFreq: page.ChangeFreq,
+			Priority:   page.Priority,
+		})
+	}
 	data := struct {
 		PublicBaseURL string
-		Pages         []publicPage
-		LastMod       string
+		Pages         []sitemapPage
 	}{
 		PublicBaseURL: configuredPublicBaseURL(a),
-		Pages:         publicPages,
-		LastMod:       "2026-07-09",
+		Pages:         pages,
 	}
 	_ = sitemapTemplate.Execute(w, data)
+}
+
+type sitemapPage struct {
+	Path       string
+	LastMod    string
+	ChangeFreq string
+	Priority   string
 }
 
 func (a *App) redirectToCanonicalPublicHost(w http.ResponseWriter, r *http.Request, path string) bool {
@@ -344,6 +377,31 @@ func joinBasePath(base string, path string) string {
 	return base + path
 }
 
+func pageLastMod(page publicPage) string {
+	if page.LastMod != "" {
+		return page.LastMod
+	}
+	return defaultPageLastMod
+}
+
+func pageKeywords(page publicPage) string {
+	if len(page.Keywords) > 0 {
+		return strings.Join(page.Keywords, ", ")
+	}
+	return "Arma Reforger, Arma Reforger mods, Arma Reforger Workshop, Reforger Mods API"
+}
+
+func pageImageURL(page publicPage, publicBaseURL string) string {
+	image := strings.TrimSpace(page.Image)
+	if image == "" {
+		image = defaultPageImagePath
+	}
+	if strings.HasPrefix(image, "http://") || strings.HasPrefix(image, "https://") {
+		return image
+	}
+	return joinBasePath(publicBaseURL, image)
+}
+
 func hostWithoutPort(host string) string {
 	host = strings.TrimSpace(host)
 	if h, _, err := net.SplitHostPort(host); err == nil {
@@ -366,6 +424,27 @@ func structuredData(page publicPage, canonical string, publicBaseURL string) htm
 			"name":        "Reforger Mods API",
 			"url":         publicBaseURL + "/",
 			"description": publicPages[0].Description,
+			"potentialAction": map[string]any{
+				"@type":       "SearchAction",
+				"target":      publicBaseURL + "/arma-reforger-mods/?search={search_term_string}",
+				"query-input": "required name=search_term_string",
+			},
+			"publisher": map[string]string{
+				"@id": publicBaseURL + "/#organization",
+			},
+		},
+		{
+			"@type":        "WebPage",
+			"@id":          canonical + "#webpage",
+			"url":          canonical,
+			"name":         page.Title,
+			"description":  page.Description,
+			"keywords":     pageKeywords(page),
+			"dateModified": pageLastMod(page),
+			"inLanguage":   "en-US",
+			"isPartOf": map[string]string{
+				"@id": publicBaseURL + "/#website",
+			},
 			"publisher": map[string]string{
 				"@id": publicBaseURL + "/#organization",
 			},
@@ -407,6 +486,8 @@ func structuredData(page publicPage, canonical string, publicBaseURL string) htm
 			"applicationCategory": "UtilitiesApplication",
 			"operatingSystem":     "Any",
 			"description":         page.Description,
+			"keywords":            pageKeywords(page),
+			"isAccessibleForFree": true,
 			"offers": map[string]any{
 				"@type":         "Offer",
 				"price":         "0",
@@ -438,6 +519,7 @@ func structuredData(page publicPage, canonical string, publicBaseURL string) htm
 	if strings.HasPrefix(page.Path, "/docs/") {
 		graph = append(graph, map[string]any{
 			"@type": "BreadcrumbList",
+			"@id":   canonical + "#breadcrumb",
 			"itemListElement": []map[string]any{
 				{"@type": "ListItem", "position": 1, "name": "Documentation", "item": publicBaseURL + "/docs/"},
 				{"@type": "ListItem", "position": 2, "name": page.H1, "item": canonical},
@@ -447,6 +529,7 @@ func structuredData(page publicPage, canonical string, publicBaseURL string) htm
 	if strings.HasPrefix(page.Path, "/guides/") && page.Path != "/guides/" {
 		graph = append(graph, map[string]any{
 			"@type": "BreadcrumbList",
+			"@id":   canonical + "#breadcrumb",
 			"itemListElement": []map[string]any{
 				{"@type": "ListItem", "position": 1, "name": "Guides", "item": publicBaseURL + "/guides/"},
 				{"@type": "ListItem", "position": 2, "name": page.H1, "item": canonical},
@@ -456,9 +539,20 @@ func structuredData(page publicPage, canonical string, publicBaseURL string) htm
 	if page.ToolName != "" && page.Path != "/" {
 		graph = append(graph, map[string]any{
 			"@type": "BreadcrumbList",
+			"@id":   canonical + "#breadcrumb",
 			"itemListElement": []map[string]any{
 				{"@type": "ListItem", "position": 1, "name": "Reforger Mods", "item": publicBaseURL + "/"},
 				{"@type": "ListItem", "position": 2, "name": page.ToolName, "item": canonical},
+			},
+		})
+	}
+	if strings.HasPrefix(page.Path, "/arma-reforger-mods/") && page.Path != "/arma-reforger-mods/" {
+		graph = append(graph, map[string]any{
+			"@type": "BreadcrumbList",
+			"@id":   canonical + "#breadcrumb",
+			"itemListElement": []map[string]any{
+				{"@type": "ListItem", "position": 1, "name": "Arma Reforger Mods", "item": publicBaseURL + "/arma-reforger-mods/"},
+				{"@type": "ListItem", "position": 2, "name": page.H1, "item": canonical},
 			},
 		})
 	}
@@ -475,7 +569,7 @@ var sitemapTemplate = texttemplate.Must(texttemplate.New("sitemap").Parse(`<?xml
 {{- range .Pages }}
   <url>
     <loc>{{ $.PublicBaseURL }}{{ .Path }}</loc>
-    <lastmod>{{ $.LastMod }}</lastmod>
+    <lastmod>{{ .LastMod }}</lastmod>
     <changefreq>{{ .ChangeFreq }}</changefreq>
     <priority>{{ .Priority }}</priority>
   </url>
@@ -501,19 +595,25 @@ var siteTemplate = htmltemplate.Must(htmltemplate.New("site").Parse(`<!doctype h
     <link rel="canonical" href="{{ .CanonicalURL }}">
     <meta name="author" content="Cedarline">
     <meta name="description" content="{{ .Page.Description }}">
+    <meta name="keywords" content="{{ .Keywords }}">
     {{ if .NoIndex }}<meta name="robots" content="noindex, nofollow">{{ else }}<meta name="robots" content="index, follow, max-image-preview:large">{{ end }}
     <meta name="application-name" content="Reforger Mods API">
-    <meta property="theme-color" content="#26C29A">
+    <meta name="date" content="{{ .LastMod }}">
+    <meta name="theme-color" content="#26C29A">
     <meta property="og:title" content="{{ .Page.Title }}">
     <meta property="og:description" content="{{ .Page.Description }}">
     <meta property="og:url" content="{{ .CanonicalURL }}">
     <meta property="og:site_name" content="Reforger Mods API">
-    <meta property="og:image" content="{{ .PublicBaseURL }}/static/assets/reforger-mods-favicon-256.png">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:image" content="{{ .PageImageURL }}">
+    <meta property="og:image:alt" content="{{ .Page.Title }}">
+    <meta property="og:updated_time" content="{{ .LastMod }}">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{{ .Page.Title }}">
     <meta name="twitter:description" content="{{ .Page.Description }}">
-    <meta name="twitter:image" content="{{ .PublicBaseURL }}/static/assets/reforger-mods-favicon-256.png">
+    <meta name="twitter:image" content="{{ .PageImageURL }}">
+    <meta name="twitter:image:alt" content="{{ .Page.Title }}">
     <script type="application/ld+json">{{ .StructuredData }}</script>
   </head>
   <body data-bs-theme="dark" data-site-url="{{ .PublicBaseURL }}/" data-api-base-url="{{ .APIBaseURL }}" data-default-page="{{ .Page.MarkdownPage }}" data-nav-key="{{ .Page.Slug }}">
