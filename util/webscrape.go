@@ -120,16 +120,21 @@ func ScrapeModsContext(ctx context.Context, pageNumber int, search string, sort 
 	// Mod image URLs
 	c.OnHTML("div.grid div.aspect-h-9", func(e *colly.HTMLElement) {
 		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=1080&q=100", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
+		// The cover image URL is inside the card's noscript fallback markup,
+		// which colly exposes as text: newer Workshop pages use src=, older
+		// ones srcSet=.
 		var imageURL string
 		if strings.Contains(e.Text, "srcSet=\"") {
 			imageURL = resolveWorkshopURL(baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
 			if imageURL != "" {
 				imageURL = fmt.Sprintf("%s&w=1080&q=100", imageURL)
 			}
-		} else {
-			// For some reason image src does not exists, use this placeholder as
-			// used on reforger.armaplatform.com/workshop for mods with no image
-			// url = "https://via.placeholder.com/1280x720"
+		} else if strings.Contains(e.Text, "src=\"") {
+			imageURL = resolveWorkshopURL(baseURL, strings.Split(strings.Split(e.Text, "src=\"")[1], "\"")[0])
+		}
+		if imageURL == "" || strings.HasPrefix(imageURL, "data:") {
+			// Placeholder as used on reforger.armaplatform.com/workshop for
+			// mods with no image
 			imageURL = "https://via.placeholder.com/640x360"
 		}
 		imageURLs = append(imageURLs, imageURL)
@@ -270,7 +275,6 @@ func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
 	c.OnHTML("section figure img[src]", func(e *colly.HTMLElement) {
 		// Only get primary cover image
 		if e.Attr("alt") == mod.Name {
-			// fmt.Printf("%s\n", resolveWorkshopURL(baseURL, e.Attr("src")))
 			mod.ImageURL = resolveWorkshopURL(baseURL, e.Attr("src"))
 		}
 	})
@@ -543,4 +547,17 @@ func retryable(status int, err error) bool {
 		return true
 	}
 	return status >= 500
+}
+
+// absoluteUpstreamURL resolves an image/link reference from a Workshop page.
+// The Workshop mixes relative paths and absolute CDN URLs, so the upstream
+// host is only prepended when the reference is not already absolute.
+func absoluteUpstreamURL(baseURL string, ref string) string {
+	if strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://") {
+		return ref
+	}
+	if strings.HasPrefix(ref, "//") {
+		return "https:" + ref
+	}
+	return fmt.Sprintf("https://%s%s", baseURL, ref)
 }

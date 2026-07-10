@@ -49,7 +49,14 @@ func TestPublicPagesRenderIndexableMetadata(t *testing.T) {
 			assertContains(t, body, "<h1>"+page.H1+"</h1>")
 			assertContains(t, body, `<meta name="robots" content="index, follow, max-image-preview:large">`)
 			assertContains(t, body, `href="/static/index.css"`)
-			assertContains(t, body, `class="docs-sidebar"`)
+			if page.FullWidth {
+				assertContains(t, body, `tool-content-full`)
+				if strings.Contains(body, `class="docs-sidebar"`) {
+					t.Fatalf("full-width page %s should not render the docs sidebar", page.Path)
+				}
+			} else {
+				assertContains(t, body, `class="docs-sidebar"`)
+			}
 			if page.MarkdownPage != "" {
 				assertContains(t, body, `data-default-page="`+page.MarkdownPage+`"`)
 			}

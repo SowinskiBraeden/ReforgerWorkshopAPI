@@ -2,12 +2,13 @@ var u = new URL(window.location.href);
 var d = u.searchParams.get('page');
 var defaultPage = document.body ? document.body.getAttribute('data-default-page') : '';
 var a = '';
-var navKey = d || defaultPage || document.body?.getAttribute('data-nav-key') || 'home';
+var navKey = d || document.body?.getAttribute('data-nav-key') || defaultPage || 'home';
+if (navKey.indexOf('guide-') === 0) navKey = 'guides';
+if (navKey === 'api' || navKey === 'mod-structures' || navKey === 'changelog' || navKey === 'methodology' || navKey === 'documentation/api' || navKey === 'documentation/mods' || navKey === 'documentation/changelog') navKey = 'docs';
 var siteUrl = (document.body && document.body.getAttribute('data-site-url')) || 'https://reforgermods.net/';
 if (siteUrl.charAt(siteUrl.length - 1) !== '/') {
   siteUrl += '/';
 }
-var apiBaseUrl = (document.body && document.body.getAttribute('data-api-base-url')) || 'https://api.reforgermods.net';
 var pageMeta = {
   home: {
     title: 'Arma Reforger Mods API & Workshop Data | Reforger Mods API',
@@ -55,13 +56,17 @@ if (d) {
 document.querySelectorAll('[data-nav-page]').forEach(function(link) {
   if (link.getAttribute('data-nav-page') === navKey) {
     link.classList.add('active');
+    // Highlight the parent dropdown toggle when a dropdown item is active.
+    var dropdown = link.closest('.dropdown');
+    var toggle = dropdown && dropdown.querySelector('[data-nav-group]');
+    if (toggle) toggle.classList.add('active');
   }
 });
 try { document.querySelector('a[href="?page='+d+'"] button').classList.add('docs-nav-active'); } catch {}
 if(d) { a = '/static/pages/'+d+'.md' } else if (defaultPage) { a = '/static/pages/'+defaultPage+'.md' }
 if (!a) {
-  document.querySelectorAll('code').forEach(function(code) {
-    code.innerHTML = code.innerHTML.replaceAll('https://api.reforgermods.net', apiBaseUrl);
+  document.querySelectorAll('#content pre code').forEach(function(code) {
+    hljs.highlightElement(code);
   });
 } else {
 fetch(a)
@@ -77,7 +82,9 @@ fetch(a)
     document.querySelectorAll(".hl-escape").forEach(function(element) {
       element.innerHTML = element.innerHTML.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     });
-    hljs.highlightAll(document.getElementById('content'));
+    document.querySelectorAll('#content pre code').forEach(function(code) {
+      hljs.highlightElement(code);
+    });
   })
   .catch(c => {
     console.error('Error fetching the Markdown content:', c);

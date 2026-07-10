@@ -220,7 +220,11 @@ body {
 
 /* ── Docs content ──────────────────────────────────────────────────── */
 .docs-content {
-  max-width: 900px;
+  max-width: 980px;
+}
+
+.guide-content {
+  max-width: min(100%, 1120px);
 }
 
 .docs-content h1 {
@@ -294,11 +298,20 @@ body {
   border: 1px solid var(--site-muted-border);
   border-radius: 10px;
   margin: 1rem 0;
-  overflow: hidden;
+  overflow: auto;
+}
+
+.docs-content pre code {
+  display: block;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 1rem;
+  white-space: pre;
 }
 
 code.hljs {
   border-radius: 10px;
+  padding: 1rem;
 }
 
 /* API endpoint badges */
@@ -745,6 +758,10 @@ code.hljs {
   background: var(--site-panel-soft);
   color: var(--bs-body-color);
   text-decoration: none;
+}
+
+.guide-breadcrumb {
+  margin-bottom: 0.85rem;
 }
 
 /* ── Responsive ────────────────────────────────────────────────────── */

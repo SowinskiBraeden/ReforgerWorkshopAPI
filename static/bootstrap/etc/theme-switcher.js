@@ -40,6 +40,10 @@
     const activeThemeIcon = document.querySelector('.theme-icon-active')
     const btnToActive = document.querySelector(`[data-bs-theme-value="${theme}"]`)
     const btnToActiveMobile = document.querySelector(`.mobile-theme-switcher-btn[data-bs-theme-value="${theme}"]`)
+    if (!btnToActive) {
+      return
+    }
+
     const svgOfActiveBtn = btnToActive.querySelector('i').classList.toString()
       .replace("ms-auto d-none", "")
       .replace("me-2 opacity-50", "")
@@ -51,9 +55,13 @@
 
     btnToActive.classList.add('active')
     btnToActive.setAttribute('aria-pressed', 'true')
-    btnToActiveMobile.classList.add('active')
-    activeThemeIcon.classList = svgOfActiveBtn + ' my-1 theme-icon-active'
-    const themeSwitcherLabel = `${themeSwitcherText.textContent} (${btnToActive.dataset.bsThemeValue})`
+    if (btnToActiveMobile) {
+      btnToActiveMobile.classList.add('active')
+    }
+    if (activeThemeIcon) {
+      activeThemeIcon.className = svgOfActiveBtn + ' my-1 theme-icon-active'
+    }
+    const themeSwitcherLabel = `${themeSwitcherText ? themeSwitcherText.textContent : 'Toggle theme'} (${btnToActive.dataset.bsThemeValue})`
     themeSwitcher.setAttribute('aria-label', themeSwitcherLabel)
 
     if (focus) {
@@ -82,4 +90,3 @@
       })
   })
 })()
-

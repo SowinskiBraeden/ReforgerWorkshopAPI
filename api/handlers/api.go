@@ -45,6 +45,30 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/", a.servePublicPage("home")).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods/", a.servePublicPage("mods")).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods", a.servePublicPage("mods")).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods/{id}/", a.serveModDetailPage).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods/{id}", a.serveModDetailPage).Methods("GET", "HEAD")
+
+	// Tool and guide pages. Each is registered with and without the trailing
+	// slash; servePublicPage 301s to the canonical trailing-slash path.
+	registerPage := func(slug string, path string) {
+		router.HandleFunc(path, a.servePublicPage(slug)).Methods("GET", "HEAD")
+		router.HandleFunc(strings.TrimSuffix(path, "/"), a.servePublicPage(slug)).Methods("GET", "HEAD")
+	}
+	for _, page := range toolPages {
+		if page.Path == "/arma-reforger-mods/" {
+			continue // registered above, ahead of the {id} detail routes
+		}
+		registerPage(page.Slug, page.Path)
+	}
+	for _, page := range guidePages {
+		registerPage(page.Slug, page.Path)
+	}
+	// /config-creator is an alternate name for the same tool.
+	configCreatorRedirect := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/config-generator/", http.StatusMovedPermanently)
+	}
+	router.HandleFunc("/config-creator/", configCreatorRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/config-creator", configCreatorRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods-api/", a.servePublicPage("api")).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods-api", a.servePublicPage("api")).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/", a.servePublicPage("docs")).Methods("GET", "HEAD")

@@ -5,12 +5,18 @@ Public release notes for Reforger Mods API.
 ## Current Release
 
 <div class="changelog-list">
+  <a href="?page=documentation/changelog/v1.2.0" class="changelog-item">
+    <div>
+      <span class="changelog-version">v1.2.0 - Server Admin Tools</span>
+      <span class="changelog-date">Released 2026-07-09</span>
+    </div>
+    <span class="changelog-badge">Latest</span>
+  </a>
   <a href="?page=documentation/changelog/v1.1.3" class="changelog-item">
     <div>
       <span class="changelog-version">v1.1.3 - Patch</span>
       <span class="changelog-date">Released 2026-07-09</span>
     </div>
-    <span class="changelog-badge">Latest</span>
   </a>
   <a href="?page=documentation/changelog/v1.1.2" class="changelog-item">
     <div>

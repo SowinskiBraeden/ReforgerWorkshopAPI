@@ -1,0 +1,44 @@
+{
+  "bindAddress": "0.0.0.0",
+  "bindPort": 2001,
+  "publicAddress": "",
+  "publicPort": 2001,
+  "a2s": {
+    "address": "0.0.0.0",
+    "port": 17777
+  },
+  "game": {
+    "name": "Example Reforger Server",
+    "password": "",
+    "passwordAdmin": "change-me",
+    "admins": [],
+    "scenarioId": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+    "maxPlayers": 32,
+    "visible": true,
+    "crossPlatform": true,
+    "supportedPlatforms": ["PLATFORM_PC"],
+    "gameProperties": {
+      "enableAI": true,
+      "serverMaxViewDistance": 1600,
+      "serverMinGrassDistance": 0,
+      "networkViewDistance": 1500,
+      "disableThirdPerson": false,
+      "fastValidation": true,
+      "battlEye": true,
+      "VONDisableUI": false,
+      "VONDisableDirectSpeechUI": false,
+      "VONCanTransmitCrossFaction": false,
+      "missionHeader": {}
+    },
+    "mods": []
+  },
+  "operating": {
+    "enableAI": true,
+    "lobbyPlayerSynchronise": true,
+    "playerSaveTime": 120,
+    "aiLimit": 120,
+    "joinQueue": {
+      "maxSize": 50
+    }
+  }
+}

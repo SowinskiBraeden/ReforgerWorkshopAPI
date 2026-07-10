@@ -1,6 +1,6 @@
 # API Documentation
 
-<sup>*Last Updated: 2026-07-07*</sup>
+<sup>*Last Updated: 2026-07-09*</sup>
 
 Reforger Mods API is a read-only API for Arma Reforger Workshop metadata.
 
@@ -44,6 +44,24 @@ For an uncached resource, the API may return `202 Accepted` while it fetches cur
 3. Retry the original request URL.
 
 Polling the refresh-job URL from `Location` is optional. It is mainly useful when your application wants to show loading progress.
+
+The [202 and refresh jobs guide](/guides/handling-202-refresh-jobs/) covers this flow in more depth, and the [integration guide](/guides/api-integration/) walks through building a complete client.
+
+## Identify Your Client
+
+Send an identifying `User-Agent` or `X-API-Client` header with every request. Include your project name, a version, and a way to reach you:
+
+```text
+User-Agent: my-server-panel/2.1 (+https://example.com; admin@example.com)
+```
+
+or
+
+```text
+X-API-Client: my-server-panel/2.1
+```
+
+Identified traffic is easier to support, easier to attribute in metrics, and will not be mistaken for an abusive scraper.
 
 ## Health
 
@@ -258,6 +276,52 @@ For `429 Too Many Requests` or `503 Service Unavailable`, wait for `Retry-After`
 
 Do not poll refresh jobs faster than the advertised delay or repeatedly request variations of the same query to bypass caching.
 
+### Conditional Requests
+
+Responses include an `ETag`. Send it back in `If-None-Match` to get a free `304 Not Modified` when nothing changed:
+
+```bash
+curl -H 'If-None-Match: W/"a1b2c3d4e5f6a7b8c9d0e1f2"' \
+  'https://api.reforgermods.net/v1/mods?search=radio'
+```
+
+## Code Examples
+
+Complete request handling — including `202 Accepted` retries — in curl and Python.
+
+### curl
+
+```bash
+# Search mods (retry manually if you get 202 Accepted)
+curl -H 'X-API-Client: my-app/1.0' \
+  'https://api.reforgermods.net/v1/mods?search=radio&sort=newest'
+
+# Fetch one mod's details
+curl -H 'X-API-Client: my-app/1.0' \
+  'https://api.reforgermods.net/v1/mod/5965550F24A0C152'
+```
+
+### Python
+
+```python
+import time
+import requests
+
+def get_json(url, attempts=4):
+    headers = {"User-Agent": "my-app/1.0 (contact@example.com)"}
+    for _ in range(attempts):
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code == 202:
+            time.sleep(int(response.headers.get("Retry-After", "2")))
+            continue
+        response.raise_for_status()
+        return response.json()
+    raise RuntimeError("Workshop data is still refreshing")
+
+results = get_json("https://api.reforgermods.net/v1/mods?search=radio")
+mod = get_json("https://api.reforgermods.net/v1/mod/5965550F24A0C152")
+```
+
 ## Errors
 
 Errors use a consistent JSON response:
@@ -292,3 +356,11 @@ Every response includes `X-Request-Id`. Include that value when reporting an iss
 Data is normalized from publicly accessible Arma Reforger Workshop pages.
 
 Workshop data, fields, availability, and page structure can change without notice. The API is not an authoritative source for ownership, entitlement, moderation, platform accounts, or real-time Workshop state.
+
+## See It in Action
+
+The API powers the web tools on this site, so you can watch real request handling in your browser network tab:
+
+* [Mod browser](/arma-reforger-mods/) — search, pagination, and 202 retries.
+* [Config validator](/config-validator/) — mod ID resolution with only IDs sent.
+* [Config generator](/config-generator/) and [mod manager](/mod-manager/) — building a server config.json from API data.
