@@ -29,6 +29,49 @@ func TestScenarioField(t *testing.T) {
 	}
 }
 
+func TestResolveWorkshopURL(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "absolute http url is preserved",
+			raw:  "http://cdn.example.test/image.jpg",
+			want: "http://cdn.example.test/image.jpg",
+		},
+		{
+			name: "absolute https url is preserved",
+			raw:  "https://cdn.example.test/image.jpg",
+			want: "https://cdn.example.test/image.jpg",
+		},
+		{
+			name: "root relative path gets workshop host",
+			raw:  "/workshop/123-example",
+			want: "https://reforger.armaplatform.com/workshop/123-example",
+		},
+		{
+			name: "relative path gets workshop host",
+			raw:  "workshop/123-example",
+			want: "https://reforger.armaplatform.com/workshop/123-example",
+		},
+		{
+			name: "blank remains blank",
+			raw:  "  ",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveWorkshopURL("reforger.armaplatform.com", tt.raw)
+			if got != tt.want {
+				t.Fatalf("resolveWorkshopURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestScraperHonorsContextWhenConcurrencyIsExhausted(t *testing.T) {
 	ConfigureScraper(ScraperConfig{
 		Timeout:     time.Second,

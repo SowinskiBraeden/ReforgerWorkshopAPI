@@ -120,21 +120,24 @@ func ScrapeModsContext(ctx context.Context, pageNumber int, search string, sort 
 	// Mod image URLs
 	c.OnHTML("div.grid div.aspect-h-9", func(e *colly.HTMLElement) {
 		// fmt.Printf("Image URL -> %s\n", fmt.Sprintf("%s&w=1080&q=100", strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0]))
-		var url string
+		var imageURL string
 		if strings.Contains(e.Text, "srcSet=\"") {
-			url = fmt.Sprintf("https://%s%s&w=1080&q=100", baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
+			imageURL = resolveWorkshopURL(baseURL, strings.Split(strings.Split(e.Text, "srcSet=\"")[1], "&")[0])
+			if imageURL != "" {
+				imageURL = fmt.Sprintf("%s&w=1080&q=100", imageURL)
+			}
 		} else {
 			// For some reason image src does not exists, use this placeholder as
 			// used on reforger.armaplatform.com/workshop for mods with no image
 			// url = "https://via.placeholder.com/1280x720"
-			url = "https://via.placeholder.com/640x360"
+			imageURL = "https://via.placeholder.com/640x360"
 		}
-		imageURLs = append(imageURLs, url)
+		imageURLs = append(imageURLs, imageURL)
 	})
 
 	// Mod URLs
 	c.OnHTML("div.grid a.group[href]", func(e *colly.HTMLElement) {
-		modURLs = append(modURLs, fmt.Sprintf("https://%s%s", baseURL, e.Attr("href")))
+		modURLs = append(modURLs, resolveWorkshopURL(baseURL, e.Attr("href")))
 		// fmt.Printf("Mod URL -> %s\n", e.Attr("href"))
 	})
 
@@ -267,8 +270,8 @@ func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
 	c.OnHTML("section figure img[src]", func(e *colly.HTMLElement) {
 		// Only get primary cover image
 		if e.Attr("alt") == mod.Name {
-			// fmt.Printf("https://%s%s\n", baseURL, e.Attr("src"))
-			mod.ImageURL = fmt.Sprintf("https://%s%s", baseURL, e.Attr("src"))
+			// fmt.Printf("%s\n", resolveWorkshopURL(baseURL, e.Attr("src")))
+			mod.ImageURL = resolveWorkshopURL(baseURL, e.Attr("src"))
 		}
 	})
 
@@ -376,7 +379,7 @@ func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
 		// fmt.Printf("Dep - %s\n", e.Attr("href"))
 		mod.Dependencies = append(mod.Dependencies, models.Dependency{
 			Name:           e.Text,
-			OriginalModURL: fmt.Sprintf("https://%s%s", baseURL, e.Attr("href")),
+			OriginalModURL: resolveWorkshopURL(baseURL, e.Attr("href")),
 			APIModURL:      fmt.Sprintf("%s/v1/mod/%s", config.GetFullURL(), strings.Split(strings.Split(e.Attr("href"), "/")[2], "-")[0]),
 		})
 	})
@@ -398,7 +401,7 @@ func GetModContext(ctx context.Context, modURL string) (*models.Mod, error) {
 			if imageURL, exists := e1.DOM.Find("img[src]").First().Attr("src"); exists {
 				imageURL = strings.TrimSpace(imageURL)
 				if imageURL != "" {
-					scenario.ImageURL = fmt.Sprintf("https://%s%s", baseURL, imageURL)
+					scenario.ImageURL = resolveWorkshopURL(baseURL, imageURL)
 				}
 			}
 
@@ -486,6 +489,25 @@ func newCollector(baseURL string) *colly.Collector {
 		zap.S().Debugw("upstream fetch", "url", r.URL.String())
 	})
 	return c
+}
+
+func resolveWorkshopURL(baseURL string, raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	base, err := url.Parse("https://" + strings.TrimRight(baseURL, "/") + "/")
+	if err != nil {
+		return raw
+	}
+
+	ref, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+
+	return base.ResolveReference(ref).String()
 }
 
 func acquireScraper(ctx context.Context) error {

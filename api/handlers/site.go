@@ -275,7 +275,7 @@ func (a *App) serveSitemap(w http.ResponseWriter, r *http.Request) {
 	}{
 		PublicBaseURL: configuredPublicBaseURL(a),
 		Pages:         publicPages,
-		LastMod:       "2026-07-08",
+		LastMod:       "2026-07-09",
 	}
 	_ = sitemapTemplate.Execute(w, data)
 }
