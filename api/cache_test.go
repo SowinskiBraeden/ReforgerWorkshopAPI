@@ -419,6 +419,60 @@ func TestResponseCacheShutdownCancelsWorkersWithoutPanic(t *testing.T) {
 	}
 }
 
+func TestRefreshManagerRunsHighPriorityBeforeLowPriority(t *testing.T) {
+	cfg := testConfig()
+	cfg.CacheRefreshParallel = 1
+	cfg.CacheRefreshQueueSize = 4
+	cache := NewResponseCache(cfg)
+
+	releaseFirst := make(chan struct{})
+	firstStarted := make(chan struct{})
+	var firstOnce sync.Once
+	order := make(chan string, 2)
+	blocking := func(ctx context.Context) CachedResponse {
+		firstOnce.Do(func() { close(firstStarted) })
+		select {
+		case <-releaseFirst:
+		case <-ctx.Done():
+		}
+		return CachedResponse{StatusCode: http.StatusOK, Body: []byte(`{"first":true}`)}
+	}
+	_, created, err := cache.EnqueueRefresh("v1:mods:first", "/v1/mods/1", time.Minute, time.Minute, RefreshPriorityNormal, blocking)
+	if err != nil || !created {
+		t.Fatalf("first enqueue created=%v err=%v", created, err)
+	}
+	select {
+	case <-firstStarted:
+	case <-time.After(time.Second):
+		t.Fatal("first job did not start")
+	}
+
+	_, created, err = cache.EnqueueRefresh("v1:mods:low", "/v1/mods/2", time.Minute, time.Minute, RefreshPriorityLow, func(context.Context) CachedResponse {
+		order <- "low"
+		return CachedResponse{StatusCode: http.StatusOK, Body: []byte(`{"low":true}`)}
+	})
+	if err != nil || !created {
+		t.Fatalf("low enqueue created=%v err=%v", created, err)
+	}
+	_, created, err = cache.EnqueueRefresh("v1:mods:high", "/v1/mods/3", time.Minute, time.Minute, RefreshPriorityHigh, func(context.Context) CachedResponse {
+		order <- "high"
+		return CachedResponse{StatusCode: http.StatusOK, Body: []byte(`{"high":true}`)}
+	})
+	if err != nil || !created {
+		t.Fatalf("high enqueue created=%v err=%v", created, err)
+	}
+
+	close(releaseFirst)
+	select {
+	case got := <-order:
+		if got != "high" {
+			t.Fatalf("first queued job = %q, want high", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("queued jobs did not run")
+	}
+}
+
 func TestCacheKeyNormalization(t *testing.T) {
 	search := NormalizeSearch("  Better   Hits   Effects  ", 120)
 	if search != "Better Hits Effects" {
@@ -430,6 +484,39 @@ func TestCacheKeyNormalization(t *testing.T) {
 	key := CacheKey("V1", "MODS", "1", search, NormalizeSort("Newest", map[string]bool{"newest": true}))
 	if key != "v1:mods:1:better hits effects:newest" {
 		t.Fatalf("cache key = %q", key)
+	}
+	if got := ModsCacheKey(1, " hello ", "Popularity", nil); got != ModsCacheKey(0, "hello", "", nil) {
+		t.Fatalf("canonical list keys differ: %q", got)
+	}
+	if got := ModsCacheKey(1, " hello ", "Popularity", nil); got != ModsCacheKey(1, "hello", "popularity", nil) {
+		t.Fatalf("canonical sort keys differ: %q", got)
+	}
+	if got := ModCacheKey(" ABC123 "); got != "v1:mod:abc123" {
+		t.Fatalf("mod key = %q", got)
+	}
+}
+
+func TestSelectCacheTTL(t *testing.T) {
+	cfg := testConfig()
+	cfg.ListCacheTTL = time.Hour
+	cfg.ListCacheStale = 24 * time.Hour
+	cfg.SearchCacheTTL = 10 * time.Minute
+	cfg.SearchCacheStale = 2 * time.Hour
+	cfg.ModDetailCacheTTL = 30 * time.Minute
+	cfg.ModDetailCacheStale = 24 * time.Hour
+	cfg.NotFoundCacheTTL = 15 * time.Minute
+
+	if got := SelectCacheTTL(cfg, "mods", "", http.StatusOK); got.Fresh != time.Hour || got.Stale != 24*time.Hour {
+		t.Fatalf("list policy = %+v", got)
+	}
+	if got := SelectCacheTTL(cfg, "mods", "rhs", http.StatusOK); got.Fresh != 10*time.Minute || got.Stale != 2*time.Hour {
+		t.Fatalf("search policy = %+v", got)
+	}
+	if got := SelectCacheTTL(cfg, "mod", "", http.StatusOK); got.Fresh != 30*time.Minute || got.Stale != 24*time.Hour {
+		t.Fatalf("detail policy = %+v", got)
+	}
+	if got := SelectCacheTTL(cfg, "mod", "", http.StatusNotFound); got.Fresh != 15*time.Minute || got.Stale != 0 {
+		t.Fatalf("not found policy = %+v", got)
 	}
 }
 

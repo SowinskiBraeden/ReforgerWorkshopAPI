@@ -6,6 +6,7 @@ require (
 	github.com/gocolly/colly v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mattn/go-sqlite3 v1.14.24
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.8.0
 )

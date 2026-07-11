@@ -55,6 +55,23 @@ type Metrics struct {
 	cacheMisses uint64
 	cacheStales uint64
 
+	persistentCacheHits   uint64
+	persistentCacheMisses uint64
+	persistentCacheStales uint64
+
+	indexPagesRefreshed          uint64
+	indexDetailsRefreshed        uint64
+	indexRefreshFailures         uint64
+	localSearchHits              uint64
+	localSearchEmpty             uint64
+	backgroundJobsQueued         uint64
+	backgroundJobsRunning        uint64
+	backgroundJobsSucceeded      uint64
+	backgroundJobsFailed         uint64
+	backgroundIndexDurationTotal time.Duration
+	backgroundIndexDurationCount uint64
+	databaseErrors               uint64
+
 	scrapeTotal    uint64
 	scrapeErrors   uint64
 	scrapeTimeouts uint64
@@ -126,6 +143,7 @@ type MetricsSnapshot struct {
 	Requests             RequestMetrics                `json:"requests"`
 	ResponseTime         ResponseTimeMetrics           `json:"responseTime"`
 	Cache                CacheMetricsSnapshot          `json:"cache"`
+	Index                IndexMetricsSnapshot          `json:"index"`
 	Scrapes              ScrapeMetricsSnapshot         `json:"scrapes"`
 	Refresh              RefreshMetricsSnapshot        `json:"refresh"`
 	Clients              ClientMetricsSnapshot         `json:"clients"`
@@ -156,14 +174,31 @@ type ResponseTimeMetrics struct {
 }
 
 type CacheMetricsSnapshot struct {
-	Total         uint64        `json:"total"`
-	Hits          uint64        `json:"hits"`
-	Misses        uint64        `json:"misses"`
-	Stales        uint64        `json:"stales"`
-	Entries       int           `json:"entries"`
-	MaxEntries    int           `json:"maxEntries"`
-	LatestEvents  []MetricEvent `json:"latestEvents"`
-	LatestEntries []CacheInfo   `json:"latestEntries,omitempty"`
+	Total            uint64        `json:"total"`
+	Hits             uint64        `json:"hits"`
+	Misses           uint64        `json:"misses"`
+	Stales           uint64        `json:"stales"`
+	PersistentHits   uint64        `json:"persistentHits"`
+	PersistentMisses uint64        `json:"persistentMisses"`
+	PersistentStales uint64        `json:"persistentStales"`
+	Entries          int           `json:"entries"`
+	MaxEntries       int           `json:"maxEntries"`
+	LatestEvents     []MetricEvent `json:"latestEvents"`
+	LatestEntries    []CacheInfo   `json:"latestEntries,omitempty"`
+}
+
+type IndexMetricsSnapshot struct {
+	PagesRefreshed              uint64  `json:"pagesRefreshed"`
+	DetailsRefreshed            uint64  `json:"detailsRefreshed"`
+	RefreshFailures             uint64  `json:"refreshFailures"`
+	LocalSearchHits             uint64  `json:"localSearchHits"`
+	LocalSearchEmpty            uint64  `json:"localSearchEmpty"`
+	BackgroundJobsQueued        uint64  `json:"backgroundJobsQueued"`
+	BackgroundJobsRunning       uint64  `json:"backgroundJobsRunning"`
+	BackgroundJobsSucceeded     uint64  `json:"backgroundJobsSucceeded"`
+	BackgroundJobsFailed        uint64  `json:"backgroundJobsFailed"`
+	AverageBackgroundDurationMs float64 `json:"averageBackgroundDurationMs"`
+	DatabaseErrors              uint64  `json:"databaseErrors"`
 }
 
 type ScrapeMetricsSnapshot struct {
@@ -556,6 +591,57 @@ func (m *Metrics) RecordCache(key string, status string, statusCode int) {
 	m.pruneRetentionLocked(now)
 }
 
+func (m *Metrics) RecordPersistentCache(status string) {
+	if m == nil {
+		return
+	}
+	status = strings.ToUpper(strings.TrimSpace(status))
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	switch status {
+	case "HIT":
+		m.persistentCacheHits++
+	case "STALE":
+		m.persistentCacheStales++
+	case "MISS":
+		m.persistentCacheMisses++
+	}
+}
+
+func (m *Metrics) RecordIndexEvent(event string, duration time.Duration) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	switch event {
+	case "page_refreshed":
+		m.indexPagesRefreshed++
+	case "detail_refreshed":
+		m.indexDetailsRefreshed++
+	case "refresh_failed":
+		m.indexRefreshFailures++
+	case "local_search_hit":
+		m.localSearchHits++
+	case "local_search_empty":
+		m.localSearchEmpty++
+	case "background_queued":
+		m.backgroundJobsQueued++
+	case "background_running":
+		m.backgroundJobsRunning++
+	case "background_succeeded":
+		m.backgroundJobsSucceeded++
+	case "background_failed":
+		m.backgroundJobsFailed++
+	case "database_error":
+		m.databaseErrors++
+	}
+	if duration > 0 {
+		m.backgroundIndexDurationTotal += duration
+		m.backgroundIndexDurationCount++
+	}
+}
+
 func (m *Metrics) RecordScrape(key string, statusCode int, duration time.Duration, err error) {
 	m.RecordScrapeResult(key, statusCode, duration, err, "")
 }
@@ -699,11 +785,27 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 		responseTime.AverageMs = float64(m.responseTotal.Microseconds()) / float64(m.responseCount) / 1000
 	}
 	cacheMetrics := CacheMetricsSnapshot{
-		Total:        m.cacheHits + m.cacheMisses + m.cacheStales,
-		Hits:         m.cacheHits,
-		Misses:       m.cacheMisses,
-		Stales:       m.cacheStales,
-		LatestEvents: cloneMetricEvents(m.latestCaches),
+		Total:            m.cacheHits + m.cacheMisses + m.cacheStales,
+		Hits:             m.cacheHits,
+		Misses:           m.cacheMisses,
+		Stales:           m.cacheStales,
+		PersistentHits:   m.persistentCacheHits,
+		PersistentMisses: m.persistentCacheMisses,
+		PersistentStales: m.persistentCacheStales,
+		LatestEvents:     cloneMetricEvents(m.latestCaches),
+	}
+	indexMetrics := IndexMetricsSnapshot{
+		PagesRefreshed:              m.indexPagesRefreshed,
+		DetailsRefreshed:            m.indexDetailsRefreshed,
+		RefreshFailures:             m.indexRefreshFailures,
+		LocalSearchHits:             m.localSearchHits,
+		LocalSearchEmpty:            m.localSearchEmpty,
+		BackgroundJobsQueued:        m.backgroundJobsQueued,
+		BackgroundJobsRunning:       m.backgroundJobsRunning,
+		BackgroundJobsSucceeded:     m.backgroundJobsSucceeded,
+		BackgroundJobsFailed:        m.backgroundJobsFailed,
+		AverageBackgroundDurationMs: averageDurationMs(m.backgroundIndexDurationTotal, m.backgroundIndexDurationCount),
+		DatabaseErrors:              m.databaseErrors,
 	}
 	scrapeMetrics := ScrapeMetricsSnapshot{
 		Total:        m.scrapeTotal,
@@ -771,6 +873,7 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 		Requests:             requests,
 		ResponseTime:         responseTime,
 		Cache:                cacheMetrics,
+		Index:                indexMetrics,
 		Scrapes:              scrapeMetrics,
 		Refresh:              refreshMetrics,
 		Clients:              clients,

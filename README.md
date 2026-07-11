@@ -115,8 +115,13 @@ Cache and upstream defaults are also configured through `.env`:
 ```text
 CACHE_MOD_TTL=1h
 CACHE_MOD_STALE=24h
-CACHE_LIST_TTL=10m
-CACHE_LIST_STALE=1h
+CACHE_LIST_FRESH_TTL=1h
+CACHE_LIST_STALE_TTL=24h
+CACHE_SEARCH_FRESH_TTL=10m
+CACHE_SEARCH_STALE_TTL=2h
+CACHE_MOD_DETAIL_FRESH_TTL=30m
+CACHE_MOD_DETAIL_STALE_TTL=24h
+CACHE_NOT_FOUND_TTL=15m
 CACHE_MAX_ENTRIES=1000
 CACHE_REFRESH_CONCURRENCY=8
 CACHE_REFRESH_QUEUE_SIZE=64
@@ -124,6 +129,22 @@ UPSTREAM_TIMEOUT=15s
 UPSTREAM_RETRIES=2
 UPSTREAM_CONCURRENCY=4
 ```
+
+Persistent local indexing can be enabled for production or long-running local instances:
+
+```text
+INDEX_ENABLED=true
+INDEX_DB_PATH=/var/lib/reforgermods-api/reforgermods-index.db
+INDEX_REFRESH_ENABLED=true
+INDEX_POPULAR_PAGES=10
+INDEX_RECENT_PAGES=5
+INDEX_REFRESH_INTERVAL=30m
+INDEX_DETAIL_REFRESH_CONCURRENCY=1
+INDEX_LIST_REFRESH_CONCURRENCY=1
+INDEX_HOT_LOAD_LIMIT=500
+```
+
+When enabled, SQLite is opened in WAL mode and used as a warm cache for API response bodies, list pages, mod metadata, mod details, and local mod search. The in-memory cache remains the hot layer. Unknown resources still return the existing `202 Accepted` refresh-job response.
 
 ## Build and Run
 
@@ -169,10 +190,11 @@ docker compose up --build
 
 ## Runtime Behavior
 
-The API uses an in-memory cache and a bounded background refresh queue. Public API requests do not wait indefinitely for slow Workshop scrapes.
+The API uses an in-memory cache, an optional SQLite-backed persistent index, and a bounded background refresh queue. Public API requests do not wait indefinitely for slow Workshop scrapes.
 
 - Fresh cache entries return `200 OK` with `X-Cache: HIT`.
 - Stale but usable entries return `200 OK` with `X-Cache: STALE` and queue a background refresh.
+- When the memory cache is cold, fresh or stale persistent SQLite entries are promoted back into memory and served with the same public response schema.
 - Cold cache requests return `202 Accepted` with a refresh job location.
 - Saturated refresh queues return `503 Service Unavailable` with `Retry-After`.
 

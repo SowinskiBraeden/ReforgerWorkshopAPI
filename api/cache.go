@@ -19,6 +19,7 @@ import (
 )
 
 type CacheFetchFunc func(context.Context) CachedResponse
+type LocalFallbackFunc func(context.Context) (CachedResponse, bool)
 
 type CachedResponse struct {
 	StatusCode     int
@@ -34,6 +35,7 @@ type CachedResponse struct {
 type ResponseCache struct {
 	cfg     config.Config
 	metrics *Metrics
+	store   *IndexStore
 	mu      sync.Mutex
 	entries map[string]*cacheEntry
 	order   []string
@@ -102,7 +104,41 @@ func NewResponseCache(cfg config.Config, metrics ...*Metrics) *ResponseCache {
 	return cache
 }
 
+func (c *ResponseCache) SetIndexStore(store *IndexStore) {
+	c.store = store
+}
+
+func (c *ResponseCache) PreloadHotEntries(ctx context.Context, limit int) error {
+	if c == nil || c.store == nil || limit <= 0 {
+		return nil
+	}
+	entries, err := c.store.HotCacheEntries(ctx, limit)
+	if err != nil {
+		if c.metrics != nil {
+			c.metrics.RecordIndexEvent("database_error", 0)
+		}
+		return err
+	}
+	now := c.now()
+	for _, persisted := range entries {
+		entry := cacheEntryFromPersistent(persisted)
+		if now.After(entry.staleAt) {
+			continue
+		}
+		c.mu.Lock()
+		c.entries[persisted.CacheKey] = entry
+		c.touchLocked(persisted.CacheKey)
+		c.evictLocked()
+		c.mu.Unlock()
+	}
+	return nil
+}
+
 func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc) {
+	c.ServeWithFallback(w, r, key, ttl, stale, fetch, nil)
+}
+
+func (c *ResponseCache) ServeWithFallback(w http.ResponseWriter, r *http.Request, key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc, fallback LocalFallbackFunc) {
 	now := c.now()
 	if entry, status := c.lookup(key, now); entry != nil {
 		refreshStatus := RefreshJobStatus("none")
@@ -126,6 +162,42 @@ func (c *ResponseCache) Serve(w http.ResponseWriter, r *http.Request, key string
 		c.write(w, r, key, entry, status, refreshStatus)
 		zap.S().Infow("cache served", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status, "refreshStatus", refreshStatus)
 		return
+	}
+
+	if entry, status := c.lookupPersistent(r.Context(), key, now); entry != nil {
+		refreshStatus := RefreshJobStatus("none")
+		if status == "STALE" {
+			job, _, err := c.enqueueRefreshWithPriority(r, key, ttl, stale, fetch, RefreshPriorityNormal)
+			if err == nil {
+				refreshStatus = job.Status
+				c.markRefreshQueued(key, job)
+				if updated, _ := c.lookup(key, c.now()); updated != nil {
+					entry = updated
+				}
+			} else {
+				refreshStatus = RefreshJobFailed
+			}
+		}
+		c.write(w, r, key, entry, status, refreshStatus)
+		zap.S().Infow("persistent cache served", "requestId", r.Header.Get("X-Request-Id"), "key", key, "status", status, "refreshStatus", refreshStatus)
+		return
+	}
+
+	if fallback != nil {
+		if resp, ok := fallback(r.Context()); ok {
+			if resp.TTL == 0 {
+				resp.TTL = ttl
+			}
+			if resp.Stale == 0 {
+				resp.Stale = stale
+			}
+			c.storeResponse(key, resp, RefreshJobSucceeded, "local-index")
+			if entry, status := c.lookup(key, c.now()); entry != nil {
+				_, _, _ = c.enqueueRefreshWithPriority(r, key, ttl, stale, fetch, RefreshPriorityLow)
+				c.write(w, r, key, entry, status, RefreshJobQueued)
+				return
+			}
+		}
 	}
 
 	job, _, err := c.enqueueRefresh(r, key, ttl, stale, fetch)
@@ -157,6 +229,10 @@ func (c *ResponseCache) lookup(key string, now time.Time) (*cacheEntry, string) 
 }
 
 func (c *ResponseCache) enqueueRefresh(r *http.Request, key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc) (RefreshJobSnapshot, bool, error) {
+	return c.enqueueRefreshWithPriority(r, key, ttl, stale, fetch, RefreshPriorityHigh)
+}
+
+func (c *ResponseCache) enqueueRefreshWithPriority(r *http.Request, key string, ttl time.Duration, stale time.Duration, fetch CacheFetchFunc, priority RefreshPriority) (RefreshJobSnapshot, bool, error) {
 	return c.refresh.Enqueue(RefreshRequest{
 		ResourceKey: key,
 		ResourceURL: resourceURL(r),
@@ -164,6 +240,21 @@ func (c *ResponseCache) enqueueRefresh(r *http.Request, key string, ttl time.Dur
 		Stale:       stale,
 		Fetch:       RefreshFetchFunc(fetch),
 		RequestID:   r.Header.Get("X-Request-Id"),
+		Priority:    priority,
+	})
+}
+
+func (c *ResponseCache) EnqueueRefresh(key string, resourceURL string, ttl time.Duration, stale time.Duration, priority RefreshPriority, fetch CacheFetchFunc) (RefreshJobSnapshot, bool, error) {
+	if c == nil || c.refresh == nil {
+		return RefreshJobSnapshot{}, false, ErrRefreshShutdown
+	}
+	return c.refresh.Enqueue(RefreshRequest{
+		ResourceKey: key,
+		ResourceURL: resourceURL,
+		TTL:         ttl,
+		Stale:       stale,
+		Fetch:       RefreshFetchFunc(fetch),
+		Priority:    priority,
 	})
 }
 
@@ -206,6 +297,70 @@ func (c *ResponseCache) storeResponse(key string, resp CachedResponse, refreshSt
 		refreshStatus: refreshStatus,
 		refreshJobID:  refreshJobID,
 	}
+	c.entries[key] = entry
+	c.touchLocked(key)
+	c.evictLocked()
+	if c.store != nil && refreshStatus == RefreshJobSucceeded {
+		persisted := CacheEntryFromResponse(key, resp, now.UTC())
+		persisted.LastRefreshStatus = string(refreshStatus)
+		go func() {
+			if err := c.store.PutCacheEntry(context.Background(), persisted); err != nil {
+				if c.metrics != nil {
+					c.metrics.RecordIndexEvent("database_error", 0)
+				}
+				zap.S().Warnw("failed to persist cache entry", "key", key, "error", err)
+			}
+		}()
+	}
+}
+
+func (c *ResponseCache) StoreForTest(key string, resp CachedResponse, refreshStatus RefreshJobStatus, refreshJobID string) {
+	c.storeResponse(key, resp, refreshStatus, refreshJobID)
+}
+
+func (c *ResponseCache) lookupPersistent(ctx context.Context, key string, now time.Time) (*cacheEntry, string) {
+	if c.store == nil {
+		return nil, "MISS"
+	}
+	persisted, ok, err := c.store.GetCacheEntry(ctx, key)
+	if err != nil {
+		if c.metrics != nil {
+			c.metrics.RecordPersistentCache("ERROR")
+			c.metrics.RecordIndexEvent("database_error", 0)
+		}
+		zap.S().Warnw("persistent cache lookup failed", "key", key, "error", err)
+		return nil, "MISS"
+	}
+	if !ok {
+		if c.metrics != nil {
+			c.metrics.RecordPersistentCache("MISS")
+		}
+		return nil, "MISS"
+	}
+	entry := cacheEntryFromPersistent(persisted)
+	if now.Before(entry.expiresAt) {
+		c.promotePersistent(key, entry)
+		if c.metrics != nil {
+			c.metrics.RecordPersistentCache("HIT")
+		}
+		return cloneCacheEntry(entry), "HIT"
+	}
+	if now.Before(entry.staleAt) {
+		c.promotePersistent(key, entry)
+		if c.metrics != nil {
+			c.metrics.RecordPersistentCache("STALE")
+		}
+		return cloneCacheEntry(entry), "STALE"
+	}
+	if c.metrics != nil {
+		c.metrics.RecordPersistentCache("MISS")
+	}
+	return nil, "MISS"
+}
+
+func (c *ResponseCache) promotePersistent(key string, entry *cacheEntry) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.entries[key] = entry
 	c.touchLocked(key)
 	c.evictLocked()
@@ -451,12 +606,101 @@ func weakETag(body []byte) string {
 	return `W/"` + hex.EncodeToString(sum[:12]) + `"`
 }
 
+func cacheEntryFromPersistent(persisted PersistentCacheEntry) *cacheEntry {
+	resp := CachedResponse{
+		StatusCode: persisted.StatusCode,
+		Body:       append([]byte(nil), persisted.Body...),
+		TTL:        persisted.FreshUntil.Sub(persisted.CreatedAt),
+		Stale:      persisted.StaleUntil.Sub(persisted.FreshUntil),
+	}
+	if resp.StatusCode == 0 {
+		resp.StatusCode = http.StatusOK
+	}
+	status := RefreshJobStatus(persisted.LastRefreshStatus)
+	if status == "" {
+		status = RefreshJobSucceeded
+	}
+	return &cacheEntry{
+		response:      resp,
+		createdAt:     persisted.CreatedAt,
+		expiresAt:     persisted.FreshUntil,
+		staleAt:       persisted.StaleUntil,
+		etag:          weakETag(persisted.Body),
+		refreshStatus: status,
+	}
+}
+
+func cloneCacheEntry(entry *cacheEntry) *cacheEntry {
+	if entry == nil {
+		return nil
+	}
+	copy := *entry
+	copy.response.Body = append([]byte(nil), entry.response.Body...)
+	return &copy
+}
+
 func CacheKey(parts ...string) string {
 	cleaned := make([]string, 0, len(parts))
 	for _, part := range parts {
 		cleaned = append(cleaned, strings.ToLower(strings.TrimSpace(part)))
 	}
 	return strings.Join(cleaned, ":")
+}
+
+func CanonicalModID(raw string) string {
+	return strings.ToLower(strings.TrimSpace(raw))
+}
+
+func ModsCacheKey(page int, search string, sort string, tags []string) string {
+	if page <= 1 {
+		page = 1
+	}
+	search = strings.ToLower(NormalizeSearch(search, 120))
+	sort = NormalizeSort(sort, map[string]bool{
+		"popularity":   true,
+		"newest":       true,
+		"subscribers":  true,
+		"version_size": true,
+	})
+	if sort == "" {
+		sort = "popularity"
+	}
+	tags = NormalizeTags(tags, 40)
+	return CacheKey("v1", "mods", strconv.Itoa(page), search, sort, strings.Join(tags, ","))
+}
+
+func ModCacheKey(modID string) string {
+	return CacheKey("v1", "mod", CanonicalModID(modID))
+}
+
+type CacheTTLPolicy struct {
+	Fresh time.Duration
+	Stale time.Duration
+}
+
+func SelectCacheTTL(cfg config.Config, resourceType string, search string, statusCode int) CacheTTLPolicy {
+	if statusCode == http.StatusNotFound {
+		return CacheTTLPolicy{Fresh: cfg.NotFoundCacheTTL, Stale: 0}
+	}
+	switch resourceType {
+	case "mod":
+		fresh := cfg.ModDetailCacheTTL
+		stale := cfg.ModDetailCacheStale
+		if fresh <= 0 {
+			fresh = cfg.ModCacheTTL
+		}
+		if stale <= 0 {
+			stale = cfg.ModCacheStale
+		}
+		return CacheTTLPolicy{Fresh: fresh, Stale: stale}
+	case "mods":
+		if strings.TrimSpace(search) != "" {
+			return CacheTTLPolicy{Fresh: cfg.SearchCacheTTL, Stale: cfg.SearchCacheStale}
+		}
+		return CacheTTLPolicy{Fresh: cfg.ListCacheTTL, Stale: cfg.ListCacheStale}
+	default:
+		return CacheTTLPolicy{Fresh: cfg.ListCacheTTL, Stale: cfg.ListCacheStale}
+	}
 }
 
 func NormalizeSearch(raw string, maxLen int) string {

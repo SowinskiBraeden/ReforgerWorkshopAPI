@@ -44,12 +44,26 @@ type Config struct {
 	ModCacheStale            time.Duration
 	ListCacheTTL             time.Duration
 	ListCacheStale           time.Duration
+	SearchCacheTTL           time.Duration
+	SearchCacheStale         time.Duration
+	ModDetailCacheTTL        time.Duration
+	ModDetailCacheStale      time.Duration
 	NotFoundCacheTTL         time.Duration
 	CacheRefreshTimeout      time.Duration
 	CacheRefreshParallel     int
 	CacheRefreshQueueSize    int
 	CacheRefreshJobRetention time.Duration
 	CacheRefreshRetryAfter   time.Duration
+
+	IndexEnabled                  bool
+	IndexDBPath                   string
+	IndexRefreshEnabled           bool
+	IndexPopularPages             int
+	IndexRecentPages              int
+	IndexRefreshInterval          time.Duration
+	IndexDetailRefreshConcurrency int
+	IndexListRefreshConcurrency   int
+	IndexHotLoadLimit             int
 
 	UpstreamTimeout     time.Duration
 	UpstreamRetries     int
@@ -113,14 +127,28 @@ func New() *Config {
 		CacheMaxEntries:          envInt("CACHE_MAX_ENTRIES", 1000),
 		ModCacheTTL:              envDuration("CACHE_MOD_TTL", time.Hour),
 		ModCacheStale:            envDuration("CACHE_MOD_STALE", 24*time.Hour),
-		ListCacheTTL:             envDuration("CACHE_LIST_TTL", 10*time.Minute),
-		ListCacheStale:           envDuration("CACHE_LIST_STALE", time.Hour),
+		ListCacheTTL:             envDuration("CACHE_LIST_FRESH_TTL", envDuration("CACHE_LIST_TTL", 10*time.Minute)),
+		ListCacheStale:           envDuration("CACHE_LIST_STALE_TTL", envDuration("CACHE_LIST_STALE", time.Hour)),
+		SearchCacheTTL:           envDuration("CACHE_SEARCH_FRESH_TTL", 10*time.Minute),
+		SearchCacheStale:         envDuration("CACHE_SEARCH_STALE_TTL", 2*time.Hour),
+		ModDetailCacheTTL:        envDuration("CACHE_MOD_DETAIL_FRESH_TTL", envDuration("CACHE_MOD_TTL", time.Hour)),
+		ModDetailCacheStale:      envDuration("CACHE_MOD_DETAIL_STALE_TTL", envDuration("CACHE_MOD_STALE", 24*time.Hour)),
 		NotFoundCacheTTL:         envDuration("CACHE_NOT_FOUND_TTL", 10*time.Minute),
 		CacheRefreshTimeout:      envDuration("CACHE_REFRESH_TIMEOUT", 20*time.Second),
 		CacheRefreshParallel:     envInt("CACHE_REFRESH_CONCURRENCY", 8),
 		CacheRefreshQueueSize:    envInt("CACHE_REFRESH_QUEUE_SIZE", 64),
 		CacheRefreshJobRetention: envDuration("CACHE_REFRESH_JOB_RETENTION", 15*time.Minute),
 		CacheRefreshRetryAfter:   envDuration("CACHE_REFRESH_RETRY_AFTER", 2*time.Second),
+
+		IndexEnabled:                  envBool("INDEX_ENABLED", false),
+		IndexDBPath:                   envString("INDEX_DB_PATH", "/var/lib/reforgermods-api/reforgermods-index.db"),
+		IndexRefreshEnabled:           envBool("INDEX_REFRESH_ENABLED", true),
+		IndexPopularPages:             envInt("INDEX_POPULAR_PAGES", 10),
+		IndexRecentPages:              envInt("INDEX_RECENT_PAGES", 5),
+		IndexRefreshInterval:          envDuration("INDEX_REFRESH_INTERVAL", 30*time.Minute),
+		IndexDetailRefreshConcurrency: envInt("INDEX_DETAIL_REFRESH_CONCURRENCY", 1),
+		IndexListRefreshConcurrency:   envInt("INDEX_LIST_REFRESH_CONCURRENCY", 1),
+		IndexHotLoadLimit:             envInt("INDEX_HOT_LOAD_LIMIT", 500),
 
 		UpstreamTimeout:     envDuration("UPSTREAM_TIMEOUT", 15*time.Second),
 		UpstreamRetries:     envInt("UPSTREAM_RETRIES", 2),

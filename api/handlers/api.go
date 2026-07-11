@@ -21,12 +21,14 @@ import (
 
 // App stores the router and db connection so it can be reused
 type App struct {
-	Router       *mux.Router
-	Config       config.Config
-	Cache        *api.ResponseCache
-	Middleware   *api.MiddlewareChain
-	Metrics      *api.Metrics
-	MetricsStore *api.MetricsStore
+	Router         *mux.Router
+	Config         config.Config
+	Cache          *api.ResponseCache
+	IndexStore     *api.IndexStore
+	IndexScheduler *IndexScheduler
+	Middleware     *api.MiddlewareChain
+	Metrics        *api.Metrics
+	MetricsStore   *api.MetricsStore
 }
 
 // New creates a new mux router and all the routes
@@ -112,6 +114,21 @@ func (a *App) New() *mux.Router {
 	}
 
 	a.Cache = api.NewResponseCache(a.Config, a.Metrics)
+	if a.Config.IndexEnabled {
+		store, err := api.OpenIndexStore(a.Config.IndexDBPath)
+		if err != nil {
+			zap.S().Fatalw("index storage unavailable", "path", a.Config.IndexDBPath, "error", err)
+		}
+		a.IndexStore = store
+		a.Cache.SetIndexStore(store)
+		if err := a.Cache.PreloadHotEntries(context.Background(), a.Config.IndexHotLoadLimit); err != nil {
+			zap.S().Warnw("index hot cache preload failed", "error", err)
+		}
+		if a.Config.IndexRefreshEnabled {
+			a.IndexScheduler = NewIndexScheduler(a)
+			a.IndexScheduler.Start()
+		}
+	}
 	a.Middleware = api.NewMiddleware(a.Config, a.Metrics)
 
 	// API Routes. Unversioned routes are retained as deprecated aliases.
@@ -151,6 +168,10 @@ func (a *App) Initialize() {
 func (a *App) Shutdown(ctx context.Context) error {
 	var firstErr error
 
+	if a.IndexScheduler != nil {
+		a.IndexScheduler.Stop()
+	}
+
 	if a.Cache != nil {
 		if err := a.Cache.Shutdown(ctx); err != nil && firstErr == nil {
 			firstErr = err
@@ -159,6 +180,11 @@ func (a *App) Shutdown(ctx context.Context) error {
 
 	if a.MetricsStore != nil {
 		if err := a.MetricsStore.Close(a.Metrics); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	if a.IndexStore != nil {
+		if err := a.IndexStore.Close(); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}

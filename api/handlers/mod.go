@@ -106,8 +106,9 @@ func (a *App) serveModsPage(w http.ResponseWriter, r *http.Request, pageNumber i
 		return
 	}
 
-	key := api.CacheKey("v1", "mods", strconv.Itoa(pageNumber), search, sort, strings.Join(tags, ","))
-	a.Cache.Serve(w, r, key, a.Config.ListCacheTTL, a.Config.ListCacheStale, func(ctx context.Context) api.CachedResponse {
+	key := api.ModsCacheKey(pageNumber, search, sort, tags)
+	policy := api.SelectCacheTTL(a.Config, "mods", search+strings.Join(tags, " "), http.StatusOK)
+	fetch := func(ctx context.Context) api.CachedResponse {
 		results, err := util.ScrapeModsContext(ctx, pageNumber, search, sort, tags)
 		if err != nil {
 			return api.CachedResponse{Err: err, ErrorCode: "UPSTREAM_UNAVAILABLE", Message: "Workshop list data is temporarily unavailable."}
@@ -136,22 +137,24 @@ func (a *App) serveModsPage(w http.ResponseWriter, r *http.Request, pageNumber i
 		if err != nil {
 			return api.CachedResponse{Err: err, ErrorCode: "INTERNAL_ERROR", Message: "Failed to encode response."}
 		}
+		a.persistListPage(ctx, key, pageNumber, search, sort, results, b, policy)
 		return api.CachedResponse{StatusCode: http.StatusOK, Body: b}
-	})
+	}
+	a.Cache.ServeWithFallback(w, r, key, policy.Fresh, policy.Stale, fetch, a.localSearchFallback(key, pageNumber, search, sort, tags, policy))
 }
 
 // ModByIDHandler returns a single Mod
 func (a *App) ModByIDHandler(w http.ResponseWriter, r *http.Request) {
-	modID := mux.Vars(r)["id"]
+	modID := strings.TrimSpace(mux.Vars(r)["id"])
 	if !validModID.MatchString(modID) {
 		config.WriteError(w, r, http.StatusBadRequest, "INVALID_MOD_ID", "Mod ID is malformed.")
 		return
 	}
 
-	key := api.CacheKey("v1", "mod", modID)
-	a.Cache.Serve(w, r, key, a.Config.ModCacheTTL, a.Config.ModCacheStale, func(ctx context.Context) api.CachedResponse {
-		var baseURL string = "reforger.armaplatform.com"
-		mod, err := util.GetModContext(ctx, fmt.Sprintf("https://%s/workshop/%s", baseURL, modID))
+	key := api.ModCacheKey(modID)
+	policy := api.SelectCacheTTL(a.Config, "mod", "", http.StatusOK)
+	a.Cache.Serve(w, r, key, policy.Fresh, policy.Stale, func(ctx context.Context) api.CachedResponse {
+		mod, err := fetchWorkshopModByID(ctx, modID)
 		if err != nil {
 			return api.CachedResponse{Err: err, ErrorCode: "UPSTREAM_UNAVAILABLE", Message: "Workshop mod data is temporarily unavailable."}
 		}
@@ -168,6 +171,7 @@ func (a *App) ModByIDHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return api.CachedResponse{Err: err, ErrorCode: "INTERNAL_ERROR", Message: "Failed to encode response."}
 		}
+		a.persistModDetail(ctx, modID, *mod, b, policy)
 		return api.CachedResponse{StatusCode: http.StatusOK, Body: b}
 	})
 }

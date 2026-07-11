@@ -16,11 +16,34 @@ PUBLIC_BASE_URL=https://reforgermods.net
 API_BASE_URL=https://api.reforgermods.net
 FULL_URL=https://api.reforgermods.net
 PUBLIC_CANONICAL_REDIRECTS=true
+INDEX_ENABLED=true
+INDEX_DB_PATH=/var/lib/reforgermods-api/reforgermods-index.db
+INDEX_REFRESH_ENABLED=true
 ```
 
 `FULL_URL` remains a legacy fallback for generated API links. `PUBLIC_BASE_URL` drives canonical links, Open Graph URLs, robots.txt, and sitemap.xml. `API_BASE_URL` drives documentation examples and API response links.
 
 Only enable `PUBLIC_CANONICAL_REDIRECTS=true` when the proxy preserves the original `Host` header. The Go app redirects duplicate public HTML routes to `PUBLIC_BASE_URL`; it does not redirect API JSON routes.
+
+`INDEX_ENABLED=true` opens the SQLite index during startup, runs migrations, and enables WAL mode. Startup fails loudly if the database cannot be opened. Make sure the service user can write to `/var/lib/reforgermods-api`; the packaged systemd unit already grants this path through `ReadWritePaths`.
+
+Suggested production index settings:
+
+```env
+INDEX_POPULAR_PAGES=10
+INDEX_RECENT_PAGES=5
+INDEX_REFRESH_INTERVAL=30m
+INDEX_DETAIL_REFRESH_CONCURRENCY=1
+INDEX_LIST_REFRESH_CONCURRENCY=1
+INDEX_HOT_LOAD_LIMIT=500
+CACHE_LIST_FRESH_TTL=1h
+CACHE_LIST_STALE_TTL=24h
+CACHE_SEARCH_FRESH_TTL=10m
+CACHE_SEARCH_STALE_TTL=2h
+CACHE_MOD_DETAIL_FRESH_TTL=30m
+CACHE_MOD_DETAIL_STALE_TTL=24h
+CACHE_NOT_FOUND_TTL=15m
+```
 
 ## Reverse Proxy
 

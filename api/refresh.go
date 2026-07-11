@@ -16,6 +16,7 @@ import (
 )
 
 type RefreshJobStatus string
+type RefreshPriority string
 
 const (
 	RefreshJobQueued    RefreshJobStatus = "queued"
@@ -23,6 +24,12 @@ const (
 	RefreshJobSucceeded RefreshJobStatus = "succeeded"
 	RefreshJobFailed    RefreshJobStatus = "failed"
 	RefreshJobExpired   RefreshJobStatus = "expired"
+)
+
+const (
+	RefreshPriorityHigh   RefreshPriority = "high"
+	RefreshPriorityNormal RefreshPriority = "normal"
+	RefreshPriorityLow    RefreshPriority = "low"
 )
 
 var (
@@ -39,6 +46,7 @@ type RefreshRequest struct {
 	Stale       time.Duration
 	Fetch       RefreshFetchFunc
 	RequestID   string
+	Priority    RefreshPriority
 }
 
 type RefreshJobSnapshot struct {
@@ -70,7 +78,7 @@ type refreshManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
-	queue  chan *refreshJob
+	wake   chan struct{}
 
 	mu          sync.Mutex
 	jobs        map[string]*refreshJob
@@ -78,6 +86,8 @@ type refreshManager struct {
 	shutting    bool
 	workers     int
 	active      int
+	queueSize   int
+	queued      []*refreshJob
 }
 
 type refreshJob struct {
@@ -88,6 +98,7 @@ type refreshJob struct {
 	stale       time.Duration
 	fetch       RefreshFetchFunc
 	requestID   string
+	priority    RefreshPriority
 
 	status      RefreshJobStatus
 	createdAt   time.Time
@@ -125,10 +136,11 @@ func newRefreshManager(workers int, queueSize int, timeout time.Duration, retent
 		now:         now,
 		ctx:         ctx,
 		cancel:      cancel,
-		queue:       make(chan *refreshJob, queueSize),
+		wake:        make(chan struct{}, 1),
 		jobs:        make(map[string]*refreshJob),
 		activeByKey: make(map[string]string),
 		workers:     workers,
+		queueSize:   queueSize,
 	}
 	for i := 0; i < workers; i++ {
 		m.wg.Add(1)
@@ -142,6 +154,9 @@ func newRefreshManager(workers int, queueSize int, timeout time.Duration, retent
 func (m *refreshManager) Enqueue(req RefreshRequest) (RefreshJobSnapshot, bool, error) {
 	if strings.TrimSpace(req.ResourceKey) == "" || req.Fetch == nil {
 		return RefreshJobSnapshot{}, false, ErrRefreshQueueFull
+	}
+	if req.Priority == "" {
+		req.Priority = RefreshPriorityNormal
 	}
 	now := m.now().UTC()
 	m.mu.Lock()
@@ -160,6 +175,10 @@ func (m *refreshManager) Enqueue(req RefreshRequest) (RefreshJobSnapshot, bool, 
 		delete(m.activeByKey, req.ResourceKey)
 	}
 
+	if len(m.queued) >= m.queueSize {
+		m.recordRefreshMetricLocked("rejected")
+		return RefreshJobSnapshot{}, false, ErrRefreshQueueFull
+	}
 	job := &refreshJob{
 		id:          newRefreshJobID(),
 		resourceKey: req.ResourceKey,
@@ -168,21 +187,21 @@ func (m *refreshManager) Enqueue(req RefreshRequest) (RefreshJobSnapshot, bool, 
 		stale:       req.Stale,
 		fetch:       req.Fetch,
 		requestID:   req.RequestID,
+		priority:    req.Priority,
 		status:      RefreshJobQueued,
 		createdAt:   now,
 		updatedAt:   now,
 	}
+	m.queued = append(m.queued, job)
+	m.jobs[job.id] = job
+	m.activeByKey[job.resourceKey] = job.id
+	m.recordRefreshMetricLocked("created")
 	select {
-	case m.queue <- job:
-		m.jobs[job.id] = job
-		m.activeByKey[job.resourceKey] = job.id
-		m.recordRefreshMetricLocked("created")
-		zap.S().Infow("refresh job queued", "requestId", req.RequestID, "jobId", job.id, "resourceKey", job.resourceKey, "resourceURL", job.resourceURL, "queueDepth", len(m.queue))
-		return m.snapshotLocked(job), true, nil
+	case m.wake <- struct{}{}:
 	default:
-		m.recordRefreshMetricLocked("rejected")
-		return RefreshJobSnapshot{}, false, ErrRefreshQueueFull
 	}
+	zap.S().Infow("refresh job queued", "requestId", req.RequestID, "jobId", job.id, "resourceKey", job.resourceKey, "resourceURL", job.resourceURL, "priority", job.priority, "queueDepth", len(m.queued))
+	return m.snapshotLocked(job), true, nil
 }
 
 func (m *refreshManager) Get(id string) (RefreshJobSnapshot, bool) {
@@ -199,8 +218,8 @@ func (m *refreshManager) Snapshot() RefreshManagerSnapshot {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return RefreshManagerSnapshot{
-		QueueDepth:    len(m.queue),
-		QueueCapacity: cap(m.queue),
+		QueueDepth:    len(m.queued),
+		QueueCapacity: m.queueSize,
 		ActiveWorkers: m.active,
 		Workers:       m.workers,
 	}
@@ -232,11 +251,34 @@ func (m *refreshManager) Shutdown(ctx context.Context) error {
 func (m *refreshManager) worker(workerID int) {
 	defer m.wg.Done()
 	for {
+		job := m.nextJob()
+		if job == nil {
+			return
+		}
+		m.runJob(workerID, job)
+	}
+}
+
+func (m *refreshManager) nextJob() *refreshJob {
+	for {
+		m.mu.Lock()
+		if len(m.queued) > 0 {
+			best := 0
+			for i := 1; i < len(m.queued); i++ {
+				if priorityRank(m.queued[i].priority) < priorityRank(m.queued[best].priority) {
+					best = i
+				}
+			}
+			job := m.queued[best]
+			m.queued = append(m.queued[:best], m.queued[best+1:]...)
+			m.mu.Unlock()
+			return job
+		}
+		m.mu.Unlock()
 		select {
 		case <-m.ctx.Done():
-			return
-		case job := <-m.queue:
-			m.runJob(workerID, job)
+			return nil
+		case <-m.wake:
 		}
 	}
 }
@@ -395,8 +437,21 @@ func (m *refreshManager) snapshotLocked(job *refreshJob) RefreshJobSnapshot {
 
 func (m *refreshManager) recordRefreshMetricLocked(event string) {
 	if m.metrics != nil {
-		m.metrics.RecordRefreshEvent(event, len(m.queue), m.active)
-		m.metrics.RecordRefreshSnapshot(len(m.queue), cap(m.queue), m.active, m.workers)
+		m.metrics.RecordRefreshEvent(event, len(m.queued), m.active)
+		m.metrics.RecordRefreshSnapshot(len(m.queued), m.queueSize, m.active, m.workers)
+	}
+}
+
+func priorityRank(priority RefreshPriority) int {
+	switch priority {
+	case RefreshPriorityHigh:
+		return 0
+	case RefreshPriorityNormal:
+		return 1
+	case RefreshPriorityLow:
+		return 2
+	default:
+		return 1
 	}
 }
 
