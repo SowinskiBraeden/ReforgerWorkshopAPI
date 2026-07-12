@@ -54,13 +54,9 @@ func TestPublicPagesRenderIndexableMetadata(t *testing.T) {
 			assertContains(t, body, `<meta property="og:updated_time" content="`+pageLastMod(page)+`">`)
 			assertContains(t, body, `"@type":"WebPage"`)
 			assertContains(t, body, `href="/static/index.css?v=`+staticAssetVersion()+`"`)
-			if page.FullWidth {
-				assertContains(t, body, `tool-content-full`)
-				if strings.Contains(body, `class="docs-sidebar"`) {
-					t.Fatalf("full-width page %s should not render the docs sidebar", page.Path)
-				}
-			} else {
-				assertContains(t, body, `class="docs-sidebar"`)
+			assertContains(t, body, `tool-content-full`)
+			if strings.Contains(body, `class="docs-sidebar"`) {
+				t.Fatalf("public page %s should not render the deprecated docs sidebar", page.Path)
 			}
 		})
 	}

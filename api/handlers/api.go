@@ -101,6 +101,8 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/privacy", a.servePublicPage("privacy")).Methods("GET", "HEAD")
 	router.HandleFunc("/terms/", a.servePublicPage("terms")).Methods("GET", "HEAD")
 	router.HandleFunc("/terms", a.servePublicPage("terms")).Methods("GET", "HEAD")
+	router.HandleFunc("/support/", a.servePublicPage("support")).Methods("GET", "HEAD")
+	router.HandleFunc("/support", a.servePublicPage("support")).Methods("GET", "HEAD")
 
 	a.Metrics = api.NewMetrics()
 

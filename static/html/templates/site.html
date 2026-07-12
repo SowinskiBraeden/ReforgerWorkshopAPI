@@ -86,6 +86,7 @@
             <li><a class="dropdown-item rounded-2" href="/guides/">Guides</a></li>
             <li><a class="dropdown-item rounded-2" href="/arma-reforger-mods-api/">API</a></li>
             <li><a class="dropdown-item rounded-2" href="/docs/changelog/">Changelog</a></li>
+            <li><a class="dropdown-item rounded-2" href="/support/">Support</a></li>
             <li><a class="dropdown-item rounded-2" href="/privacy/">Privacy</a></li>
             <li><a class="dropdown-item rounded-2" href="/terms/">Terms</a></li>
           </ul>
@@ -93,7 +94,6 @@
       </div>
     </nav>
     <main class="site-main">
-      {{ if .Page.FullWidth }}
       <div class="container-fluid docs-shell tool-shell {{ if eq .Page.Slug "home" }}home-shell{{ end }}">
         <div class="docs-content tool-content-full" id="content">{{ .Page.Content }}{{ if .Page.FAQ }}
           <section class="page-faq">
@@ -101,54 +101,6 @@
             {{ range .Page.FAQ }}<h3>{{ .Question }}</h3><p>{{ .Answer }}</p>{{ end }}
           </section>{{ end }}</div>
       </div>
-      {{ else }}
-      <div class="container docs-shell">
-        <div class="row g-4">
-          <div class="col-lg-2 col-md-4 col-sm-12">
-            <aside class="docs-sidebar">
-              <div class="docs-category"><div class="docs-version">API v1</div></div>
-              <div class="docs-category">
-                <div class="docs-category-title">Project</div>
-                <a href="/"><button type="button" class="btn btn-sm text-start docs-nav">Overview</button></a>
-              </div>
-              <div class="docs-category">
-                <div class="docs-category-title">Tools</div>
-                <a href="/arma-reforger-mods/"><button type="button" class="btn btn-sm text-start docs-nav">Mod Browser</button></a>
-                <a href="/config-generator/"><button type="button" class="btn btn-sm text-start docs-nav">Config Builder</button></a>
-                <a href="/config-validator/"><button type="button" class="btn btn-sm text-start docs-nav">Config Validator</button></a>
-                <a href="/mod-manager/"><button type="button" class="btn btn-sm text-start docs-nav">Mod Manager</button></a>
-              </div>
-              <div class="docs-category">
-                <div class="docs-category-title">Guides</div>
-                <a href="/guides/"><button type="button" class="btn btn-sm text-start docs-nav">All Guides</button></a>
-                <a href="/guides/deploy-first-arma-reforger-server/"><button type="button" class="btn btn-sm text-start docs-nav">First Server</button></a>
-                <a href="/guides/arma-reforger-config-json/"><button type="button" class="btn btn-sm text-start docs-nav">Server config.json</button></a>
-                <a href="/guides/how-to-add-mods/"><button type="button" class="btn btn-sm text-start docs-nav">Adding Mods</button></a>
-                <a href="/guides/config-json-troubleshooting/"><button type="button" class="btn btn-sm text-start docs-nav">Troubleshooting</button></a>
-              </div>
-              <div class="docs-category">
-                <div class="docs-category-title">Documentation</div>
-                <a href="/api/"><button type="button" class="btn btn-sm text-start docs-nav">API Quickstart</button></a>
-                <a href="/arma-reforger-mods-api/"><button type="button" class="btn btn-sm text-start docs-nav">API</button></a>
-                <a href="/arma-reforger-mods-api/#mod-object"><button type="button" class="btn btn-sm text-start docs-nav">Mod Structures</button></a>
-                <a href="/docs/changelog/"><button type="button" class="btn btn-sm text-start docs-nav">Changelog</button></a>
-              </div>
-              <div class="docs-category">
-                <div class="docs-category-title">Legal</div>
-                <a href="/privacy/"><button type="button" class="btn btn-sm text-start docs-nav">Privacy</button></a>
-                <a href="/terms/"><button type="button" class="btn btn-sm text-start docs-nav">Terms</button></a>
-              </div>
-            </aside>
-          </div>
-          <div class="container d-lg-none d-md-none d-sm-inline mb-4"><div class="border-bottom"></div></div>
-          <div class="col-lg-10 col-md-8 col-sm-12 docs-content" id="content">{{ .Page.Content }}{{ if .Page.FAQ }}
-            <section class="page-faq">
-              <h2>Frequently asked questions</h2>
-              {{ range .Page.FAQ }}<h3>{{ .Question }}</h3><p>{{ .Answer }}</p>{{ end }}
-            </section>{{ end }}</div>
-        </div>
-      </div>
-      {{ end }}
     </main>
     <footer class="site-footer border-top">
       <div class="site-footer-inner">
@@ -177,6 +129,7 @@
           </nav>
           <nav class="site-footer-col" aria-label="Project">
             <div class="site-footer-col-title">Project</div>
+            <a href="/support/" class="site-footer-link">Support</a>
             <a href="/privacy/" class="site-footer-link">Privacy</a>
             <a href="/terms/" class="site-footer-link">Terms</a>
             <a href="mailto:support@cedarline.digital" class="site-footer-link">Contact</a>

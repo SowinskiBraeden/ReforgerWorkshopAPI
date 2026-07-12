@@ -1,39 +1,58 @@
 <h1>Privacy Policy</h1>
-<p><sup><em>Last Updated: 2026-07-07</em></sup></p>
-<p>This Privacy Policy explains how Reforger Mods API handles information when you use <code>reforgermods.net</code>, the API, or the documentation.</p>
+<p><sup><em>Last Updated: 2026-07-12</em></sup></p>
+<p>This Privacy Policy explains how Reforger Mods API handles information when you use <code>reforgermods.net</code>, the API, API keys, paid plans, documentation, tools, or support channels.</p>
 <p>Reforger Mods API is operated by cedarline.digital. It is an independent, unofficial service and is not affiliated with Bohemia Interactive.</p>
+
 <h2>What We Collect</h2>
-<p>We collect a small amount of technical information needed to operate a public API:</p>
+<p>We collect the information needed to operate a public API, protect the service, support customers, and provide paid API access:</p>
 <table>
   <thead><tr><th>Information</th><th>Why we use it</th></tr></thead>
   <tbody>
-    <tr><td>Request details such as IP address, path, request time, status code, and request ID</td><td>To run the service, troubleshoot errors, prevent abuse, and apply rate limits</td></tr>
-    <tr><td>API inputs such as mod IDs, page numbers, search text, and sort options</td><td>To return the API response you requested</td></tr>
-    <tr><td>Internal performance and usage metrics such as request counts, response times, cache status counts, cache freshness, approximate country-level request origin, coarse unique client-network estimates, and upstream scrape/fetch results</td><td>To monitor reliability, cache performance, upstream health, and API usage patterns</td></tr>
-    <tr><td>Support emails sent to <code>support@cedarline.digital</code></td><td>To respond to your message</td></tr>
+    <tr><td>Request details such as IP address, path, method, request time, status code, request ID, headers used for client identification, and rate-limit state</td><td>To run the service, troubleshoot errors, prevent abuse, enforce limits, and investigate incidents</td></tr>
+    <tr><td>API inputs such as mod IDs, page numbers, search text, tags, sort options, and refresh-job IDs</td><td>To return the API response you requested and diagnose API behavior</td></tr>
+    <tr><td>API key records such as key prefix, hashed secret, owner/contact details, plan, status, creation and expiration dates, last-used time, and usage counters</td><td>To authenticate requests, meter usage, manage plans, rotate or revoke keys, and provide support</td></tr>
+    <tr><td>Billing and account information such as name, email address, organization, plan selection, invoice identifiers, payment status, tax-related metadata, and billing-provider customer IDs</td><td>To sell API access, process payments, issue invoices, comply with accounting obligations, and resolve billing questions</td></tr>
+    <tr><td>Internal performance and usage metrics such as request counts, response times, cache status counts, cache freshness, approximate country-level request origin, coarse unique client-network estimates, and upstream scrape/fetch results</td><td>To monitor reliability, cache performance, upstream health, capacity, and API usage patterns</td></tr>
+    <tr><td>Support messages, abuse reports, privacy requests, and related attachments or diagnostics you choose to send</td><td>To respond to your request, investigate problems, and keep an operational record of the conversation</td></tr>
   </tbody>
 </table>
-<p>The website stores your light/dark theme choice in your browser's <code>localStorage</code>. This stays on your device and can be removed by clearing site data in your browser.</p>
+<p>The website stores your light/dark theme choice in your browser's <code>localStorage</code>. Browser-based config tools may also store drafts locally on your device so you can continue editing. You can remove this data by clearing site data in your browser.</p>
+
 <h2>Workshop Data</h2>
-<p>The API provides metadata from publicly accessible Arma Reforger Workshop pages, including fields such as mod names, authors, descriptions, images, tags, ratings, download counts, and update dates.</p>
-<p>That Workshop data comes from public pages controlled by Bohemia Interactive. Reforger Mods API caches and formats it for API use, but does not verify ownership, identity, moderation status, or legal rights in Workshop content.</p>
+<p>The API provides metadata from publicly accessible Arma Reforger Workshop pages, including fields such as mod names, authors, descriptions, images, tags, ratings, download counts, dependencies, scenarios, and update dates.</p>
+<p>That Workshop data comes from public pages controlled by Bohemia Interactive. Reforger Mods API caches and formats it for API use, but does not verify ownership, identity, moderation status, entitlement, or legal rights in Workshop content.</p>
+
 <h2>How We Use Information</h2>
-<p>We use collected information to provide the API, maintain reliability, apply rate limits, measure internal performance, investigate errors, respond to support requests, and protect the service from misuse.</p>
-<p>We do not sell personal information. The current service does not provide user accounts, accept payments, or include third-party analytics scripts.</p>
+<p>We use collected information to provide the API, issue and manage API keys, process paid plans, maintain reliability, apply rate limits, measure internal performance, investigate errors, respond to support requests, prevent misuse, and meet legal or accounting obligations.</p>
+<p>We do not sell personal information. We may share information with service providers that help operate hosting, DNS, security, email, logging, payment processing, tax calculation, invoicing, customer support, or abuse prevention.</p>
+
+<h2>API Keys</h2>
+<p>API keys are credentials. We store key secrets as hashes where practical and may store non-secret key prefixes so users and support staff can identify a key without exposing the full secret.</p>
+<p>Requests made with an API key may be linked to the key's account, plan, usage counters, and support history. Keep keys private, rotate exposed keys, and do not place secret keys in public client-side code.</p>
+
+<h2>Payments And Billing</h2>
+<p>Paid API plans may be processed through third-party payment, tax, and invoicing providers. Those providers may collect and process payment details under their own terms and privacy policies. Reforger Mods API does not need to store full card numbers to operate paid plans.</p>
+<p>We may keep billing records, invoice metadata, account email addresses, plan history, and payment status for business records, fraud prevention, dispute handling, tax, and compliance purposes.</p>
+
 <h2>Cookies And Storage</h2>
-<p>The current site does not set application cookies. The only browser storage currently used by the site is the theme preference described above.</p>
+<p>The current site does not use third-party advertising cookies. Authentication, checkout, billing portal, abuse prevention, or support features may use cookies or similar storage when those features are introduced or provided by payment/support vendors.</p>
+<p>Local browser storage is used for site preferences and browser-only tool drafts. API requests should not include secrets, payment details, or sensitive personal information in query strings.</p>
+
 <h2>Logs And Retention</h2>
-<p>Operational logs may include request details needed for debugging, security, and reliability. These logs are kept only as long as needed for operational, legal, or security purposes.</p>
-<p>Internal metrics are stored in process memory and reset when the API process restarts. Metrics may include aggregate request counts, response-time summaries, cache hit/miss/stale counts, cache keys, cache freshness timestamps, upstream scrape/fetch status, approximate country-level request counts, coarse unique client-network estimates, and retained aggregate day/week/month/year buckets. They are used for service operations and are not a public analytics product.</p>
+<p>Operational logs may include request details needed for debugging, security, billing enforcement, and reliability. These logs are kept only as long as needed for operational, legal, accounting, or security purposes.</p>
+<p>Internal metrics may include aggregate request counts, response-time summaries, cache hit/miss/stale counts, cache keys, cache freshness timestamps, upstream scrape/fetch status, approximate country-level request counts, coarse unique client-network estimates, API-key usage counters, and retained aggregate day/week/month/year buckets.</p>
 <p>Approximate country and unique client-network metrics are generated from request metadata for aggregate operational visibility. Raw IP addresses are not stored in the internal metrics snapshot. Unique client-network estimates use coarse IP network prefixes and rotating in-memory hashes, so they are approximate and are not intended to identify individual people.</p>
 <p>Cached API responses may be kept temporarily to improve performance and reduce repeated requests to the public Workshop. Cached responses may be stale and may be cleared or refreshed at any time.</p>
-<h2>Service Providers</h2>
-<p>We may use infrastructure, hosting, DNS, email, logging, security, or proxy providers to operate the service. These providers may process technical information as part of delivering the site and API.</p>
-<p>When the API fetches or refreshes Workshop data, requests are sent to Bohemia Interactive's public Workshop service.</p>
+
 <h2>Security</h2>
-<p>We use reasonable safeguards for a public API, including rate limiting, request limits, security headers, and restricted CORS configuration.</p>
-<p>Do not send secrets, private tokens, payment details, or sensitive personal information through API query strings or support messages.</p>
+<p>We use reasonable safeguards for a public API, including rate limiting, request limits, security headers, restricted CORS configuration, access controls, and key rotation/revocation tools where applicable.</p>
+<p>No internet service is perfectly secure. You are responsible for protecting your API keys, account email, billing portal access, and any systems that call the API.</p>
+
+<h2>Your Requests</h2>
+<p>You may contact us to ask about privacy, billing records, API key records, support history, or account deletion. Some records may need to be retained for security, abuse prevention, legal, tax, accounting, or dispute-resolution reasons.</p>
+
 <h2>Contact</h2>
-<p>For privacy questions, support requests, or abuse reports, contact cedarline.digital at <strong><em>support@cedarline.digital</em></strong>.</p>
+<p>For privacy questions, support requests, billing questions, or abuse reports, contact cedarline.digital at <strong><em>support@cedarline.digital</em></strong>.</p>
+
 <h2>Changes</h2>
 <p>This policy may be updated as the service changes. The date at the top of the page will show when it was last revised.</p>

@@ -118,23 +118,37 @@ var corePages = []publicPage{
 		Path:        "/privacy/",
 		Slug:        "privacy",
 		Title:       "Privacy Policy | Reforger Mods API",
-		Description: "Privacy policy for Reforger Mods API, an independent Arma Reforger Workshop metadata API.",
+		Description: "Privacy policy for Reforger Mods API, including API keys, billing, support, logs, and Workshop metadata handling.",
 		H1:          "Privacy Policy",
-		Keywords:    []string{"Reforger Mods API privacy", "Arma Reforger tools privacy"},
+		Keywords:    []string{"Reforger Mods API privacy", "API keys privacy", "Arma Reforger tools privacy"},
 		ChangeFreq:  "yearly",
 		Priority:    "0.3",
+		FullWidth:   true,
 		Content:     privacyFallbackHTML,
 	},
 	{
 		Path:        "/terms/",
 		Slug:        "terms",
 		Title:       "Terms of Service | Reforger Mods API",
-		Description: "Terms of service for Reforger Mods API, an independent Arma Reforger Workshop metadata API.",
+		Description: "Terms of service for Reforger Mods API, including API usage, API keys, paid plans, billing, rate limits, and acceptable use.",
 		H1:          "Terms of Service",
-		Keywords:    []string{"Reforger Mods API terms", "Arma Reforger tools terms"},
+		Keywords:    []string{"Reforger Mods API terms", "API keys terms", "Arma Reforger tools terms"},
 		ChangeFreq:  "yearly",
 		Priority:    "0.3",
+		FullWidth:   true,
 		Content:     termsFallbackHTML,
+	},
+	{
+		Path:        "/support/",
+		Slug:        "support",
+		Title:       "Support | Reforger Mods API",
+		Description: "Support information for Reforger Mods API, including API key questions, billing help, abuse reports, privacy requests, and technical issues.",
+		H1:          "Support",
+		Keywords:    []string{"Reforger Mods API support", "API key support", "Arma Reforger API support"},
+		ChangeFreq:  "yearly",
+		Priority:    "0.3",
+		FullWidth:   true,
+		Content:     supportFallbackHTML,
 	},
 }
 
@@ -204,6 +218,8 @@ func legacyPageRedirect(page string) string {
 		return "/privacy/"
 	case "terms":
 		return "/terms/"
+	case "support":
+		return "/support/"
 	}
 	return ""
 }
@@ -612,3 +628,4 @@ var notFoundHTML = htmlFragment("core/not-found.html")
 var changelogFallbackHTML = htmlFragment("core/changelog.html")
 var privacyFallbackHTML = htmlFragment("core/privacy.html")
 var termsFallbackHTML = htmlFragment("core/terms.html")
+var supportFallbackHTML = htmlFragment("core/support.html")
