@@ -346,7 +346,7 @@ func (m *MiddlewareChain) applyCORS(w http.ResponseWriter, r *http.Request) bool
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization, X-API-Client")
 			return true
 		}
 	}

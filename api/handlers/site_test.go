@@ -92,6 +92,38 @@ func TestRobotsAndSitemapUseConfiguredPublicOrigin(t *testing.T) {
 	}
 }
 
+func TestAPIPreflightAllowsSiteToolClientHeader(t *testing.T) {
+	cfg := testSiteConfig()
+	cfg.AllowedOrigins = []string{"https://reforgermods.test"}
+	app := &App{Config: cfg}
+	app.Initialize()
+	t.Cleanup(func() {
+		_ = app.Shutdown(context.Background())
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "/v1/mods/1", nil)
+	req.RemoteAddr = "203.0.113.40:1234"
+	req.Header.Set("Origin", "https://reforgermods.test")
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	req.Header.Set("Access-Control-Request-Headers", "x-api-client")
+	rec := httptest.NewRecorder()
+
+	app.Router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://reforgermods.test" {
+		t.Fatalf("Access-Control-Allow-Origin = %q, want https://reforgermods.test", got)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(got, "OPTIONS") || !strings.Contains(got, "GET") {
+		t.Fatalf("Access-Control-Allow-Methods = %q, want GET and OPTIONS", got)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(strings.ToLower(got), "x-api-client") {
+		t.Fatalf("Access-Control-Allow-Headers = %q, want X-API-Client", got)
+	}
+}
+
 func TestPublicPageStaticImagesExist(t *testing.T) {
 	images := map[string]string{"default": defaultPageImagePath}
 	for _, page := range publicPages {

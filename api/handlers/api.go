@@ -164,12 +164,12 @@ func (a *App) registerAPIRoutes(router *mux.Router, deprecated bool) {
 		}
 		return a.Middleware.Wrap(h)
 	}
-	router.Handle("/health", wrap(healthCheckHandler)).Methods("GET")
-	router.Handle("/mod/{id}", wrap(a.ModByIDHandler)).Methods("GET")
-	router.Handle("/mods", wrap(a.ModsHandler)).Methods("GET")
-	router.Handle("/mods/{page}", wrap(a.ModsByPageHandler)).Methods("GET")
-	router.Handle("/search", wrap(a.SearchHandler)).Methods("GET")
-	router.Handle("/refresh/jobs/{id}", wrap(a.RefreshJobHandler)).Methods("GET")
+	router.Handle("/health", wrap(healthCheckHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/mod/{id}", wrap(a.ModByIDHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/mods", wrap(a.ModsHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/mods/{page}", wrap(a.ModsByPageHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/search", wrap(a.SearchHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/refresh/jobs/{id}", wrap(a.RefreshJobHandler)).Methods("GET", "OPTIONS")
 }
 
 func (a *App) Initialize() {
