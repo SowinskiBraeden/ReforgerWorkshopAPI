@@ -272,10 +272,14 @@ func (a *App) renderPublicPage(w http.ResponseWriter, r *http.Request, page publ
 	} else {
 		w.Header().Set("Cache-Control", "public, max-age=300")
 	}
-	w.WriteHeader(status)
-	if err := siteTemplate.Execute(w, data); err != nil {
+
+	var body bytes.Buffer
+	if err := siteTemplate.Execute(&body, data); err != nil {
 		http.Error(w, "failed to render page", http.StatusInternalServerError)
+		return
 	}
+	w.WriteHeader(status)
+	_, _ = w.Write(body.Bytes())
 }
 
 func (a *App) serveRobots(w http.ResponseWriter, r *http.Request) {
