@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -61,9 +62,6 @@ func TestPublicPagesRenderIndexableMetadata(t *testing.T) {
 			} else {
 				assertContains(t, body, `class="docs-sidebar"`)
 			}
-			if page.MarkdownPage != "" {
-				assertContains(t, body, `data-default-page="`+page.MarkdownPage+`"`)
-			}
 		})
 	}
 }
@@ -92,6 +90,37 @@ func TestRobotsAndSitemapUseConfiguredPublicOrigin(t *testing.T) {
 		assertContains(t, sitemapRec.Body.String(), "<loc>https://reforgermods.test"+page.Path+"</loc>")
 		assertContains(t, sitemapRec.Body.String(), "<lastmod>"+pageLastMod(page)+"</lastmod>")
 	}
+}
+
+func TestPublicPageStaticImagesExist(t *testing.T) {
+	images := map[string]string{"default": defaultPageImagePath}
+	for _, page := range publicPages {
+		if page.Image != "" {
+			images[page.Path] = page.Image
+		}
+	}
+	for pagePath, image := range images {
+		t.Run(pagePath, func(t *testing.T) {
+			if strings.HasPrefix(image, "http://") || strings.HasPrefix(image, "https://") {
+				return
+			}
+			if !strings.HasPrefix(image, "/static/") {
+				t.Fatalf("image %q should be a /static/ path or absolute URL", image)
+			}
+			if !staticAssetExists(image) {
+				t.Fatalf("image %q is not deployable", image)
+			}
+		})
+	}
+}
+
+func staticAssetExists(path string) bool {
+	for _, prefix := range []string{".", "../.."} {
+		if _, err := os.Stat(prefix + path); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func TestToolPagesHaveSEOEnhancements(t *testing.T) {
@@ -199,7 +228,7 @@ func TestLegacyDocumentationQueryRedirects(t *testing.T) {
 
 	cases := map[string]string{
 		"/?page=documentation/api":  "/arma-reforger-mods-api/",
-		"/?page=documentation/mods": "/docs/mod-structures/",
+		"/?page=documentation/mods": "/arma-reforger-mods-api/#mod-object",
 	}
 	for path, want := range cases {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -215,20 +244,27 @@ func TestLegacyDocumentationQueryRedirects(t *testing.T) {
 	}
 }
 
-func TestModStructuresRouteLoadsModsMarkdown(t *testing.T) {
+func TestDocsRoutesRedirectToAPIReference(t *testing.T) {
 	app := testSiteApp(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/docs/mod-structures/", nil)
-	rec := httptest.NewRecorder()
-	app.Router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
+	cases := map[string]string{
+		"/docs/":                "/arma-reforger-mods-api/",
+		"/docs":                 "/arma-reforger-mods-api/",
+		"/docs/mod-structures/": "/arma-reforger-mods-api/#mod-object",
+		"/docs/mods/":           "/arma-reforger-mods-api/#mod-object",
 	}
-	body := rec.Body.String()
-	assertContains(t, body, `data-default-page="documentation/mods"`)
-	assertContains(t, body, `<h1>Mod Structures</h1>`)
-	assertContains(t, body, `rel="canonical" href="https://reforgermods.test/docs/mod-structures/"`)
+	for path, want := range cases {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		app.Router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusMovedPermanently {
+			t.Fatalf("%s status = %d, want 301", path, rec.Code)
+		}
+		if got := rec.Header().Get("Location"); got != want {
+			t.Fatalf("%s Location = %q, want %q", path, got, want)
+		}
+	}
 }
 
 func TestNotFoundIsNoIndex(t *testing.T) {

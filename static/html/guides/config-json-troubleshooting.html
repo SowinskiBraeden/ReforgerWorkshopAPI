@@ -1,0 +1,64 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>config.json Troubleshooting</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>Arma Reforger config.json Troubleshooting</h1>
+    <p class="landing-lede">When a server exits at startup or ignores settings, the cause is usually a small set of config problems. Work through these checks from top to bottom, or paste the file into the validator to catch most issues locally.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-wrench-adjustable"></i> Startup failures</span>
+      <span><i class="bi bi-filetype-json"></i> JSON structure</span>
+      <span><i class="bi bi-shield-lock"></i> Local validation</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Fastest first step</strong><span>The config validator reports JSON line and column errors and checks the server-specific structure.</span></div>
+    <a href="/config-validator/" class="btn btn-primary"><i class="bi bi-check2-square"></i> Open Validator</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>1. Invalid JSON</h2>
+    <p>The most common failure is plain JSON syntax. JSON is strict:</p>
+    <ul class="guide-check-list">
+      <li><strong>Trailing commas</strong> after the last object or array item are not allowed.</li>
+      <li><strong>Comments</strong> such as <code>//</code> or <code>/* */</code> are not part of JSON.</li>
+      <li><strong>Smart quotes</strong> from chat apps or word processors must be replaced with straight <code>"</code> quotes.</li>
+      <li><strong>Missing commas or brackets</strong> can make the reported error appear far from the actual mistake.</li>
+    </ul>
+  </section>
+
+  <section class="guide-section">
+    <h2>2. Mods listed in the wrong place</h2>
+    <p>The <code>mods</code> array must be inside the <code>game</code> object. A top-level <code>mods</code> key parses fine and is then ignored, so the server starts vanilla with no useful error.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>3. Malformed or duplicate mod IDs</h2>
+    <p>Workshop mod IDs are 16 hexadecimal characters. Truncated IDs, IDs with spaces, or full URLs pasted into <code>modId</code> will not resolve. Duplicate entries are confusing and can hide version conflicts.</p>
+  </section>
+
+  <section class="guide-section guide-two-column">
+    <div>
+      <h2>4. Port problems</h2>
+      <ul class="guide-check-list">
+        <li>Ports must be numbers, not strings, and within <code>1 to 65535</code>.</li>
+        <li>The game, A2S, and RCON ports must not collide.</li>
+        <li><code>publicAddress</code> and <code>publicPort</code> must match your firewall and NAT forwarding.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>5. Scenario ID mistakes</h2>
+      <p><code>game.scenarioId</code> must exactly match an available scenario in the form <code>{GUID}Missions/File.conf</code>. If a scenario comes from a mod, that mod must also be in your mod list.</p>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <h2>6. RCON settings</h2>
+    <p>If RCON is configured, it needs a valid <code>port</code> and a <code>password</code>. The official docs require the password to be non-trivial and contain no spaces. Remove the whole <code>rcon</code> object if you do not use RCON.</p>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Still stuck?</strong><span>Rebuild the file section by section in the config generator, then compare against the field guide and official server documentation.</span></div>
+    <a href="/config-generator/" class="btn btn-outline-secondary"><i class="bi bi-sliders"></i> Rebuild Config</a>
+  </section>
+</article>

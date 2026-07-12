@@ -1,0 +1,65 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>202 and Refresh Jobs</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">API and development</div>
+    <h1>Handling 202 Accepted and Refresh Jobs</h1>
+    <p class="landing-lede">Cold Workshop data should not freeze your app. When a resource is not cached yet, the API returns <code>202 Accepted</code>, starts a background refresh, and tells your client when to retry.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-arrow-repeat"></i> Retry pattern</span>
+      <span><i class="bi bi-clock"></i> Retry-After</span>
+      <span><i class="bi bi-hdd-network"></i> Cold cache</span>
+    </div>
+  </header>
+
+  <section class="guide-section">
+    <h2>The flow</h2>
+    <pre><code>GET /v1/mods?search=radio
+
+HTTP/1.1 202 Accepted
+Location: /v1/refresh/jobs/9f0b7d0f6fd4f88a
+Retry-After: 2
+X-Cache: MISS
+
+{"id":"9f0b7d0f6fd4f88a","status":"queued","resource_url":"/v1/mods?search=radio","retry_after_seconds":2}</code></pre>
+    <p>If a cold-cache request returns <code>202 Accepted</code>, wait the number of seconds in <code>Retry-After</code>, then retry the original URL. Most clients do not need to poll the job URL.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>The rules</h2>
+    <ul class="guide-check-list">
+      <li><strong>202 is not an error.</strong> Do not log it as a failure or give up on the first response.</li>
+      <li><strong>Respect Retry-After.</strong> Retrying faster does not speed up the refresh.</li>
+      <li><strong>Bound your retries.</strong> Three to five attempts is enough for most clients.</li>
+      <li><strong>Retry the original URL.</strong> The job endpoint reports status only; it does not contain the final data.</li>
+    </ul>
+  </section>
+
+  <section class="guide-section">
+    <h2>Minimal implementation</h2>
+    <pre><code class="language-python">import time
+import requests
+
+def fetch_with_refresh(url, max_attempts=4):
+    headers = {"User-Agent": "my-tool/1.0 (contact@example.com)"}
+    for _ in range(max_attempts):
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 202:
+            response.raise_for_status()
+            return response.json()
+        wait = int(response.headers.get("Retry-After", "2"))
+        time.sleep(wait)
+    raise RuntimeError("Still refreshing after retry limit")
+
+mods = fetch_with_refresh("https://api.reforgermods.net/v1/mods?search=radio")</code></pre>
+  </section>
+
+  <section class="guide-section">
+    <h2>When to poll the job URL</h2>
+    <p>Poll <code>Location</code> only when you want to display progress, such as queued, running, or succeeded. After <code>succeeded</code>, request the original <code>resource_url</code> again. After <code>failed</code>, back off and retry the original URL later.</p>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Why it works this way</strong><span>The API can answer instantly from cache, serve stale data while refreshing, and avoid making clients wait on Workshop latency.</span></div>
+    <a href="/guides/api-integration/" class="btn btn-outline-secondary"><i class="bi bi-journal-code"></i> Integration Guide</a>
+  </section>
+</article>

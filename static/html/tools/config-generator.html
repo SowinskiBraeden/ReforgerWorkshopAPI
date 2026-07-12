@@ -1,0 +1,95 @@
+<section class="tool-page" aria-label="Arma Reforger Server Config Generator">
+  <div class="tool-page-hero tool-page-hero-dashboard">
+    <div>
+      <div class="tool-hero-kicker">Power your Arma Reforger server with the Reforger Mods API</div>
+      <h1>Arma Reforger Server Config Generator</h1>
+      <p class="landing-lede">Build a deployable server <code>config.json</code> with guided fields, managed mods, live JSON preview, and validation before restart.</p>
+    </div>
+    <div class="tool-page-note"><i class="bi bi-shield-lock"></i> stored in your browser &middot; nothing uploaded</div>
+  </div>
+  <div class="tool-page-band">
+    <div class="tool-panel" id="config-generator">
+  <div class="tool-toolbar">
+    <button id="cg-blank" class="btn btn-outline-secondary" type="button">Start blank</button>
+    <button id="cg-example" class="btn btn-outline-secondary" type="button">Load example</button>
+    <label class="btn btn-outline-secondary mb-0" for="cg-file"><i class="bi bi-upload"></i> Import .json</label>
+    <input id="cg-file" type="file" accept=".json,application/json" class="d-none">
+    <button id="cg-import-toggle" class="btn btn-outline-secondary" type="button">Import JSON</button>
+    <button id="cg-json-edit-toggle" class="btn btn-outline-warning ms-auto" type="button"><i class="bi bi-code-slash"></i> Edit JSON directly</button>
+  </div>
+  <div id="cg-import" class="d-none">
+    <textarea id="cg-import-text" class="form-control tool-code-input" rows="8" spellcheck="false" placeholder="Paste an existing config.json to import..."></textarea>
+    <div class="tool-toolbar"><button id="cg-import-apply" class="btn btn-primary" type="button">Import</button><button id="cg-import-cancel" class="btn btn-outline-secondary" type="button">Cancel</button></div>
+    <div id="cg-import-error" class="tool-status"></div>
+  </div>
+  <div id="cg-json-edit" class="json-edit-panel d-none">
+    <div class="finding finding-warning json-edit-warning"><i class="bi bi-exclamation-triangle"></i><span>Direct JSON editing bypasses the form controls. Apply only after validating the syntax and structure.</span></div>
+    <textarea id="cg-json-edit-text" class="form-control tool-code-input" rows="18" spellcheck="false" aria-label="Direct JSON editor"></textarea>
+    <div class="tool-toolbar mt-2">
+      <button id="cg-json-edit-apply" class="btn btn-primary" type="button"><i class="bi bi-check2"></i> Apply JSON</button>
+      <button id="cg-json-edit-format" class="btn btn-outline-secondary" type="button"><i class="bi bi-text-indent-left"></i> Format</button>
+      <button id="cg-json-edit-cancel" class="btn btn-outline-secondary" type="button">Cancel</button>
+    </div>
+    <div id="cg-json-edit-error" class="tool-status"></div>
+  </div>
+  <div class="row g-4 cg-layout">
+    <div class="col-xl-6">
+      <div class="tool-col-head"><i class="bi bi-sliders"></i> Config editor</div>
+      <div id="cg-tabs" class="cg-tabs" role="tablist" aria-label="Config sections"></div>
+      <div id="cg-form"></div>
+      <section id="cg-mod-section" class="cg-section-panel d-none">
+        <h2 class="tool-section-title">Mods</h2>
+        <p class="cg-field-help mb-2">Search the Workshop by name, paste a mod ID, or send mods over from the <a href="/arma-reforger-mods/">mod browser</a>.</p>
+        <div id="cg-mod-search"></div>
+        <div id="cg-mods"></div>
+      </section>
+      <section id="cg-startup-section" class="cg-section-panel d-none">
+        <h2 class="tool-section-title">Startup command</h2>
+        <p class="cg-field-help mb-3">Build the command used to launch the dedicated server. These parameters are separate from <code>config.json</code>; copy them into your startup script or host panel.</p>
+        <div id="cg-startup-form"></div>
+        <div class="mt-3">
+          <label class="form-label" for="cg-startup-command">Generated command line</label>
+          <pre class="startup-command"><code id="cg-startup-command"></code></pre>
+        </div>
+        <div class="tool-toolbar mt-2">
+          <button id="cg-copy-startup" class="btn btn-primary" type="button"><i class="bi bi-clipboard"></i> Copy command</button>
+          <button id="cg-reset-startup" class="btn btn-outline-secondary" type="button"><i class="bi bi-arrow-counterclockwise"></i> Reset startup params</button>
+        </div>
+      </section>
+    </div>
+    <div class="col-xl-6">
+      <div class="cg-preview-sticky">
+        <div class="tool-col-head"><i class="bi bi-braces"></i> config.json preview</div>
+        <div class="tool-toolbar">
+          <button id="cg-copy" class="btn btn-primary" type="button"><i class="bi bi-clipboard"></i> Copy JSON</button>
+          <button id="cg-download" class="btn btn-outline-secondary" type="button"><i class="bi bi-download"></i> Download config.json</button>
+          <button id="cg-copy-mods" class="btn btn-outline-secondary" type="button">Copy mods array</button>
+        </div>
+        <div id="cg-validation" class="tool-results" aria-live="polite"></div>
+        <pre class="tool-preview"><code id="cg-preview"></code></pre>
+      </div>
+    </div>
+  </div>
+  <noscript><p>The config generator needs JavaScript. The <a href="/guides/arma-reforger-config-json/">config.json guide</a> documents the file format if you prefer to write it by hand.</p></noscript>
+    </div>
+    <p class="tool-privacy-note"><i class="bi bi-shield-lock"></i> Your config is edited and stored in your browser only. Importing an existing file preserves fields the form does not know about.</p>
+  </div>
+  <div class="tool-page-info-grid">
+    <section>
+      <h2>How it works</h2>
+      <ul>
+        <li>Start from a blank config, load a minimal working example, or import your existing <code>config.json</code>.</li>
+        <li>Edit common fields through the form: bind and public address and port, A2S, RCON, server name, passwords, scenario, player limits, platform settings, and frequently used game properties.</li>
+        <li>Manage <code>game.mods</code> visually: search Workshop mods by name without leaving the editor, paste a mod ID, or send mods over from the <a href="/arma-reforger-mods/">mod browser</a>. Resolve names and versions, reorder, remove, and get warned about duplicates.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Good to know</h2>
+      <ul>
+        <li>Unknown fields from an imported config are preserved exactly; the generator only changes what you edit.</li>
+        <li>The preview is always the real output: copy it, or download it as <code>config.json</code>.</li>
+        <li>Before deploying, run the result through the <a href="/config-validator/">config validator</a>, and read the <a href="/guides/arma-reforger-config-json/">config.json field guide</a> for what each setting does.</li>
+      </ul>
+    </section>
+  </div>
+</section>

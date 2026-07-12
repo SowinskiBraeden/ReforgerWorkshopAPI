@@ -1,0 +1,67 @@
+<section class="mod-browser-page" aria-label="Arma Reforger Mod Browser">
+  <div class="mod-browser-hero">
+    <div class="mod-browser-hero-top">
+      <div>
+        <h1>Arma Reforger Mod Browser</h1>
+        <p class="landing-lede">Fast, cached Workshop search for finding mods, copying IDs, checking metadata, and feeding clean entries into server configs.</p>
+      </div>
+    </div>
+    <div class="mod-browser-hero-info">
+      <section>
+        <h2>What you can do here</h2>
+        <p>Search by name or exact Workshop ID, copy IDs or config.json entries, add results to the config builder, and open detail pages for dependencies, scenarios, versions, and official Workshop links.</p>
+      </section>
+      <section>
+        <h2>Where the data comes from</h2>
+        <p>Results are cached public Workshop metadata normalized by the <a href="/api/">Reforger Mods API</a>. First-time searches can still use the background refresh flow while cached data remains fast.</p>
+      </section>
+    </div>
+  </div>
+
+  <div class="tool-panel mod-browser-panel" id="mod-browser">
+    <form id="mb-form" class="tool-toolbar mod-browser-toolbar" role="search">
+      <div class="mod-browser-search-row">
+        <div class="mod-browser-search-group">
+          <div class="btn-group mb-view-toggle mod-browser-view-toggle" role="group" aria-label="Result view">
+            <button id="mb-view-card" class="btn btn-outline-secondary active" type="button" data-view="card" aria-pressed="true" title="Card view"><i class="bi bi-grid-3x3-gap"></i></button>
+            <button id="mb-view-list" class="btn btn-outline-secondary" type="button" data-view="list" aria-pressed="false" title="List view"><i class="bi bi-list-ul"></i></button>
+          </div>
+          <label class="visually-hidden" for="mb-search">Search mods</label>
+          <input id="mb-search" class="form-control mod-browser-search" type="search" placeholder="Search by name, author, tag, or Workshop ID" aria-label="Search mods" autocomplete="off" maxlength="120">
+        </div>
+        <div class="mod-browser-search-controls">
+          <label class="visually-hidden" for="mb-sort">Sort order</label>
+          <select id="mb-sort" class="form-select mod-browser-sort" aria-label="Sort order">
+            <option value="">Sort: Workshop default</option>
+            <option value="popularity">Sort: Most popular</option>
+            <option value="newest">Sort: Newest</option>
+            <option value="subscribers">Sort: Most subscribers</option>
+            <option value="version_size">Sort: Version size</option>
+          </select>
+          <button class="btn btn-primary mod-browser-submit" type="submit"><i class="bi bi-search"></i> Search</button>
+        </div>
+      </div>
+      <div class="mod-browser-filter-row">
+        <span>Category</span>
+        <div id="mb-category-group" class="mb-category-group" role="group" aria-label="Filter by category">
+          <button type="button" class="mb-category-btn active" data-category="" aria-pressed="true">All</button>
+          <button type="button" class="mb-category-btn" data-category="GAMEPLAY" aria-pressed="false">Gameplay</button>
+          <button type="button" class="mb-category-btn" data-category="WEAPON" aria-pressed="false">Weapons</button>
+          <button type="button" class="mb-category-btn" data-category="VEHICLE" aria-pressed="false">Vehicles</button>
+          <button type="button" class="mb-category-btn" data-category="TERRAIN" aria-pressed="false">Maps / terrain</button>
+          <button type="button" class="mb-category-btn" data-category="EQUIPMENT" aria-pressed="false">Equipment</button>
+          <button type="button" class="mb-category-btn" data-category="FACTION" aria-pressed="false">Factions</button>
+          <button type="button" class="mb-category-btn" data-category="SCENARIO" aria-pressed="false">Scenarios</button>
+          <button type="button" class="mb-category-btn" data-category="AI" aria-pressed="false">AI</button>
+          <button type="button" class="mb-category-btn" data-category="AUDIO" aria-pressed="false">Audio</button>
+          <button type="button" class="mb-category-btn" data-category="MISC" aria-pressed="false">Misc</button>
+        </div>
+      </div>
+    </form>
+    <div id="mb-status" class="tool-status mod-browser-status" role="status"></div>
+    <div id="mb-results" class="mod-grid"></div>
+    <nav id="mb-pagination" class="tool-pagination" aria-label="Result pages"></nav>
+    <noscript><p>The interactive mod browser needs JavaScript. The same data is available as plain JSON from the public API:</p><pre><code>curl https://api.reforgermods.net/v1/mods?search=radio</code></pre><p>See the <a href="/arma-reforger-mods-api/">API reference</a> for all endpoints.</p></noscript>
+  </div>
+
+</section>

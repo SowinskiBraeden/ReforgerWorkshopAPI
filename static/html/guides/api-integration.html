@@ -1,0 +1,69 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>API Integration</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">API and development</div>
+    <h1>Reforger Mods API Integration Guide</h1>
+    <p class="landing-lede">Build an integration that behaves well in production: choose the right endpoints, follow pagination links, cache responses, identify your client, and handle every response state cleanly.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-braces"></i> API v1</span>
+      <span><i class="bi bi-hdd-network"></i> Cache aware</span>
+      <span><i class="bi bi-arrow-repeat"></i> 202 ready</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Need endpoint details?</strong><span>The full reference documents every route, parameter, cache header, and error code.</span></div>
+    <a href="/arma-reforger-mods-api/" class="btn btn-primary"><i class="bi bi-braces"></i> Open API Reference</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>Endpoints in one look</h2>
+    <pre><code>GET /v1/health                      process health, no Workshop data
+GET /v1/mods                        first page of mod previews
+GET /v1/mods/{page}                 specific page (positive integer)
+GET /v1/search?search={query}       convenience alias for first-page search
+GET /v1/mod/{mod_id}                full detail for one mod
+GET /v1/refresh/jobs/{id}           status of a background refresh job</code></pre>
+    <p>List endpoints accept <code>search</code>, <code>sort</code>, and Workshop tag filters through <code>tags</code> or the single-value <code>category</code> alias.</p>
+  </section>
+
+  <section class="guide-section guide-two-column">
+    <div>
+      <h2>Pagination</h2>
+      <p>List responses include <code>meta</code> and ready-built <code>links.next</code> / <code>links.prev</code> URLs. Follow the links instead of reconstructing URLs yourself.</p>
+    </div>
+    <div>
+      <h2>Identify your client</h2>
+      <p>Send a <code>User-Agent</code> or <code>X-API-Client</code> header that names your project and gives a way to reach you.</p>
+      <pre><code>User-Agent: my-server-panel/2.1 (+https://example.com; admin@example.com)</code></pre>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <h2>Cache like you mean it</h2>
+    <ul class="guide-check-list">
+      <li>Honor <code>Cache-Control</code>, <code>Age</code>, and <code>ETag</code>.</li>
+      <li>Send <code>If-None-Match</code> with the last <code>ETag</code> to get cheap <code>304 Not Modified</code> responses.</li>
+      <li>Use <code>X-Cache</code> to understand whether you received a <code>HIT</code>, <code>STALE</code>, or fresh response.</li>
+      <li>Do not vary query strings just to bust caches; it wastes your rate budget and refresh capacity.</li>
+    </ul>
+  </section>
+
+  <section class="guide-section">
+    <h2>Handle every status</h2>
+    <dl class="guide-definition-list guide-status-list">
+      <div><dt><code>200</code></dt><dd>Use the data.</dd></div>
+      <div><dt><code>202</code></dt><dd>Cold cache. Wait <code>Retry-After</code> seconds and retry the same URL with a bounded attempt count.</dd></div>
+      <div><dt><code>304</code></dt><dd>Your cached copy is still valid.</dd></div>
+      <div><dt><code>404</code></dt><dd>The mod or page does not exist. Cache the negative result briefly.</dd></div>
+      <div><dt><code>429</code></dt><dd>You exceeded the rate limit. Back off for <code>Retry-After</code>.</dd></div>
+      <div><dt><code>5xx</code></dt><dd>Treat as temporary; retry with backoff and surface a friendly error.</dd></div>
+    </dl>
+    <p>All errors include a <code>requestId</code>. Log it and include it when reporting support issues.</p>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Worked retry example</strong><span>The quickstart includes copy-paste code for retrying 202 Accepted responses.</span></div>
+    <a href="/api/" class="btn btn-outline-secondary"><i class="bi bi-journal-code"></i> API Quickstart</a>
+  </section>
+</article>

@@ -1,0 +1,100 @@
+<section class="home-hero">
+  <div class="home-hero-bg" aria-hidden="true">
+    <div class="home-hero-slide is-active" style="background-image: url('/static/assets/web/hero-fire-silhouette.jpg')"></div>
+    <div class="home-hero-slide" style="background-image: url('/static/assets/web/hero-statue-rain.jpg')"></div>
+    <div class="home-hero-slide" style="background-image: url('/static/assets/web/hero-supply-tent.jpg')"></div>
+    <div class="home-hero-slide" style="background-image: url('/static/assets/web/hero-ifv-field.jpg')"></div>
+  </div>
+  <div class="home-hero-inner">
+    <div class="home-hero-copy">
+      <div class="home-eyebrow">Unofficial · not affiliated with Bohemia Interactive</div>
+      <h1>Arma Reforger mod data and server tools.</h1>
+      <p>Search cached Workshop metadata, build safer server configs, validate before restart, and power community tools from one public API.</p>
+      <div class="home-actions">
+        <a href="/arma-reforger-mods/" class="home-primary-action">Browse Mods</a>
+        <a href="/config-validator/" class="home-secondary-action">Validate Config</a>
+        <a href="/api/" class="home-link-action">API Docs <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+    <div class="home-terminal" aria-label="API example">
+      <div class="home-terminal-bar">
+        <span class="home-dot"></span><span class="home-dot"></span><span class="home-dot"></span>
+        <code>GET /v1/mods</code>
+      </div>
+      <pre><code>curl https://api.reforgermods.net/v1/mods?search=radio&amp;sort=newest
+
+{
+  "status": "success",
+  "cache": "hit",
+  "results": [
+    { "id": "WS_2148771", "name": "TAC Radio", "version": "1.4.2" }
+  ]
+}</code></pre>
+      <div class="home-terminal-foot"><span>200 OK</span><span>cache: hit</span><span>42ms</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="home-band home-tools-band">
+  <div class="home-section-heading">
+    <h2>Tools</h2>
+    <span>no signup required</span>
+  </div>
+  <div class="home-tool-grid">
+    <a href="/arma-reforger-mods/" class="home-tool-card"><i class="bi bi-list"></i><strong>Mod Browser</strong><span>Search cached Workshop metadata by name, ID, tag, or author.</span></a>
+    <a href="/config-validator/" class="home-tool-card"><i class="bi bi-check-circle"></i><strong>Config Validator</strong><span>Paste or upload config.json and get exact error locations.</span></a>
+    <a href="/config-generator/" class="home-tool-card"><i class="bi bi-plus-square"></i><strong>Config Creator</strong><span>Build a config.json visually with a live JSON preview.</span></a>
+    <a href="/arma-reforger-mods-api/" class="home-tool-card"><i class="bi bi-code"></i><strong>API Docs</strong><span>Endpoints, cache headers, rate limits, and code samples.</span></a>
+  </div>
+</section>
+
+<section class="home-band home-split">
+  <div class="home-api-copy">
+    <div class="home-small-label">For developers</div>
+    <h2>Build tools the community can use.</h2>
+    <p>Use the same public API behind this site to ship mod managers, server panels, Discord bots, dashboards, and admin workflows without fragile Workshop scraping.</p>
+    <dl class="home-feature-list">
+      <div><dt>Create</dt><dd>Build search, install, validation, and mod-list workflows from normalized Workshop records.</dd></div>
+      <div><dt>Connect</dt><dd>Power bots, panels, and community tools with predictable JSON instead of brittle page parsing.</dd></div>
+      <div><dt>Refresh</dt><dd>Handle cold Workshop entries with retryable 202 jobs while your UI stays responsive.</dd></div>
+      <div><dt>Ship</dt><dd>Use stable fields for IDs, versions, dependencies, scenarios, images, and official links.</dd></div>
+    </dl>
+    <a href="/arma-reforger-mods-api/" class="home-text-link">Start building with the API →</a>
+  </div>
+  <div class="home-split-shot">
+    <img src="/static/assets/web/mod-manager-angled.png" alt="The Mod Manager tool, one of the applications built on the Reforger Mods API" loading="lazy">
+    <span class="home-split-shot-caption">Build mod managers, panels, and bots on top of the public API.</span>
+  </div>
+</section>
+
+<section class="home-band">
+  <div class="home-small-label">For server admins</div>
+  <h2>Search, add, validate, export.</h2>
+  <div class="home-process-grid">
+    <a href="/arma-reforger-mods/" class="home-process-step"><span>01</span><strong>Search mods</strong><small>Find mods by name or Workshop ID in the browser.</small></a>
+    <a href="/mod-manager/" class="home-process-step"><span>02</span><strong>Add to config</strong><small>Add mods to a working config.json without leaving the page.</small></a>
+    <a href="/config-validator/" class="home-process-step"><span>03</span><strong>Validate</strong><small>Catch bad IDs, duplicates, and structural errors before deploy.</small></a>
+    <a href="/config-generator/" class="home-process-step"><span>04</span><strong>Export</strong><small>Copy or download a config.json ready for your server.</small></a>
+  </div>
+</section>
+
+<section class="home-band">
+  <h2>Guides</h2>
+  <div class="home-guide-grid">
+    <a href="/guides/how-to-add-mods/" class="home-guide-card">
+      <img class="home-guide-thumb" src="/static/assets/web/guide-thumb-mods.jpg" alt="" loading="lazy">
+      <div class="home-guide-body"><span>Guide</span><strong>How to add mods to config.json</strong><small>The manual process, and how the Config Creator does it for you.</small></div>
+    </a>
+    <a href="/guides/config-json-troubleshooting/" class="home-guide-card">
+      <img class="home-guide-thumb" src="/static/assets/web/guide-thumb-troubleshooting.jpg" alt="" loading="lazy">
+      <div class="home-guide-body"><span>Guide</span><strong>Troubleshooting config.json</strong><small>Common errors: bad IDs, missing dependencies, malformed JSON.</small></div>
+    </a>
+    <a href="/arma-reforger-mods-api/" class="home-guide-card">
+      <img class="home-guide-thumb" src="/static/assets/web/guide-thumb-api.jpg" alt="" loading="lazy">
+      <div class="home-guide-body"><span>Developer guide</span><strong>Build on Workshop data</strong><small>Use cached mod metadata to power panels, bots, and server tools.</small></div>
+    </a>
+  </div>
+  <div class="home-guides-footer">
+    <a href="/guides/" class="home-guides-more">View all guides <span aria-hidden="true">→</span></a>
+  </div>
+</section>

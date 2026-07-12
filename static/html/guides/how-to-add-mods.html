@@ -1,0 +1,58 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>How to Add Mods</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>How to Add Mods to an Arma Reforger Server</h1>
+    <p class="landing-lede">Mods are added by listing Workshop entries in the <code>game.mods</code> array of <code>config.json</code>. This guide shows the whole path: find the ID, write the entry, handle dependencies, then restart and verify.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-clock"></i> 5 minute read</span>
+      <span><i class="bi bi-sliders"></i> Works with the config builder</span>
+      <span><i class="bi bi-check2-square"></i> Validate before deploy</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Prefer the visual workflow?</strong><span>Search mods, add them to a draft config, and export JSON without hand-editing.</span></div>
+    <a href="/config-generator/" class="btn btn-primary"><i class="bi bi-sliders"></i> Open Config Builder</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>1. Find the mod and its ID</h2>
+    <p>Every Workshop mod has a 16-character hexadecimal ID, for example <code>5965550F24A0C152</code>. Find mods and copy their IDs in the <a href="/arma-reforger-mods/">mod browser</a>, or take the ID from the mod page URL on the official Workshop.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>2. Write the mods entry</h2>
+    <p>Add each mod as an object inside <code>game.mods</code>. A minimal entry only needs <code>modId</code>; names are useful for humans.</p>
+    <pre><code class="language-json">"game": {
+  "mods": [
+    {
+      "modId": "5965550F24A0C152",
+      "name": "WeaponSwitching"
+    }
+  ]
+}</code></pre>
+    <dl class="guide-definition-list">
+      <div><dt><code>modId</code></dt><dd>Required. The Workshop ID.</dd></div>
+      <div><dt><code>name</code></dt><dd>Optional and informational. It keeps the file readable but does not affect downloads.</dd></div>
+      <div><dt><code>version</code></dt><dd>Optional. Pins a specific mod version. Leave it out unless you have a reason to pin.</dd></div>
+      <div><dt><code>required</code></dt><dd>Optional. Together with <code>game.modsRequiredByDefault</code>, it controls whether joining clients must run the mod. See the <a href="{{ .OfficialServerConfigDocsURL }}" rel="noopener">official documentation</a> for exact behavior.</dd></div>
+    </dl>
+    <p class="guide-note"><i class="bi bi-info-circle"></i> The <code>mods</code> array belongs inside the <code>game</code> object. A top-level <code>mods</code> array parses, but the server ignores it.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>3. Add dependencies</h2>
+    <p>Some mods require other mods. Check the dependencies section on the mod detail page in the <a href="/arma-reforger-mods/">mod browser</a>. The <a href="/mod-manager/">mod manager</a> can compare your list against Workshop dependency data and suggest anything missing.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>4. Restart and verify</h2>
+    <p>Restart the server after changing the mod list. On startup, the server log shows each mod being resolved and downloaded. A mod that cannot be found or downloaded is logged with its ID. First startup after adding large mods can take longer because the server has to download them.</p>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Before deploying</strong><span>Run the final file through the validator to catch JSON syntax errors, duplicate IDs, and malformed mod entries.</span></div>
+    <a href="/config-validator/" class="btn btn-outline-secondary"><i class="bi bi-check2-square"></i> Validate Config</a>
+  </section>
+</article>

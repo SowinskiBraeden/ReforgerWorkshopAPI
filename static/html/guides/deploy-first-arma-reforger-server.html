@@ -1,0 +1,119 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>First Server Deployment</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>How to Run and Deploy Your First Arma Reforger Server</h1>
+    <p class="landing-lede">A first server needs only a clean install, a small <code>config.json</code>, reachable ports, and a repeatable launch command. This guide keeps the first deployment simple, then points you toward mods and hardening once the server is online.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-hdd-network"></i> Install</span>
+      <span><i class="bi bi-filetype-json"></i> Configure</span>
+      <span><i class="bi bi-router"></i> Open ports</span>
+      <span><i class="bi bi-cloud-check"></i> Verify</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Prefer building the file visually?</strong><span>Use the config builder to create a valid starter <code>config.json</code>, then deploy that file with your server.</span></div>
+    <a href="/config-generator/" class="btn btn-primary"><i class="bi bi-sliders"></i> Open Config Builder</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>What you need first</h2>
+    <ul class="guide-check-list">
+      <li>A Windows or Linux host that can stay online while people play.</li>
+      <li>Access to install the Arma Reforger dedicated server through Steam or SteamCMD.</li>
+      <li>Permission to open UDP ports on the host firewall and, for home hosting, on the router.</li>
+      <li>A folder where the server files, profiles, logs, and <code>config.json</code> can live together.</li>
+    </ul>
+  </section>
+
+  <section class="guide-section">
+    <h2>Install the dedicated server</h2>
+    <p>Install the Arma Reforger Server application on the machine that will host the server. SteamCMD is common for VPS and dedicated machines because it can update the server without opening the Steam client.</p>
+    <pre><code class="language-bash">steamcmd +force_install_dir ./reforger-server +login anonymous +app_update 1874900 validate +quit</code></pre>
+    <p>After install, keep the server directory predictable. A simple layout makes updates and backups easier to reason about.</p>
+    <pre><code class="language-text">reforger-server/
+  ArmaReforgerServer
+  config.json
+  profiles/
+  logs/</code></pre>
+  </section>
+
+  <section class="guide-section">
+    <h2>Create the first config.json</h2>
+    <p>Start with the smallest useful public server: bind to all interfaces, set the public game port, choose a server name, choose a scenario, and keep the player count modest while testing.</p>
+    <pre><code class="language-json">{
+  "bindAddress": "0.0.0.0",
+  "bindPort": 2001,
+  "publicAddress": "",
+  "publicPort": 2001,
+  "a2s": {
+    "address": "0.0.0.0",
+    "port": 17777
+  },
+  "game": {
+    "name": "My First Reforger Server",
+    "password": "",
+    "passwordAdmin": "change-this-admin-password",
+    "scenarioId": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+    "maxPlayers": 32,
+    "visible": true,
+    "crossPlatform": true,
+    "supportedPlatforms": [
+      "PLATFORM_PC"
+    ],
+    "mods": []
+  }
+}</code></pre>
+    <p class="guide-note"><i class="bi bi-shield-check"></i> Do not reuse the example admin password. Change it before the server is reachable from the internet.</p>
+  </section>
+
+  <section class="guide-section guide-two-column">
+    <div>
+      <h2>Open the required ports</h2>
+      <p>The game port and A2S query port must be reachable over UDP. If you host from home, forward the same ports from your router to the server machine.</p>
+      <dl class="guide-definition-list">
+        <div><dt><code>2001/udp</code></dt><dd>Default game traffic port from <code>bindPort</code> and <code>publicPort</code>.</dd></div>
+        <div><dt><code>17777/udp</code></dt><dd>Default A2S query port used for server browser status.</dd></div>
+      </dl>
+    </div>
+    <div>
+      <h2>Use publicAddress only when needed</h2>
+      <p>Leave <code>publicAddress</code> empty for most normal deployments. Set it only when the server cannot advertise the address players should use, such as a NAT or routed hosting setup.</p>
+      <p>Keep <code>bindAddress</code> as <code>0.0.0.0</code> unless you deliberately want the process to listen on one network interface.</p>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <h2>Launch the server</h2>
+    <p>Run the server executable with a profile folder and the config file. Keep the command in a script once it works so updates and restarts use the same inputs every time.</p>
+    <pre><code class="language-bash">./ArmaReforgerServer -config ./config.json -profile ./profiles</code></pre>
+    <p>On Windows, use the same arguments with the Windows server executable. The important part is that the process receives the correct <code>-config</code> path and can write to the profile directory.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Verify the first deployment</h2>
+    <ul class="guide-check-list">
+      <li>Watch the first startup log for JSON parsing errors, missing scenario messages, and port binding failures.</li>
+      <li>Confirm the server appears in the in-game browser with the expected name and player limit.</li>
+      <li>Join from a second machine or ask another player to test from outside your network.</li>
+      <li>Restart once after a successful join to confirm the launch command and config survive a clean reboot.</li>
+    </ul>
+  </section>
+
+  <section class="guide-section">
+    <h2>Deploy it for real use</h2>
+    <p>Once the basic server is reachable, move from a manual terminal session to a service manager such as systemd, Windows Task Scheduler, or your host panel. The goal is simple: start after reboot, keep logs, and make restarts intentional.</p>
+    <ul class="guide-check-list">
+      <li>Back up <code>config.json</code> before every major change.</li>
+      <li>Keep server updates separate from mod list changes so problems are easier to isolate.</li>
+      <li>Use a strong admin password, and do not publish it with example configs or screenshots.</li>
+      <li>Validate the config before each deployment if you edit it by hand.</li>
+    </ul>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Next steps</strong><span>Add mods, understand the config fields, or troubleshoot startup failures before inviting a full player group.</span></div>
+    <div class="guide-callout-actions"><a href="/guides/how-to-add-mods/" class="btn btn-outline-secondary">Add Mods</a><a href="/guides/arma-reforger-config-json/" class="btn btn-outline-secondary">Read config.json Guide</a><a href="/config-validator/" class="btn btn-outline-secondary">Validate Config</a></div>
+  </section>
+</article>

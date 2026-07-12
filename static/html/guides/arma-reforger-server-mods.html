@@ -1,0 +1,53 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>Running Server Mods</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>Running Arma Reforger Server Mods</h1>
+    <p class="landing-lede">A modded server is easy to start and easy to destabilize. This guide explains downloads, dependencies, versions, and updates so your mod list stays understandable over time.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-collection"></i> Mod loading</span>
+      <span><i class="bi bi-diagram-3"></i> Dependencies</span>
+      <span><i class="bi bi-pin-angle"></i> Version pinning</span>
+    </div>
+  </header>
+
+  <section class="guide-section">
+    <h2>How mod loading works</h2>
+    <p>At startup, the server reads <code>game.mods</code> from <code>config.json</code>, downloads any listed Workshop mods it does not have locally, and loads them. Players joining the server automatically download the mods the server marks as required. The mod list in the config is the source of truth.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Dependencies</h2>
+    <p>Mods can depend on other mods. The dependency information shown on Workshop pages and mod detail pages tells you what else a mod needs. Keeping dependencies explicit in your own list makes load order and updates predictable.</p>
+    <p class="guide-note"><i class="bi bi-diagram-3"></i> The <a href="/mod-manager/">mod manager</a> compares your list against Workshop dependency data and suggests anything missing.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Versions and pinning</h2>
+    <p>By default, the server uses the latest published version of each mod. A mod entry may pin a <code>version</code> instead. Pinning trades freshness for stability: you avoid surprise updates, but you must update deliberately later.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>When mods update</h2>
+    <ul class="guide-check-list">
+      <li>A mod update can change or remove content that your scenario or other mods rely on.</li>
+      <li>If a modded scenario is your <code>scenarioId</code>, an update can rename or move the scenario file and stop startup.</li>
+      <li>Console compatibility can change, affecting who can join a cross-platform server.</li>
+    </ul>
+  </section>
+
+  <section class="guide-section">
+    <h2>Keeping the list healthy</h2>
+    <ul class="guide-check-list">
+      <li>Keep <code>name</code> fields so humans can read the list.</li>
+      <li>Remove mods you no longer run to reduce download time and update risk.</li>
+      <li>Watch for duplicates after merging lists from different sources.</li>
+      <li>Keep a known-good copy of <code>config.json</code> so you can roll back quickly.</li>
+    </ul>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Related guides</strong><span>Need the exact JSON shape or startup troubleshooting checklist?</span></div>
+    <div class="guide-callout-actions"><a href="/guides/how-to-add-mods/" class="btn btn-outline-secondary">Adding Mods</a><a href="/guides/config-json-troubleshooting/" class="btn btn-outline-secondary">Troubleshooting</a></div>
+  </section>
+</article>

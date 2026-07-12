@@ -1,0 +1,45 @@
+<div class="docs-hero-split">
+  <div>
+    <h1>Reforger Mods API Quickstart</h1>
+    <p class="landing-lede">A public, read-only JSON API for Arma Reforger Workshop metadata. Search mods, fetch dependencies and scenarios, cache responsibly, and build server tools without scraping Workshop pages yourself.</p>
+  </div>
+  <img src="/static/assets/web/dashboard-angled.png" alt="A server dashboard built on the Reforger Mods API" loading="lazy">
+</div>
+<h2>Base URL</h2>
+<pre><code>https://api.reforgermods.net/v1</code></pre>
+<h2>First request</h2>
+<pre><code class="language-bash">curl 'https://api.reforgermods.net/v1/mods?search=radio&amp;sort=newest'</code></pre>
+<p>List and search responses return mod previews with names, authors, IDs, sizes, ratings, and links. Fetch full details, including dependencies and scenarios, for one mod:</p>
+<pre><code class="language-bash">curl 'https://api.reforgermods.net/v1/mod/5965550F24A0C152'</code></pre>
+<h2>Handle 202 Accepted</h2>
+<p>If a cold-cache request returns <code>202 Accepted</code>, the API has accepted a background refresh job. Wait the number of seconds in <code>Retry-After</code>, then retry the same URL. You can also inspect the <code>Location</code> job URL, but most clients only need to retry the original request.</p>
+<pre><code class="language-python">import time
+import requests
+
+def get_json(url, attempts=4):
+    headers = {"User-Agent": "my-tool/1.0 (contact@example.com)"}
+    for _ in range(attempts):
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code == 202:
+            time.sleep(int(response.headers.get("Retry-After", "2")))
+            continue
+        response.raise_for_status()
+        return response.json()
+    raise RuntimeError("Workshop data is still refreshing")
+
+mods = get_json("https://api.reforgermods.net/v1/mods?search=radio")</code></pre>
+<h2>Be a good client</h2>
+<ul>
+  <li>Send an identifying <code>User-Agent</code> or <code>X-API-Client</code> header with a contact hint, so traffic can be attributed and never mistaken for abuse.</li>
+  <li>Respect <code>Retry-After</code> on <code>202</code>, <code>429</code>, and <code>503</code> responses, and cap your retries.</li>
+  <li>Anonymous clients get 60 requests per minute per IP by default; batch and cache instead of polling.</li>
+  <li>Use the <code>ETag</code> and <code>Cache-Control</code> headers: send <code>If-None-Match</code> to get cheap <code>304 Not Modified</code> responses for unchanged data.</li>
+</ul>
+<h2>Go deeper</h2>
+<div class="landing-grid">
+  <a href="/arma-reforger-mods-api/" class="landing-link-card"><i class="bi bi-braces"></i><span>Full API reference</span><small>Every endpoint, parameter, cache header, and error code.</small></a>
+  <a href="/guides/api-integration/" class="landing-link-card"><i class="bi bi-journal-code"></i><span>Integration guide</span><small>A complete walkthrough for building on the API.</small></a>
+  <a href="/guides/handling-202-refresh-jobs/" class="landing-link-card"><i class="bi bi-arrow-repeat"></i><span>202 and refresh jobs</span><small>How the cold-cache flow works and how to handle it well.</small></a>
+  <a href="/arma-reforger-mods-api/#mod-object" class="landing-link-card"><i class="bi bi-diagram-3"></i><span>Mod structures</span><small>The JSON shapes for previews, details, dependencies, and scenarios.</small></a>
+</div>
+<p class="landing-note">The API also powers the <a href="/arma-reforger-mods/">mod browser</a>, <a href="/config-generator/">config generator</a>, and <a href="/config-validator/">config validator</a> on this site, so tool behavior and API behavior always match.</p>

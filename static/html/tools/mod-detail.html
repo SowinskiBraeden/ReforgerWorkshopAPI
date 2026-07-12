@@ -1,0 +1,13 @@
+<nav class="tool-breadcrumb" aria-label="Breadcrumb"><a href="/arma-reforger-mods/">Mod Browser</a> <span>/</span> <span>{{ .ModID }}</span></nav>
+<h1>Arma Reforger Mod {{ .ModID }}</h1>
+<div id="mod-detail" data-mod-id="{{ .ModID }}">
+  <div id="md-status" class="tool-status" role="status"></div>
+  <div id="md-content"></div>
+  <noscript><p>This page loads mod details from the public API in your browser and needs JavaScript. Without it, you can fetch the same data directly as JSON:</p><pre><code>curl https://api.reforgermods.net/v1/mod/{{ .ModID }}</code></pre></noscript>
+</div>
+<h2>Use this mod on your server</h2>
+<p>Add the mod to the <code>game.mods</code> array of your server <code>config.json</code>. The <a href="/config-generator/">config generator</a> can build the full file, and the <a href="/config-validator/">config validator</a> checks an existing one. The <a href="/guides/how-to-add-mods/">adding mods guide</a> walks through the process step by step.</p>
+<h2>Fetch this mod from the API</h2>
+<p>Developers can request the same metadata as JSON. See the <a href="/api/">API quickstart</a> and the <a href="/arma-reforger-mods-api/">full API reference</a>.</p>
+<pre><code>GET https://api.reforgermods.net/v1/mod/{{ .ModID }}</code></pre>
+<p class="landing-note">Data is cached from the public Arma Reforger Workshop and may be stale. This site is independent and unofficial.</p>

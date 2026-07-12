@@ -1,0 +1,57 @@
+<section class="tool-page" aria-label="Arma Reforger config.json Validator">
+  <div class="tool-page-hero tool-page-hero-dashboard">
+    <div>
+      <div class="tool-hero-kicker">Power your Arma Reforger server with the Reforger Mods API</div>
+      <h1>Arma Reforger config.json Validator</h1>
+      <p class="landing-lede">Catch broken JSON, bad ports, missing fields, duplicate mods, and malformed Workshop IDs before a restart takes your server offline.</p>
+    </div>
+    <div class="tool-page-note"><i class="bi bi-shield-lock"></i> runs in your browser &middot; nothing uploaded</div>
+  </div>
+  <div class="tool-page-band">
+    <div class="tool-panel" id="config-validator">
+      <div class="tool-toolbar">
+        <label class="btn btn-outline-secondary mb-0" for="cv-file"><i class="bi bi-upload"></i> Upload .json</label>
+        <input id="cv-file" type="file" accept=".json,application/json" class="d-none">
+        <button id="cv-example" class="btn btn-outline-secondary" type="button">Load example</button>
+        <button id="cv-format" class="btn btn-outline-secondary" type="button" title="Pretty-print the JSON"><i class="bi bi-text-indent-left"></i> Format</button>
+        <button id="cv-clear" class="btn btn-outline-secondary" type="button">Clear</button>
+        <button id="cv-validate" class="btn btn-primary ms-auto" type="button"><i class="bi bi-check2-square"></i> Validate</button>
+      </div>
+      <div class="cv-layout">
+        <div class="cv-col">
+          <div class="tool-col-head"><i class="bi bi-filetype-json"></i> config.json input</div>
+          <textarea id="cv-input" class="form-control tool-code-input" rows="18" spellcheck="false" placeholder="Paste your server config.json here..." aria-label="Server config JSON"></textarea>
+        </div>
+        <div class="cv-col">
+          <div class="tool-col-head"><i class="bi bi-list-check"></i> Validation results</div>
+          <div class="cv-results-panel">
+            <div id="cv-summary" class="tool-summary" aria-live="polite"></div>
+            <div id="cv-results" class="tool-results"></div>
+            <div id="cv-mods" class="tool-results"></div>
+          </div>
+        </div>
+      </div>
+      <noscript><p>The validator runs locally in your browser and needs JavaScript. For the config format itself, see the <a href="/guides/arma-reforger-config-json/">config.json guide</a>.</p></noscript>
+    </div>
+    <p class="tool-privacy-note"><i class="bi bi-shield-lock"></i> Validation runs entirely in your browser; your config is never uploaded. The optional Workshop check sends only mod IDs to the API.</p>
+  </div>
+  <div class="tool-page-info-grid">
+    <section>
+      <h2>What gets validated</h2>
+      <ul>
+        <li><strong>JSON syntax</strong> with the line and column of the first error.</li>
+        <li><strong>Structure</strong>: the config must be a JSON object, with objects and arrays where the server expects them.</li>
+        <li><strong>Network settings</strong>: <code>bindPort</code>, <code>publicPort</code>, and the A2S and RCON ports must be valid port numbers.</li>
+        <li><strong>Game settings</strong>: a <code>game</code> object with a <code>scenarioId</code>, sane <code>maxPlayers</code>, and correctly typed fields.</li>
+        <li><strong>Mods</strong>: <code>game.mods</code> must be an array of objects with string <code>modId</code> values; duplicates and malformed IDs are flagged.</li>
+        <li><strong>Workshop check</strong> (optional): resolve each mod ID against Workshop data to confirm it exists and see its current name.</li>
+      </ul>
+      <p>Checks are deliberately conservative: the validator flags what is publicly documented and clearly wrong, and stays quiet about fields it cannot verify, rather than inventing rules.</p>
+    </section>
+    <section>
+      <h2>Fixing common problems</h2>
+      <p>The <a href="/guides/config-json-troubleshooting/">config.json troubleshooting guide</a> covers the usual startup failures: trailing commas, wrong quotes from chat apps and word processors, mods placed at the top level instead of inside <code>game</code>, and scenario IDs that do not match any installed content.</p>
+      <p>To rebuild a broken config from scratch, use the <a href="/config-generator/">config generator</a>, and manage the mods array in the <a href="/mod-manager/">mod manager</a>.</p>
+    </section>
+  </div>
+</section>

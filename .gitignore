@@ -1,2 +1,5 @@
 .env
 logs/
+
+# Local-only source/scratch media.
+static/assets/cinematics/

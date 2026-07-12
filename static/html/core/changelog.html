@@ -1,0 +1,156 @@
+<div class="changelog-page">
+  <aside class="changelog-sidebar" aria-label="Changelog navigation">
+    <div class="changelog-sidebar-title">Release Notes</div>
+    <a href="#v1-2-0" class="changelog-sidebar-link active">v1.2.0</a>
+    <a href="#v1-1-3" class="changelog-sidebar-link">v1.1.3</a>
+    <a href="#v1-1-2" class="changelog-sidebar-link">v1.1.2</a>
+    <a href="#v1-1-1" class="changelog-sidebar-link">v1.1.1</a>
+    <a href="#v1-1-0" class="changelog-sidebar-link">v1.1.0</a>
+    <a href="#v1-0-0" class="changelog-sidebar-link">v1.0.0</a>
+  </aside>
+
+  <article class="changelog-content">
+    <section class="changelog-hero">
+      <div class="changelog-kicker">Public release notes</div>
+      <h1>Changelog</h1>
+      <p>Updates for the Reforger Mods API, mod browser, config tools, caching behavior, and documentation.</p>
+    </section>
+
+    <section id="v1-2-0" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.2.0</span>
+          <h2>Server Admin Tools and Persistent Indexing</h2>
+          <time datetime="2026-07-10">Released 2026-07-10</time>
+        </div>
+        <span class="changelog-badge">Latest</span>
+      </div>
+      <h3>Added</h3>
+      <ul>
+        <li>Public Arma Reforger mod browser at <a href="/arma-reforger-mods/">/arma-reforger-mods/</a>, powered by the public API, with search, sorting, pagination, mod detail pages, copy-mod-ID and copy-JSON actions, and correct handling of <code>202 Accepted</code> refreshes.</li>
+        <li>Config.json tools for server admins: a <a href="/config-validator/">config validator</a> with local, in-browser JSON and structure checks, a <a href="/config-generator/">config generator</a> with a form editor, live JSON preview, import/export, and a <a href="/mod-manager/">mod manager</a> for the <code>game.mods</code> array with name resolution, reordering, duplicate detection, and dependency suggestions.</li>
+        <li>Shared working config across tools. Add to Config in the mod browser, the mod manager, and the config generator all edit the same browser-only draft.</li>
+        <li><a href="/api/">API quickstart page</a> and new guides for config.json, adding mods, troubleshooting, running server mods, API integration, and refresh jobs.</li>
+        <li>API documentation now includes client identity guidance, conditional request examples, and complete code examples in curl, JavaScript, and Go.</li>
+        <li>SEO metadata for all new pages, including canonical URLs, Open Graph tags, structured data, and sitemap entries.</li>
+        <li>Inline Workshop mod search inside the config generator and mod manager.</li>
+        <li>JSON syntax highlighting in the config validator editor and generator live preview.</li>
+        <li>Persistent local indexing for Workshop list pages, mod metadata, mod details, and API response cache entries.</li>
+        <li>SQLite WAL storage under <code>/var/lib/reforgermods-api</code> when <code>INDEX_ENABLED=true</code>.</li>
+        <li>Background refresh jobs for common popular/newest Workshop list pages and bounded mod detail hydration.</li>
+        <li>Canonical cache keys for list, search, sort, page, tag, and mod ID lookups.</li>
+        <li>Internal metrics for persistent cache hits, stale hits, misses, local search, index refreshes, background jobs, and database errors.</li>
+      </ul>
+      <h3>Changed</h3>
+      <ul>
+        <li>Homepage now presents both the API and the server-admin tools.</li>
+        <li>Site navigation includes the tools and guides sections.</li>
+        <li>Tool pages use a full-width desktop layout with refreshed colors and spacing.</li>
+        <li>Common cached list pages and mod details can be served after service restart when persistent indexing is enabled.</li>
+        <li>Background indexing uses low-priority refresh jobs so direct API misses are not blocked behind crawler work.</li>
+      </ul>
+      <p class="changelog-note">No API endpoint, response-schema, or integration changes. The deprecated unversioned API aliases remain untouched.</p>
+    </section>
+
+    <section id="v1-1-3" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.1.3</span>
+          <h2>Patch</h2>
+          <time datetime="2026-07-09">Released 2026-07-09</time>
+        </div>
+      </div>
+      <h3>Fixed</h3>
+      <ul>
+        <li>Resolved Workshop image, mod, dependency, and scenario URLs through the Workshop base URL so both relative paths and absolute upstream URLs are handled correctly.</li>
+        <li>Preserved absolute CDN or Workshop URLs instead of prefixing them with the Workshop host.</li>
+      </ul>
+      <p class="changelog-note">No API endpoint, response-schema, or integration changes are required.</p>
+    </section>
+
+    <section id="v1-1-2" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.1.2</span>
+          <h2>Patch</h2>
+          <time datetime="2026-07-08">Released 2026-07-08</time>
+        </div>
+      </div>
+      <h3>Fixed</h3>
+      <ul>
+        <li>Mods with scenarios missing scenario IDs.</li>
+        <li>Mods with scenarios missing scenario player counts.</li>
+      </ul>
+      <p class="changelog-note">No API endpoint, response-schema, or integration changes are required.</p>
+    </section>
+
+    <section id="v1-1-1" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.1.1</span>
+          <h2>Patch</h2>
+          <time datetime="2026-07-07">Released 2026-07-07</time>
+        </div>
+      </div>
+      <h3>Fixed</h3>
+      <ul>
+        <li>Hardened Workshop scenario parsing to prevent unexpected upstream page content from crashing the API during a background refresh.</li>
+        <li>Improved refresh-worker fault handling so a failed scrape affects that refresh job instead of interrupting the full API service.</li>
+      </ul>
+      <p class="changelog-note">No API endpoint, response-schema, or integration changes are required.</p>
+    </section>
+
+    <section id="v1-1-0" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.1.0</span>
+          <h2>Resilient Refreshes</h2>
+          <time datetime="2026-07-07">Released 2026-07-07</time>
+        </div>
+      </div>
+      <p>Improved reliability when Arma Reforger Workshop pages are slow or temporarily unavailable.</p>
+      <h3>Changed</h3>
+      <ul>
+        <li>Cached API responses now return immediately where possible.</li>
+        <li>Stale cached data can be served while the API refreshes it in the background.</li>
+        <li>Uncached requests may return <code>202 Accepted</code> while fresh Workshop data is being prepared.</li>
+        <li>Added refresh-job status URLs for integrations that want to show loading progress.</li>
+        <li>Added clearer cache, retry, and rate-limit response headers.</li>
+      </ul>
+      <h3>Integration Note</h3>
+      <p>Clients should continue handling normal <code>200 OK</code> responses as before. When an uncached resource returns <code>202 Accepted</code>, wait for <code>Retry-After</code> and retry the original URL. Polling the <code>Location</code> job URL is optional.</p>
+      <h3>Fixed</h3>
+      <ul>
+        <li>API requests no longer wait for a full upstream Workshop scrape before responding.</li>
+      </ul>
+    </section>
+
+    <section id="v1-0-0" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.0.0</span>
+          <h2>Release</h2>
+          <time datetime="2026-07-04">Released 2026-07-04</time>
+        </div>
+      </div>
+      <p>v1.0.0 marks the public return of reforgermods.net and the Reforger Mods API after a period offline.</p>
+      <p>Earlier iterations of the project are retired and are not compatible with this release. This version establishes the current API foundation, deployment model, and public documentation.</p>
+      <h3>Included</h3>
+      <ul>
+        <li>Read-only versioned <code>/v1</code> API routes for health checks, mod lists, search, and mod details.</li>
+        <li>Cached metadata sourced from publicly accessible Arma Reforger Workshop pages.</li>
+        <li>Anonymous public rate limiting with proxy-safe client IP handling.</li>
+        <li>Stale-cache fallback for safe read endpoints when upstream Workshop pages are slow or temporarily unavailable.</li>
+        <li>Controlled JSON error envelopes with request IDs for support and debugging.</li>
+        <li>Docker, reverse-proxy, and deployment documentation.</li>
+        <li>Public documentation for API routes, caching behavior, limits, and supported usage.</li>
+      </ul>
+      <h3>Notes</h3>
+      <ul>
+        <li>This is an independent, unofficial project and is not affiliated with or endorsed by Bohemia Interactive.</li>
+        <li>Workshop data is cached and may not always reflect the latest upstream changes immediately.</li>
+        <li>New integrations should use the versioned <code>/v1</code> routes.</li>
+      </ul>
+    </section>
+  </article>
+</div>

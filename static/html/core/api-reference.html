@@ -1,0 +1,413 @@
+<div class="api-docs-page">
+  <aside class="api-docs-sidebar" aria-label="API documentation navigation">
+    <div class="api-docs-sidebar-group">
+      <div class="api-docs-sidebar-title">Getting Started</div>
+      <a href="#overview" class="api-docs-sidebar-link active">Overview</a>
+      <a href="#authentication" class="api-docs-sidebar-link">Authentication</a>
+      <a href="#rate-limits" class="api-docs-sidebar-link">Rate limits</a>
+      <a href="#caching" class="api-docs-sidebar-link">Caching &amp; refresh jobs</a>
+      <a href="#errors" class="api-docs-sidebar-link">Errors</a>
+    </div>
+    <div class="api-docs-sidebar-group">
+      <div class="api-docs-sidebar-title">Endpoints</div>
+      <a href="#get-health" class="api-docs-sidebar-link"><code>GET /v1/health</code></a>
+      <a href="#get-mods" class="api-docs-sidebar-link"><code>GET /v1/mods</code></a>
+      <a href="#get-mods-page" class="api-docs-sidebar-link"><code>GET /v1/mods/{page}</code></a>
+      <a href="#get-search" class="api-docs-sidebar-link"><code>GET /v1/search</code></a>
+      <a href="#get-mod" class="api-docs-sidebar-link"><code>GET /v1/mod/{id}</code></a>
+      <a href="#get-job" class="api-docs-sidebar-link"><code>GET /v1/refresh/jobs/{id}</code></a>
+    </div>
+    <div class="api-docs-sidebar-group">
+      <div class="api-docs-sidebar-title">Data Structures</div>
+      <a href="#list-response" class="api-docs-sidebar-link">List response</a>
+      <a href="#mod-preview-object" class="api-docs-sidebar-link">Mod preview object</a>
+      <a href="#mod-object" class="api-docs-sidebar-link">Mod object</a>
+      <a href="#dependency-object" class="api-docs-sidebar-link">Dependency object</a>
+      <a href="#scenario-object" class="api-docs-sidebar-link">Scenario object</a>
+      <a href="#refresh-job-object" class="api-docs-sidebar-link">Refresh job object</a>
+    </div>
+    <div class="api-docs-sidebar-group">
+      <div class="api-docs-sidebar-title">Guides</div>
+      <a href="/guides/api-integration/" class="api-docs-sidebar-link">Integration examples</a>
+      <a href="/docs/changelog/" class="api-docs-sidebar-link">Changelog</a>
+    </div>
+  </aside>
+
+  <article class="api-docs-content">
+    <section id="overview" class="api-docs-section">
+      <div class="api-docs-kicker">API v1</div>
+      <h1>Arma Reforger Mods API</h1>
+      <p class="api-docs-lede">An unofficial, cached JSON data source for Arma Reforger Workshop mod metadata. Built for bots, panels, dashboards, and server tooling.</p>
+      <div class="api-base-box"><span>Base URL:</span><code>https://api.reforgermods.net</code></div>
+      <br>
+      <p>Use <code>/v1</code> for all new integrations. Older unversioned routes remain available as deprecated aliases, but they will not receive new fields.</p>
+      <p>Data is normalized from publicly accessible Arma Reforger Workshop pages. Workshop fields, availability, and page structure can change without notice, so the API is not an authoritative source for ownership, entitlement, moderation, platform accounts, or real-time Workshop state.</p>
+    </section>
+
+    <section id="authentication" class="api-docs-section">
+      <h2>Authentication &amp; Identification</h2>
+      <p>The public tier requires no API key. Send an identifying <code>User-Agent</code> or <code>X-API-Client</code> header so traffic can be supported without blocking legitimate tools.</p>
+      <div class="api-code-card"><div class="api-code-title">Required header</div><pre><code>User-Agent: my-discord-bot/2.1 (contact: dev@example.com)</code></pre></div>
+    </section>
+
+    <section id="rate-limits" class="api-docs-section">
+      <h2>Rate Limits</h2>
+      <p>Limits apply per client on the public tier. Higher limits will be available on future API key tiers.</p>
+      <div class="api-stat-grid">
+        <div><strong>60/min</strong><span>Default limit per resolved client IP</span></div>
+        <div><strong>20</strong><span>Burst allowance</span></div>
+        <div><strong>429</strong><span>Returned when exceeded</span></div>
+      </div>
+      <p class="mt-3">On <code>429 Too Many Requests</code> or <code>503 Service Unavailable</code>, wait for <code>Retry-After</code> and retry later. Batch and cache on your side instead of polling, and do not request variations of the same query to bypass caching &mdash; there is no public cache-bypass or force-refresh parameter.</p>
+    </section>
+
+    <section id="caching" class="api-docs-section">
+      <h2>Caching &amp; Refresh Jobs</h2>
+      <p>Mod data is served from cache. If an ID or list has not been fetched recently, the API starts a refresh job and responds immediately instead of making your request wait on a live Workshop fetch.</p>
+      <div class="api-code-card"><div class="api-code-title">Cold cache response</div><pre><code>HTTP/1.1 202 Accepted
+Retry-After: 3
+Location: /v1/refresh/jobs/job_8841
+
+{ "status": "refreshing", "jobId": "job_8841" }</code></pre></div>
+      <div class="api-response-grid">
+        <div><strong>200</strong><span>Fresh or stale cache hit.</span></div>
+        <div><strong>202</strong><span>Refresh job started, retry after delay.</span></div>
+        <div><strong>304</strong><span>ETag matched with <code>If-None-Match</code>.</span></div>
+        <div><strong>404</strong><span>Resource not found in the Workshop.</span></div>
+        <div><strong>429</strong><span>Rate limit exceeded, check <code>Retry-After</code>.</span></div>
+      </div>
+      <h3 class="api-docs-subheading">Cache lifetimes</h3>
+      <table class="api-params-table">
+        <thead><tr><th>Resource</th><th>Fresh cache</th><th>Stale fallback</th></tr></thead>
+        <tbody>
+          <tr><td>Mod detail</td><td>1 hour</td><td>24 hours</td></tr>
+          <tr><td>Mod list and search</td><td>10 minutes</td><td>1 hour</td></tr>
+          <tr><td>Not found response</td><td>10 minutes</td><td>&mdash;</td></tr>
+        </tbody>
+      </table>
+      <p>Stale data may be served with <code>X-Cache: STALE</code> while a background refresh runs, so the API stays responsive when the upstream Workshop is slow or unavailable.</p>
+      <h3 class="api-docs-subheading">Response headers</h3>
+      <table class="api-params-table">
+        <thead><tr><th>Header</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>X-Cache</code></td><td><code>HIT</code>, <code>STALE</code>, or <code>MISS</code></td></tr>
+          <tr><td><code>Retry-After</code></td><td>How long to wait before retrying</td></tr>
+          <tr><td><code>Location</code></td><td>Refresh-job URL on <code>202 Accepted</code></td></tr>
+          <tr><td><code>ETag</code></td><td>Validator for conditional requests</td></tr>
+          <tr><td><code>X-RateLimit-*</code></td><td>Current rate-limit state</td></tr>
+          <tr><td><code>X-Request-Id</code></td><td>Request identifier for support and debugging</td></tr>
+        </tbody>
+      </table>
+      <h3 class="api-docs-subheading">Conditional requests</h3>
+      <p>Responses include an <code>ETag</code>. Send it back in <code>If-None-Match</code> to get a free <code>304 Not Modified</code> when nothing changed:</p>
+      <div class="api-code-card"><div class="api-code-title">Conditional request</div><pre><code>curl -H 'If-None-Match: W/"a1b2c3d4e5f6a7b8c9d0e1f2"' \
+  "https://api.reforgermods.net/v1/mods?search=radio"</code></pre></div>
+    </section>
+
+    <section id="get-health" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/health</h2></div>
+      <p>Returns process health only. It does not request Workshop data.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl https://api.reforgermods.net/v1/health</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const res = await fetch("https://api.reforgermods.net/v1/health", {
+  headers: { "X-API-Client": "my-tool/1.0" }
+});
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+res = requests.get("https://api.reforgermods.net/v1/health", headers={
+    "User-Agent": "my-tool/1.0 (contact@example.com)"
+}, timeout=10)
+print(res.json())</code></pre>
+      </div>
+      <div class="api-code-card"><div class="api-code-title">200 OK</div><pre><code>{
+  "status": "success",
+  "data": { "code": 200, "alive": true }
+}</code></pre></div>
+    </section>
+
+    <section id="get-mods" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/mods</h2></div>
+      <p>Search and list cached Workshop mod previews. Supports <code>search</code>, <code>sort</code>, <code>tags</code>, and <code>category</code>.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl -H "User-Agent: my-bot/1.0" \
+  "https://api.reforgermods.net/v1/mods?search=radio&amp;sort=newest&amp;limit=20"</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const url = new URL("https://api.reforgermods.net/v1/mods");
+url.searchParams.set("search", "radio");
+url.searchParams.set("sort", "newest");
+
+const res = await fetch(url, {
+  headers: { "X-API-Client": "my-panel/1.0" }
+});
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+res = requests.get("https://api.reforgermods.net/v1/mods", params={
+    "search": "radio",
+    "sort": "newest",
+}, headers={"User-Agent": "my-panel/1.0"}, timeout=15)
+print(res.json())</code></pre>
+      </div>
+      <h3 class="api-docs-subheading">Query parameters</h3>
+      <table class="api-params-table">
+        <thead><tr><th>Name</th><th>Values</th></tr></thead>
+        <tbody>
+          <tr><td><code>search</code></td><td>Optional search text</td></tr>
+          <tr><td><code>sort</code></td><td><code>popularity</code>, <code>newest</code>, <code>subscribers</code>, or <code>version_size</code></td></tr>
+          <tr><td><code>tags</code></td><td>Optional Workshop tag filter. Repeat to include multiple tags.</td></tr>
+          <tr><td><code>category</code></td><td>Alias for a single <code>tags</code> value, used by the browser UI.</td></tr>
+        </tbody>
+      </table>
+      <p>The response returns a page of <a href="#mod-preview-object">mod preview objects</a> with pagination metadata and links. See the full <a href="#list-response">list response structure</a>.</p>
+    </section>
+
+    <section id="get-mods-page" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/mods/{page}</h2></div>
+      <p>Fetch a specific positive page number using the same response schema as <code>/v1/mods</code>.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl -H "X-API-Client: my-app/1.0" \
+  "https://api.reforgermods.net/v1/mods/2?search=radio&amp;sort=newest&amp;tags=GAMEPLAY"</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const res = await fetch("https://api.reforgermods.net/v1/mods/2?search=radio&amp;sort=newest&amp;tags=GAMEPLAY", {
+  headers: { "X-API-Client": "my-app/1.0" }
+});
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+res = requests.get(
+    "https://api.reforgermods.net/v1/mods/2",
+    params={"search": "radio", "sort": "newest", "tags": "GAMEPLAY"},
+    headers={"User-Agent": "my-app/1.0"},
+    timeout=15,
+)
+print(res.json())</code></pre>
+      </div>
+    </section>
+
+    <section id="get-search" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/search</h2></div>
+      <p>Convenience route for first-page search results. It returns the same shape as <code>/v1/mods?search=...</code>.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl "https://api.reforgermods.net/v1/search?search=radio"</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const res = await fetch("https://api.reforgermods.net/v1/search?search=radio", {
+  headers: { "X-API-Client": "my-tool/1.0" }
+});
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+res = requests.get("https://api.reforgermods.net/v1/search", params={"search": "radio"})
+print(res.json())</code></pre>
+      </div>
+    </section>
+
+    <section id="get-mod" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/mod/{id}</h2></div>
+      <p>Fetch one mod by Workshop ID, including dependencies and scenario metadata when available.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl -H "User-Agent: my-bot/1.0" \
+  "https://api.reforgermods.net/v1/mod/5965550F24A0C152"</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const modId = "5965550F24A0C152";
+const res = await fetch("https://api.reforgermods.net/v1/mod/" + modId, {
+  headers: { "X-API-Client": "my-panel/1.0" }
+});
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+mod_id = "5965550F24A0C152"
+res = requests.get(f"https://api.reforgermods.net/v1/mod/{mod_id}", headers={
+    "User-Agent": "my-panel/1.0 (contact@example.com)"
+}, timeout=15)
+print(res.json())</code></pre>
+      </div>
+      <div class="api-code-card"><div class="api-code-title">200 OK</div><pre><code>{
+  "status": "success",
+  "data": {
+    "name": "Example Mod",
+    "author": "Example Author",
+    "originalModURL": "https://reforger.armaplatform.com/workshop/5965550F24A0C152",
+    "apiModURL": "https://api.reforgermods.net/v1/mod/5965550F24A0C152",
+    "imageURL": "https://example.com/image.png",
+    "rating": "92%",
+    "version": "1.1.0",
+    "gameVersion": "1.1.0.34",
+    "size": "192.42 KB",
+    "subscribers": 66677,
+    "downloads": 791142,
+    "created": "19.05.2022",
+    "lastModified": "17.03.2024",
+    "id": "5965550F24A0C152",
+    "summary": "Short Workshop summary",
+    "description": "Workshop description",
+    "license": "Arma Public License (APL)",
+    "tags": ["GAMEPLAY"],
+    "dependencies": [
+      {
+        "name": "Example Dependency",
+        "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}",
+        "apiModURL": "https://api.reforgermods.net/v1/mod/{dep_id}"
+      }
+    ],
+    "scenarios": [
+      {
+        "name": "Example Scenario",
+        "description": "Scenario summary",
+        "scenarioID": "{EXAMPLE}Missions/Example.conf",
+        "gamemode": "Game Master",
+        "playerCount": 16,
+        "imageURL": "https://example.com/scenario-image.png"
+      }
+    ]
+  }
+}</code></pre></div>
+      <p><code>dependencies</code>, <code>scenarios</code>, <code>tags</code>, and optional metadata may be empty when the Workshop does not provide them. Field-by-field types are documented in the <a href="#mod-object">mod object structure</a>.</p>
+    </section>
+
+    <section id="get-job" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/refresh/jobs/{id}</h2></div>
+      <p>Inspect refresh progress after a <code>202 Accepted</code> response. Most clients can simply wait for <code>Retry-After</code> and retry the original URL.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl "https://api.reforgermods.net/v1/refresh/jobs/9f0b7d0f6fd4f88a8bb0e455f0b640247a93"</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const jobId = "9f0b7d0f6fd4f88a8bb0e455f0b640247a93";
+const res = await fetch("https://api.reforgermods.net/v1/refresh/jobs/" + jobId);
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+job_id = "9f0b7d0f6fd4f88a8bb0e455f0b640247a93"
+res = requests.get(f"https://api.reforgermods.net/v1/refresh/jobs/{job_id}", timeout=10)
+print(res.json())</code></pre>
+      </div>
+      <div class="api-code-card"><div class="api-code-title">200 OK</div><pre><code>{
+  "id": "9f0b7d0f6fd4f88a8bb0e455f0b640247a93",
+  "status": "queued",
+  "resource_url": "/v1/mods?search=radio",
+  "retry_after_seconds": 2
+}</code></pre></div>
+      <p>Possible statuses are <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, and <code>expired</code>. After a job succeeds, request <code>resource_url</code> again &mdash; refresh-job responses do not contain the finished mod or list payload. Do not poll jobs faster than the advertised <code>retry_after_seconds</code>.</p>
+    </section>
+
+    <section id="list-response" class="api-docs-section api-endpoint-doc">
+      <h2>List Response Structure</h2>
+      <p>List and search endpoints (<code>/v1/mods</code>, <code>/v1/mods/{page}</code>, <code>/v1/search</code>) share one response shape: pagination metadata in <code>meta</code>, an array of <a href="#mod-preview-object">mod preview objects</a> in <code>data</code>, and page URLs in <code>links</code>.</p>
+      <div class="api-code-card"><div class="api-code-title">List response</div><pre><code>{
+  "status": "success",
+  "meta": {
+    "totalPages": 2593,        // int
+    "currentPage": 2,          // int
+    "totalMods": 41478,        // int
+    "shownMods": 16,           // int
+    "modsIndexStart": 17,      // int
+    "modsIndexEnd": 32         // int
+  },
+  "data": [ { ...mod preview objects... } ],
+  "links": {
+    "next": "https://api.reforgermods.net/v1/mods/3?search=radio",
+    "prev": "https://api.reforgermods.net/v1/mods/1?search=radio"
+  }
+}</code></pre></div>
+    </section>
+
+    <section id="mod-preview-object" class="api-docs-section">
+      <h2>Mod Preview Object</h2>
+      <p>List and search endpoints return mod previews. Previews do not include every field from the detail endpoint.</p>
+      <p>Fetch <code>/v1/mod/{id}</code> for the <a href="#mod-object">full mod object</a>.</p>
+      <div class="api-code-card"><div class="api-code-title">Mod preview object</div><pre><code>{
+  "name":           "Super Awesome Mod",                                   // string
+  "author":         "Homer Simpson",                                       // string
+  "imageURL":       "https://example.com/image.png",                       // string
+  "originalModURL": "https://reforger.armaplatform.com/workshop/{mod_id}", // string
+  "apiModURL":      "https://api.reforgermods.net/v1/mod/{mod_id}",        // string
+  "size":           "192.42 KB",                                           // string
+  "rating":         "92%",                                                 // string
+  "ID":             "{mod_id}"                                             // string
+}</code></pre></div>
+    </section>
+
+    <section id="mod-object" class="api-docs-section">
+      <h2>Mod Object</h2>
+      <p>Querying a single mod by ID returns the full mod object, including dependencies and scenarios when the Workshop provides them.</p>
+      <div class="api-code-card"><div class="api-code-title">Mod object</div><pre><code>{
+  "name":           "Super Awesome Mod",                                    // string
+  "author":         "Homer Simpson",                                        // string
+  "originalModURL": "https://reforger.armaplatform.com/workshop/{mod_id}",  // string
+  "apiModURL":      "https://api.reforgermods.net/v1/mod/{mod_id}",         // string
+  "imageURL":       "https://example.com/image.png",                        // string
+  "rating":         "92%",                                                  // string
+  "version":        "1.1.0",                                                // string
+  "gameVersion":    "1.1.0.34",                                             // string
+  "size":           "192.42 KB",                                            // string
+  "subscribers":    66677,                                                  // int
+  "downloads":      791142,                                                 // int
+  "created":        "19.05.2022",                                           // string
+  "lastModified":   "17.03.2024",                                           // string
+  "id":             "{mod_id}",                                             // string
+  "summary":        "This is a super awesome mod",                          // string
+  "description":    "Big awesome mod!",                                     // string
+  "license":        "Arma Public License (APL)",                            // string
+  "tags":           ["SUPER", "AWESOME"],                                   // string array
+  "dependencies":   [ { ...dependency objects... } ],                       // object array
+  "scenarios":      [ { ...scenario objects... } ]                          // object array
+}</code></pre></div>
+    </section>
+
+    <section id="dependency-object" class="api-docs-section">
+      <h2>Dependency Object</h2>
+      <p>Mods with dependencies list them as an array of dependency objects. Each links to the dependency on the official Workshop and on this API.</p>
+      <div class="api-code-card"><div class="api-code-title">Dependency object</div><pre><code>{
+  "name":           "Mod Dependency",                                      // string
+  "originalModURL": "https://reforger.armaplatform.com/workshop/{dep_id}", // string
+  "apiModURL":      "https://api.reforgermods.net/v1/mod/{dep_id}"         // string
+}</code></pre></div>
+    </section>
+
+    <section id="scenario-object" class="api-docs-section">
+      <h2>Scenario Object</h2>
+      <p>Mods that ship playable scenarios list them as an array of scenario objects. The <code>scenarioID</code> is the value a server <code>config.json</code> uses for <code>game.scenarioId</code>.</p>
+      <div class="api-code-card"><div class="api-code-title">Scenario object</div><pre><code>{
+  "name":        "Some Scenario",                               // string
+  "description": "You will do awesome things in this scenario", // string
+  "scenarioID":  "{mod_id}Missions/SomeScenario.conf",          // string
+  "gamemode":    "Campaign",                                    // string
+  "playerCount": 64,                                            // int
+  "imageURL":    "https://example.com/image.png"                // string
+}</code></pre></div>
+    </section>
+
+    <section id="refresh-job-object" class="api-docs-section">
+      <h2>Refresh Job Object</h2>
+      <p>Returned by <a href="#get-job"><code>/v1/refresh/jobs/{id}</code></a> while background refreshes run.</p>
+      <div class="api-code-card"><div class="api-code-title">Refresh job object</div><pre><code>{
+  "id":                  "9f0b7d0f6fd4f88a8bb0e455f0b640247a93", // string
+  "status":              "queued",                               // string: queued | running | succeeded | failed | expired
+  "resource_url":        "/v1/mods?search=radio",                // string
+  "retry_after_seconds": 2                                       // int
+}</code></pre></div>
+    </section>
+
+    <section id="errors" class="api-docs-section api-endpoint-doc">
+      <h2>Errors</h2>
+      <p>Errors use a consistent JSON response and every response includes <code>X-Request-Id</code> for support. Include that value when reporting an issue.</p>
+      <div class="api-code-card"><div class="api-code-title">Error response</div><pre><code>{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many requests.",
+    "requestId": "..."
+  }
+}</code></pre></div>
+      <div class="api-response-grid">
+        <div><strong>INVALID_PAGE</strong><span>Requested page is invalid.</span></div>
+        <div><strong>INVALID_MOD_ID</strong><span>Mod ID is malformed.</span></div>
+        <div><strong>INVALID_SEARCH</strong><span>Search text is invalid.</span></div>
+        <div><strong>NOT_FOUND</strong><span>No matching resource was found.</span></div>
+        <div><strong>RATE_LIMITED</strong><span>Too many requests.</span></div>
+        <div><strong>REFRESH_JOB_NOT_FOUND</strong><span>The refresh job no longer exists.</span></div>
+        <div><strong>REFRESH_QUEUE_FULL</strong><span>Refresh capacity unavailable.</span></div>
+        <div><strong>REFRESH_SHUTTING_DOWN</strong><span>The service is shutting down.</span></div>
+      </div>
+    </section>
+  </article>
+</div>

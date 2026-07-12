@@ -73,12 +73,21 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/config-creator", configCreatorRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods-api/", a.servePublicPage("api")).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods-api", a.servePublicPage("api")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/", a.servePublicPage("docs")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs", a.servePublicPage("docs")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/mod-structures/", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/mod-structures", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/mods/", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/mods", a.servePublicPage("mod-structures")).Methods("GET", "HEAD")
+	// The former /docs pages are folded into the API reference.
+	docsRedirect := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/arma-reforger-mods-api/", http.StatusMovedPermanently)
+	}
+	modStructuresRedirect := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/arma-reforger-mods-api/#mod-object", http.StatusMovedPermanently)
+	}
+	router.HandleFunc("/coming-soon/", a.serveComingSoon).Methods("GET", "HEAD")
+	router.HandleFunc("/coming-soon", a.serveComingSoon).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/", docsRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/docs", docsRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mod-structures/", modStructuresRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mod-structures", modStructuresRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mods/", modStructuresRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/mods", modStructuresRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/methodology/", a.servePublicPage("methodology")).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/methodology", a.servePublicPage("methodology")).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/changelog/", a.servePublicPage("changelog")).Methods("GET", "HEAD")

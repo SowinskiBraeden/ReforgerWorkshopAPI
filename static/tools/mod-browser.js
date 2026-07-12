@@ -5,7 +5,7 @@
   var RM = window.RM;
   var form = document.getElementById('mb-form');
   var searchInput = document.getElementById('mb-search');
-  var categorySelect = document.getElementById('mb-category');
+  var categoryButtons = Array.prototype.slice.call(document.querySelectorAll('#mb-category-group [data-category]'));
   var sortSelect = document.getElementById('mb-sort');
   var statusEl = document.getElementById('mb-status');
   var resultsEl = document.getElementById('mb-results');
@@ -173,11 +173,18 @@
   }
 
   function categoryLabel(value) {
-    if (!categorySelect) return value;
-    for (var i = 0; i < categorySelect.options.length; i++) {
-      if (categorySelect.options[i].value === value) return categorySelect.options[i].textContent;
+    for (var i = 0; i < categoryButtons.length; i++) {
+      if (categoryButtons[i].getAttribute('data-category') === value) return categoryButtons[i].textContent;
     }
     return value;
+  }
+
+  function syncCategoryButtons() {
+    categoryButtons.forEach(function (btn) {
+      var active = btn.getAttribute('data-category') === state.category;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
   }
 
   function applyViewClass() {
@@ -298,11 +305,9 @@
 
   function applySearch() {
     var newSearch = searchInput.value.trim().slice(0, 120);
-    var newCategory = categorySelect ? categorySelect.value : '';
     var newSort = sortSelect.value;
-    if (newSearch === state.search && newCategory === state.category && newSort === state.sort) return;
+    if (newSearch === state.search && newSort === state.sort) return;
     state.search = newSearch;
-    state.category = newCategory;
     state.sort = newSort;
     state.page = 1;
     pushState();
@@ -314,7 +319,17 @@
     applySearch();
   });
   searchInput.addEventListener('input', RM.debounce(applySearch, 400));
-  if (categorySelect) categorySelect.addEventListener('change', applySearch);
+  categoryButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = btn.getAttribute('data-category');
+      if (next === state.category) return;
+      state.category = next;
+      state.page = 1;
+      syncCategoryButtons();
+      pushState();
+      load();
+    });
+  });
   sortSelect.addEventListener('change', applySearch);
   document.querySelectorAll('.mb-view-toggle [data-view]').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -330,7 +345,7 @@
   window.addEventListener('popstate', function () {
     state = readStateFromURL();
     searchInput.value = state.search;
-    if (categorySelect) categorySelect.value = state.category;
+    syncCategoryButtons();
     sortSelect.value = state.sort;
     applyViewClass();
     load();
@@ -338,7 +353,7 @@
 
   // Initial render: sync controls with the (normalized) URL and load.
   searchInput.value = state.search;
-  if (categorySelect) categorySelect.value = state.category;
+  syncCategoryButtons();
   sortSelect.value = state.sort;
   applyViewClass();
   pushState(true);

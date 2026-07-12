@@ -1,0 +1,102 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>config.json Explained</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>Arma Reforger config.json Explained</h1>
+    <p class="landing-lede">An Arma Reforger dedicated server is configured by a single JSON file passed to the server with the <code>-config</code> startup parameter. This guide focuses on the fields admins actually change.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-filetype-json"></i> config.json basics</span>
+      <span><i class="bi bi-router"></i> ports and networking</span>
+      <span><i class="bi bi-collection"></i> mods and scenarios</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Want to avoid hand-editing?</strong><span>The config builder creates the file with forms and preserves imported fields it does not expose.</span></div>
+    <a href="/config-generator/" class="btn btn-primary"><i class="bi bi-sliders"></i> Open Config Builder</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>Minimal working shape</h2>
+    <p>This is the smallest useful shape to understand before adding advanced options. The authoritative field list remains the <a href="{{ .OfficialServerConfigDocsURL }}" rel="noopener">official Bohemia Interactive server documentation</a>.</p>
+    <pre><code class="language-json">{
+  "bindAddress": "0.0.0.0",
+  "bindPort": 2001,
+  "publicAddress": "",
+  "publicPort": 2001,
+  "game": {
+    "name": "My Reforger Server",
+    "maxPlayers": 32,
+    "scenarioId": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+    "crossPlatform": true,
+    "mods": []
+  }
+}</code></pre>
+  </section>
+
+  <section class="guide-section">
+    <h2>Network settings</h2>
+    <dl class="guide-definition-list">
+      <div><dt><code>bindAddress</code> / <code>bindPort</code></dt><dd>The local address and UDP port the server listens on. <code>0.0.0.0</code> listens on all interfaces; the conventional game port is <code>2001</code>.</dd></div>
+      <div><dt><code>publicAddress</code> / <code>publicPort</code></dt><dd>The address and port advertised to players. Behind NAT or a proxy, set these to the externally reachable values.</dd></div>
+      <div><dt><code>a2s</code></dt><dd>An optional query endpoint with <code>address</code> and <code>port</code> for Steam-style server queries.</dd></div>
+    </dl>
+  </section>
+
+  <section class="guide-section guide-two-column">
+    <div>
+      <h2>RCON</h2>
+      <p>The optional <code>rcon</code> object enables remote administration. It needs an <code>address</code>, a <code>port</code>, and a <code>password</code>. Keep the password out of screenshots and pastebins.</p>
+    </div>
+    <div>
+      <h2>Scenario ID</h2>
+      <p><code>game.scenarioId</code> is required. Base-game scenario IDs are documented by Bohemia; modded scenario IDs appear on mod detail pages when Workshop exposes them.</p>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <h2>The game object</h2>
+    <dl class="guide-definition-list">
+      <div><dt><code>name</code></dt><dd>The server name shown in the browser list.</dd></div>
+      <div><dt><code>password</code> / <code>passwordAdmin</code></dt><dd>Join password for players and admin login password for in-game administration.</dd></div>
+      <div><dt><code>admins</code></dt><dd>An array of player identifiers that receive admin rights automatically.</dd></div>
+      <div><dt><code>maxPlayers</code></dt><dd>The player limit. The engine supports up to 128 slots.</dd></div>
+      <div><dt><code>visible</code></dt><dd>Controls whether the server appears in the public server browser.</dd></div>
+      <div><dt><code>crossPlatform</code> / <code>supportedPlatforms</code></dt><dd>Controls console support. Platform identifiers include <code>PLATFORM_PC</code>, <code>PLATFORM_XBL</code>, and <code>PLATFORM_PSN</code>.</dd></div>
+      <div><dt><code>mods</code></dt><dd>The Workshop mod list. The <a href="/guides/how-to-add-mods/">adding mods guide</a> covers the shape in detail.</dd></div>
+      <div><dt><code>modsRequiredByDefault</code></dt><dd>Controls whether listed mods are mandatory for joining clients unless a mod entry overrides it.</dd></div>
+    </dl>
+  </section>
+
+  <section class="guide-section">
+    <h2>gameProperties</h2>
+    <p>Inside <code>game</code>, <code>gameProperties</code> holds common tuning options.</p>
+    <ul class="guide-check-list">
+      <li><code>serverMaxViewDistance</code> and <code>networkViewDistance</code> set view distance limits; higher values cost server performance.</li>
+      <li><code>serverMinGrassDistance</code> enforces minimum grass render distance on clients.</li>
+      <li><code>enableAI</code> enables AI systems for scenarios that use AI.</li>
+      <li><code>disableThirdPerson</code> forces first-person play.</li>
+      <li><code>fastValidation</code> speeds up client joins and is recommended by the official docs for most servers.</li>
+      <li><code>battlEye</code> enables or disables BattlEye.</li>
+      <li><code>missionHeader</code> passes scenario-specific overrides to the mission. Leave it empty unless scenario docs say otherwise.</li>
+    </ul>
+    <p class="guide-note"><i class="bi bi-check2-square"></i> Documented value ranges exist for view distance and grass settings; the <a href="/config-validator/">validator</a> flags values outside them.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>The operating object</h2>
+    <p>Top-level <code>operating</code> controls server-process behavior around lobby synchronization, persistence, AI limits, navigation streaming, and join queues. Treat these as tuning settings once the server already starts reliably.</p>
+    <dl class="guide-definition-list">
+      <div><dt><code>enableAI</code></dt><dd>Controls AI processing at the operating layer. Keep it enabled for scenarios that rely on AI.</dd></div>
+      <div><dt><code>lobbyPlayerSynchronise</code></dt><dd>Controls whether players are synchronized while they are still in the lobby.</dd></div>
+      <div><dt><code>playerSaveTime</code></dt><dd>Controls how often player state is saved, in seconds.</dd></div>
+      <div><dt><code>aiLimit</code></dt><dd>Caps how many AI entities the server may run.</dd></div>
+      <div><dt><code>joinQueue</code></dt><dd>Controls how many players can wait when the server is full instead of being rejected immediately.</dd></div>
+    </dl>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Before you deploy</strong><span>JSON has no comments, no trailing commas, and only straight double quotes. Validate the file before restarting the server.</span></div>
+    <a href="/config-validator/" class="btn btn-outline-secondary"><i class="bi bi-check2-square"></i> Validate Config</a>
+  </section>
+</article>
