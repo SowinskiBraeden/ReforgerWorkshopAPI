@@ -62,6 +62,7 @@ type sitePageData struct {
 	Keywords       string
 	LastMod        string
 	PageImageURL   string
+	StaticVersion  string
 	Endpoints      []apiEndpointDoc
 	GeneratedAt    string
 	NoIndex        bool
@@ -258,6 +259,7 @@ func (a *App) renderPublicPage(w http.ResponseWriter, r *http.Request, page publ
 		Keywords:       pageKeywords(page),
 		LastMod:        pageLastMod(page),
 		PageImageURL:   pageImageURL(page, publicBaseURL),
+		StaticVersion:  staticAssetVersion(),
 		Endpoints:      endpointDocs(),
 		GeneratedAt:    time.Now().UTC().Format("2006-01-02"),
 		NoIndex:        noIndex,
@@ -370,6 +372,10 @@ func pageLastMod(page publicPage) string {
 		return page.LastMod
 	}
 	return defaultPageLastMod
+}
+
+func staticAssetVersion() string {
+	return strings.ReplaceAll(defaultPageLastMod, "-", "")
 }
 
 func pageKeywords(page publicPage) string {

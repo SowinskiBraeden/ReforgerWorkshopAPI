@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ .Page.Title }}</title>
-    <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-    <link href="/static/highlight.js/styles/atom-one-dark.css" rel="stylesheet">
-    <link href="/static/global/global.css" rel="stylesheet">
-    <link href="/static/index.css" rel="stylesheet">
-    <link href="/static/tools/tools.css" rel="stylesheet">
+    <link href="/static/bootstrap/css/bootstrap.min.css?v={{ .StaticVersion }}" rel="stylesheet">
+    <link href="/static/bootstrap-icons/bootstrap-icons.css?v={{ .StaticVersion }}" rel="stylesheet">
+    <link href="/static/highlight.js/styles/atom-one-dark.css?v={{ .StaticVersion }}" rel="stylesheet">
+    <link href="/static/global/global.css?v={{ .StaticVersion }}" rel="stylesheet">
+    <link href="/static/index.css?v={{ .StaticVersion }}" rel="stylesheet">
+    <link href="/static/tools/tools.css?v={{ .StaticVersion }}" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/reforger-mods-favicon-32.png">
     <link rel="icon" type="image/png" sizes="64x64" href="/static/assets/reforger-mods-favicon-64.png">
     <link rel="apple-touch-icon" href="/static/assets/reforger-mods-favicon-256.png">
@@ -199,10 +199,10 @@
         </div>
       </div>
     </footer>
-    <script src="/static/bootstrap/js/bootstrap.bundle.js"></script>
-    <script src="/static/highlight.js/highlight.min.js"></script>
-    <script src="/static/index.js"></script>
-    {{ range .Page.Scripts }}<script src="{{ . }}"></script>
+    <script src="/static/bootstrap/js/bootstrap.bundle.js?v={{ .StaticVersion }}"></script>
+    <script src="/static/highlight.js/highlight.min.js?v={{ .StaticVersion }}"></script>
+    <script src="/static/index.js?v={{ .StaticVersion }}"></script>
+    {{ range .Page.Scripts }}<script src="{{ . }}?v={{ $.StaticVersion }}"></script>
     {{ end }}
   </body>
 </html>
