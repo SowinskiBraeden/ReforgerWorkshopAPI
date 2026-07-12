@@ -114,17 +114,6 @@ var corePages = []publicPage{
 		Content:     changelogFallbackHTML,
 	},
 	{
-		Path:        "/docs/methodology/",
-		Slug:        "methodology",
-		Title:       "Data Source and Methodology | Reforger Mods API",
-		Description: "How Reforger Mods API retrieves, caches, and exposes unofficial Arma Reforger Workshop mod metadata, including freshness expectations and known limitations.",
-		H1:          "Data Source and Methodology",
-		Keywords:    []string{"Arma Reforger Workshop scraping", "Reforger mod metadata", "API cache methodology", "Workshop data freshness"},
-		ChangeFreq:  "monthly",
-		Priority:    "0.7",
-		Content:     methodologyHTML,
-	},
-	{
 		Path:        "/privacy/",
 		Slug:        "privacy",
 		Title:       "Privacy Policy | Reforger Mods API",
@@ -605,8 +594,6 @@ var sitemapTemplate = texttemplate.Must(texttemplate.ParseFiles(htmlTemplatePath
 var siteTemplate = htmltemplate.Must(htmltemplate.ParseFiles(htmlTemplatePath("templates/site.html")))
 
 var homeLandingHTML = htmlFragment("core/home.html")
-
-var methodologyHTML = htmlFragment("core/methodology.html")
 
 var apiReferenceHTML = htmlFragment("core/api-reference.html")
 var comingSoonHTML = htmlFragment("core/coming-soon.html")

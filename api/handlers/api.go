@@ -80,6 +80,9 @@ func (a *App) New() *mux.Router {
 	modStructuresRedirect := func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/arma-reforger-mods-api/#mod-object", http.StatusMovedPermanently)
 	}
+	methodologyRedirect := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/arma-reforger-mods-api/#caching", http.StatusMovedPermanently)
+	}
 	router.HandleFunc("/coming-soon/", a.serveComingSoon).Methods("GET", "HEAD")
 	router.HandleFunc("/coming-soon", a.serveComingSoon).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/", docsRedirect).Methods("GET", "HEAD")
@@ -88,8 +91,8 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/docs/mod-structures", modStructuresRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/mods/", modStructuresRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/mods", modStructuresRedirect).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/methodology/", a.servePublicPage("methodology")).Methods("GET", "HEAD")
-	router.HandleFunc("/docs/methodology", a.servePublicPage("methodology")).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/methodology/", methodologyRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/docs/methodology", methodologyRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/changelog/", a.servePublicPage("changelog")).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/changelog", a.servePublicPage("changelog")).Methods("GET", "HEAD")
 	router.HandleFunc("/changelog/", a.servePublicPage("changelog")).Methods("GET", "HEAD")

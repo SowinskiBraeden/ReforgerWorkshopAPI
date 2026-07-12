@@ -78,7 +78,7 @@ Manual steps after launch:
 
 1. Add and verify the `https://reforgermods.net` property in Google Search Console.
 2. Submit `https://reforgermods.net/sitemap.xml`.
-3. Use URL Inspection for `/`, `/arma-reforger-mods/`, `/arma-reforger-mods-api/`, `/docs/`, and `/docs/methodology/`.
+3. Use URL Inspection for `/`, `/arma-reforger-mods/`, `/arma-reforger-mods-api/`, `/docs/changelog/`, and key guide URLs.
 4. Confirm the selected canonical is the public URL, not `api.reforgermods.net`.
 5. Inspect one API endpoint such as `https://api.reforgermods.net/v1/health` and confirm it is excluded because of `noindex`.
 6. Recheck after DNS, Cloudflare, or reverse-proxy changes.

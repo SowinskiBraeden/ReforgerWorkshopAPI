@@ -1,7 +1,7 @@
 var navKey = document.body?.getAttribute('data-nav-key') || 'home';
 if (navKey.indexOf('guide-') === 0) navKey = 'guides';
 if (navKey === 'api-quickstart') navKey = 'api';
-if (navKey === 'mod-structures' || navKey === 'methodology') navKey = 'docs';
+if (navKey === 'mod-structures') navKey = 'docs';
 
 document.querySelectorAll('[data-nav-page]').forEach(function(link) {
   if (link.getAttribute('data-nav-page') === navKey) {
