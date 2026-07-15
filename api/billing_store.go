@@ -234,6 +234,8 @@ func (s *BillingStore) Migrate(ctx context.Context) error {
 			last_four TEXT
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_internal_api_keys_prefix ON internal_api_keys(key_prefix);`,
+		`UPDATE accounts SET stripe_customer_id = NULL WHERE stripe_customer_id = '';`,
+		`UPDATE accounts SET stripe_subscription_id = NULL WHERE stripe_subscription_id = '';`,
 		`CREATE TABLE IF NOT EXISTS login_tokens (
 			id TEXT PRIMARY KEY,
 			account_id TEXT NOT NULL,
@@ -289,12 +291,20 @@ func (s *BillingStore) UpsertAccount(ctx context.Context, account Account) (Acco
 		plan=excluded.plan,
 		subscription_status=excluded.subscription_status,
 		updated_at=excluded.updated_at`,
-		account.ID, account.Email, account.StripeCustomerID, account.StripeSubscriptionID, account.Plan, account.SubscriptionStatus, account.CreatedAt.UTC(), account.UpdatedAt.UTC(),
+		account.ID, nullableString(account.Email), nullableString(account.StripeCustomerID), nullableString(account.StripeSubscriptionID), account.Plan, account.SubscriptionStatus, account.CreatedAt.UTC(), account.UpdatedAt.UTC(),
 	)
 	if err != nil {
 		return account, err
 	}
 	return account, nil
+}
+
+func nullableString(value string) any {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 func (s *BillingStore) UpsertAccountByStripeCustomer(ctx context.Context, account Account) (Account, error) {
