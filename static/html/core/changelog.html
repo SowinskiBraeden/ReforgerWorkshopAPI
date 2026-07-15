@@ -28,18 +28,15 @@
       </div>
       <h3>Added</h3>
       <ul>
-        <li>Stripe Checkout support for paid API subscriptions.</li>
-        <li>Developer and Pro API plans with server-side mapped Stripe price IDs.</li>
-        <li>API key generation, one-time reveal, hash-only storage, and validation.</li>
-        <li>Subscription-aware API access and rate-limit tiers.</li>
-        <li>Stripe webhook handling for checkout, subscription, and invoice lifecycle events.</li>
-        <li>Customer Portal support for billing management.</li>
+        <li>Developer and Pro monthly API plans are now available from the <a href="/pricing/">pricing page</a>.</li>
+        <li>Paid plans include account API keys, higher rate limits, and access to key management.</li>
+        <li>Subscribers can create, name, rotate, and revoke API keys from the account area.</li>
+        <li>Billing, invoices, plan changes, and cancellations can be managed through Stripe.</li>
       </ul>
       <h3>Security</h3>
       <ul>
-        <li>API keys are shown only once and stored as hashes.</li>
-        <li>Stripe webhooks are verified using signing secrets.</li>
-        <li>Stripe secrets are configured through environment variables only.</li>
+        <li>API keys are shown only once after creation.</li>
+        <li>Lost or exposed keys can be revoked and replaced from the account area.</li>
       </ul>
       <p class="changelog-note">No existing public API response schemas were changed.</p>
     </section>
@@ -59,22 +56,15 @@
         <li>Shared working config across tools. Add to Config in the mod browser, the mod manager, and the config generator all edit the same browser-only draft.</li>
         <li><a href="/api/">API quickstart page</a> and new guides for config.json, adding mods, troubleshooting, running server mods, API integration, and refresh jobs.</li>
         <li>API documentation now includes client identity guidance, conditional request examples, and complete code examples in curl, JavaScript, and Go.</li>
-        <li>SEO metadata for all new pages, including canonical URLs, Open Graph tags, structured data, and sitemap entries.</li>
         <li>Inline Workshop mod search inside the config generator and mod manager.</li>
         <li>JSON syntax highlighting in the config validator editor and generator live preview.</li>
-        <li>Persistent local indexing for Workshop list pages, mod metadata, mod details, and API response cache entries.</li>
-        <li>SQLite WAL storage under <code>/var/lib/reforgermods-api</code> when <code>INDEX_ENABLED=true</code>.</li>
-        <li>Background refresh jobs for common popular/newest Workshop list pages and bounded mod detail hydration.</li>
-        <li>Canonical cache keys for list, search, sort, page, tag, and mod ID lookups.</li>
-        <li>Internal metrics for persistent cache hits, stale hits, misses, local search, index refreshes, background jobs, and database errors.</li>
       </ul>
       <h3>Changed</h3>
       <ul>
         <li>Homepage now presents both the API and the server-admin tools.</li>
         <li>Site navigation includes the tools and guides sections.</li>
         <li>Tool pages use a full-width desktop layout with refreshed colors and spacing.</li>
-        <li>Common cached list pages and mod details can be served after service restart when persistent indexing is enabled.</li>
-        <li>Background indexing uses low-priority refresh jobs so direct API misses are not blocked behind crawler work.</li>
+        <li>Common mod lists, searches, and mod detail pages load more reliably from cache.</li>
       </ul>
       <p class="changelog-note">No API endpoint, response-schema, or integration changes. The deprecated unversioned API aliases remain untouched.</p>
     </section>
@@ -121,8 +111,8 @@
       </div>
       <h3>Fixed</h3>
       <ul>
-        <li>Hardened Workshop scenario parsing to prevent unexpected upstream page content from crashing the API during a background refresh.</li>
-        <li>Improved refresh-worker fault handling so a failed scrape affects that refresh job instead of interrupting the full API service.</li>
+        <li>Improved handling for unexpected Workshop scenario data during refreshes.</li>
+        <li>Refresh failures now return clearer errors without interrupting unrelated API requests.</li>
       </ul>
       <p class="changelog-note">No API endpoint, response-schema, or integration changes are required.</p>
     </section>
@@ -161,15 +151,14 @@
         </div>
       </div>
       <p>v1.0.0 marks the public return of reforgermods.net and the Reforger Mods API after a period offline.</p>
-      <p>Earlier iterations of the project are retired and are not compatible with this release. This version establishes the current API foundation, deployment model, and public documentation.</p>
+      <p>Earlier iterations of the project are retired and are not compatible with this release. This version establishes the current API foundation and public documentation.</p>
       <h3>Included</h3>
       <ul>
         <li>Read-only versioned <code>/v1</code> API routes for health checks, mod lists, search, and mod details.</li>
         <li>Cached metadata sourced from publicly accessible Arma Reforger Workshop pages.</li>
-        <li>Anonymous public rate limiting with proxy-safe client IP handling.</li>
+        <li>Anonymous public rate limiting.</li>
         <li>Stale-cache fallback for safe read endpoints when upstream Workshop pages are slow or temporarily unavailable.</li>
         <li>Controlled JSON error envelopes with request IDs for support and debugging.</li>
-        <li>Docker, reverse-proxy, and deployment documentation.</li>
         <li>Public documentation for API routes, caching behavior, limits, and supported usage.</li>
       </ul>
       <h3>Notes</h3>

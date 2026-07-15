@@ -61,10 +61,10 @@ X-API-Key: rfm_live_...</code></pre></div>
         <div><strong>60/min</strong><span>Default limit per resolved client IP</span></div>
         <div><strong>300/min</strong><span>Developer plan account limit</span></div>
         <div><strong>1,200/min</strong><span>Pro plan account limit</span></div>
-        <div><strong>429</strong><span>Returned when exceeded</span></div>
+        <div><strong>20 / 30 / 120</strong><span>Free, Developer, and Pro burst allowances</span></div>
       </div>
       <p class="mt-3">Call <a href="#get-rate-limits"><code>GET /v1/rate-limits</code></a> with your API key to inspect the current plan, request limit, burst allowance, and whether the limit is shared by account or client IP.</p>
-      <p>On <code>429 Too Many Requests</code> or <code>503 Service Unavailable</code>, wait for <code>Retry-After</code> and retry later. Batch and cache on your side instead of polling, and do not request variations of the same query to bypass caching &mdash; there is no public cache-bypass or force-refresh parameter.</p>
+      <p>On <code>429 Too Many Requests</code> or <code>503 Service Unavailable</code>, wait for <code>Retry-After</code> and retry later. Batch and cache on your side instead of polling, and do not request variations of the same query to bypass caching; there is no public cache-bypass or force-refresh parameter.</p>
     </section>
 
     <section id="caching" class="api-docs-section">
@@ -88,7 +88,7 @@ Location: /v1/refresh/jobs/job_8841
         <tbody>
           <tr><td>Mod detail</td><td>1 hour</td><td>24 hours</td></tr>
           <tr><td>Mod list and search</td><td>10 minutes</td><td>1 hour</td></tr>
-          <tr><td>Not found response</td><td>10 minutes</td><td>&mdash;</td></tr>
+          <tr><td>Not found response</td><td>10 minutes</td><td>None</td></tr>
         </tbody>
       </table>
       <p>Stale data may be served with <code>X-Cache: STALE</code> while a background refresh runs, so the API stays responsive when the upstream Workshop is slow or unavailable.</p>
@@ -325,7 +325,7 @@ print(res.json())</code></pre>
   "resource_url": "/v1/mods?search=radio",
   "retry_after_seconds": 2
 }</code></pre></div>
-      <p>Possible statuses are <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, and <code>expired</code>. After a job succeeds, request <code>resource_url</code> again &mdash; refresh-job responses do not contain the finished mod or list payload. Do not poll jobs faster than the advertised <code>retry_after_seconds</code>.</p>
+      <p>Possible statuses are <code>queued</code>, <code>running</code>, <code>succeeded</code>, <code>failed</code>, and <code>expired</code>. After a job succeeds, request <code>resource_url</code> again; refresh-job responses do not contain the finished mod or list payload. Do not poll jobs faster than the advertised <code>retry_after_seconds</code>.</p>
     </section>
 
     <section id="list-response" class="api-docs-section api-endpoint-doc">

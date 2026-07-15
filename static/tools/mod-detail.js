@@ -77,6 +77,7 @@
       if (crumb) crumb.textContent = mod.name;
     }
 
+    var configEntry = '<section class="mod-detail-section mod-detail-config"><h2>config.json entry</h2><pre class="tool-preview mod-detail-snippet"><code id="md-snippet" class="language-json">' + RM.esc(RM.modSnippet({ modId: modId, name: mod.name, version: mod.version })) + '</code></pre></section>';
     var html = '<div class="mod-detail-layout"><section class="mod-detail-main"><div class="mod-detail-hero">';
     if (mod.imageURL) {
       html += '<img class="mod-detail-image" src="' + RM.esc(mod.imageURL) + '" alt="' + RM.esc(mod.name) + ' preview">';
@@ -106,7 +107,7 @@
       html += '</section>';
     }
 
-    html += '<section class="mod-detail-section"><h2>config.json entry</h2><pre class="tool-preview mod-detail-snippet"><code id="md-snippet" class="language-json">' + RM.esc(RM.modSnippet({ modId: modId, name: mod.name, version: mod.version })) + '</code></pre></section></section>';
+    html += configEntry + '</section>';
 
     html += '<aside class="mod-detail-sidebar"><table class="mod-detail-facts-table"><tbody>' +
       fact('Author', mod.author) +
@@ -130,6 +131,8 @@
       (mod.originalModURL ? '<a class="btn btn-outline-secondary" href="' + RM.esc(mod.originalModURL) + '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Official Workshop</a>' : '') +
       '</div>';
 
+    html += configEntry.replace('id="md-snippet"', 'id="md-snippet-mobile"');
+
     if (mod.tags && mod.tags.length) {
       html += '<div class="mod-detail-tags">' + mod.tags.map(function (tag) {
         return '<span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle me-1">' + RM.esc(tag) + '</span>';
@@ -147,9 +150,11 @@
     html += '</aside></div>';
 
     contentEl.innerHTML = html;
-    var snippet = document.getElementById('md-snippet');
-    if (snippet && window.hljs) {
-      window.hljs.highlightElement(snippet);
+    var snippets = contentEl.querySelectorAll('#md-snippet, #md-snippet-mobile');
+    if (window.hljs) {
+      snippets.forEach(function (snippet) {
+        window.hljs.highlightElement(snippet);
+      });
     }
 
     document.getElementById('md-copy-id').addEventListener('click', function () {

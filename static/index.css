@@ -724,7 +724,7 @@ code.hljs {
   width: 100%;
 }
 
-/* 404: the image renders at its natural ratio, shrinking to fit — never cropped */
+/* 404: the image renders at its natural ratio, shrinking to fit and never cropped */
 .not-found-page {
   border: 1px solid var(--site-muted-border);
   border-radius: 16px;
@@ -1524,8 +1524,8 @@ code.hljs {
 }
 
 /* Shared billing backdrop: the page content flows naturally from the top
-   while the image floats behind it as a fixed-height layer that fades —
-   with a slight blue cast over its lower half — into the page background,
+   while the image floats behind it as a fixed-height layer that fades,
+   with a slight blue cast over its lower half, into the page background,
    keeping the cards on a calm surface. */
 .billing-backdrop {
   isolation: isolate;

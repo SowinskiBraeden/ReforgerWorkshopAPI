@@ -164,7 +164,7 @@ var corePages = []publicPage{
 			},
 			{
 				Question: "What happens if I lose my API key?",
-				Answer:   "Keys are stored hashed and cannot be shown again. Sign in with your email on the API keys page, revoke the lost key, and create a new one — it takes under a minute.",
+				Answer:   "Keys are stored hashed and cannot be shown again. Sign in with your email on the API keys page, revoke the lost key, and create a new one. It takes under a minute.",
 			},
 			{
 				Question: "How many API keys do I get?",

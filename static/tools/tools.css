@@ -336,6 +336,10 @@
   top: 6rem;
 }
 
+.mod-detail-sidebar .mod-detail-config {
+  display: none;
+}
+
 .mod-detail-hero {
   background: var(--site-panel);
   border: 1px solid var(--site-muted-border);
@@ -694,11 +698,36 @@
   }
 
   .mod-detail-layout {
+    display: flex;
+    flex-direction: column;
     grid-template-columns: 1fr;
   }
 
+  .mod-detail-main {
+    display: contents;
+  }
+
   .mod-detail-sidebar {
+    order: 2;
     position: static;
+  }
+
+  .mod-detail-main .mod-detail-config {
+    display: none;
+  }
+
+  .mod-detail-sidebar .mod-detail-config {
+    display: block;
+  }
+
+  .mod-detail-hero {
+    order: 1;
+    width: 100%;
+  }
+
+  .mod-detail-section {
+    order: 3;
+    width: 100%;
   }
 }
 
@@ -718,7 +747,7 @@
   text-align: center;
 }
 
-/* ── Full-width tool layout ─────────────────────────────────────────── */
+/* Full-width tool layout */
 
 .tool-shell {
   max-width: 1680px;
