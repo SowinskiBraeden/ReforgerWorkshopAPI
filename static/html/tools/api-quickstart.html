@@ -1,17 +1,25 @@
 <div class="docs-hero-split">
   <div>
-    <h1>Reforger Mods API Quickstart</h1>
-    <p class="landing-lede">A public, read-only JSON API for Arma Reforger Workshop metadata. Search mods, fetch dependencies and scenarios, cache responsibly, and build server tools without scraping Workshop pages yourself.</p>
+    <h1>Arma Reforger Mods API</h1>
+    <p class="landing-lede">A documented, read-only Arma Reforger Workshop metadata API for mod search, details, dependencies, versions, scenarios, and server-tool integrations.</p>
   </div>
   <img src="/static/assets/web/dashboard-angled.png" alt="A server dashboard built on the Reforger Mods API" loading="lazy">
 </div>
+<h2>What the API provides</h2>
+<p>The API exposes cached Workshop mod previews, search results, full mod details, dependencies, scenarios, refresh-job status, and rate-limit information. It is built for server panels, bots, dashboards, config tools, and community websites that need Workshop metadata without scraping pages directly.</p>
 <h2>Base URL</h2>
 <pre><code>https://api.reforgermods.net/v1</code></pre>
 <h2>First request</h2>
 <pre><code class="language-bash">curl 'https://api.reforgermods.net/v1/mods?search=radio&amp;sort=newest'</code></pre>
 <p>List and search responses return mod previews with names, authors, IDs, sizes, ratings, and links. Fetch full details, including dependencies and scenarios, for one mod:</p>
 <pre><code class="language-bash">curl 'https://api.reforgermods.net/v1/mod/5965550F24A0C152'</code></pre>
-<h2>Handle 202 Accepted</h2>
+<h2>Authentication and API keys</h2>
+<p>Anonymous access is available for public cached reads. Paid API keys can be sent with <code>X-API-Key</code> or <code>Authorization: Bearer</code> and are managed from the account area after checkout.</p>
+<h2>Rate limits</h2>
+<p>Anonymous access currently allows 60 requests per minute per resolved client IP with a burst of 20. Developer plans use 300 requests per minute with a burst of 30, and Pro plans use 1,200 requests per minute with a burst of 120. Paid limits are shared across all active keys on the same account.</p>
+<h2>Cached and indexed data</h2>
+<p>Responses are cached to keep the API responsive and to reduce repeated Workshop requests. Cached data can be stale by design, so integrations should show update dates where useful and avoid treating the API as an ownership or moderation authority.</p>
+<h2>202 Accepted and refresh jobs</h2>
 <p>If a cold-cache request returns <code>202 Accepted</code>, the API has accepted a background refresh job. Wait the number of seconds in <code>Retry-After</code>, then retry the same URL. You can also inspect the <code>Location</code> job URL, but most clients only need to retry the original request.</p>
 <pre><code class="language-python">import time
 import requests
@@ -28,6 +36,15 @@ def get_json(url, attempts=4):
     raise RuntimeError("Workshop data is still refreshing")
 
 mods = get_json("https://api.reforgermods.net/v1/mods?search=radio")</code></pre>
+<h2>Integration use cases</h2>
+<ul>
+  <li>Server hosting panels that need mod names, IDs, versions, and dependency hints.</li>
+  <li>Discord bots that search Workshop mods or show detail cards.</li>
+  <li>Config generators and validators that resolve mod IDs without scraping.</li>
+  <li>Community dashboards that link back to official Workshop pages.</li>
+</ul>
+<h2>Code examples</h2>
+<p>The examples above cover basic search, mod detail fetches, and cold-cache retries. The <a href="/arma-reforger-mods-api/">full API reference</a> includes every endpoint, parameter, response shape, header, and error code.</p>
 <h2>Be a good client</h2>
 <ul>
   <li>Send an identifying <code>User-Agent</code> or <code>X-API-Client</code> header with a contact hint, so traffic can be attributed and never mistaken for abuse.</li>
@@ -42,4 +59,4 @@ mods = get_json("https://api.reforgermods.net/v1/mods?search=radio")</code></pre
   <a href="/guides/handling-202-refresh-jobs/" class="landing-link-card"><i class="bi bi-arrow-repeat"></i><span>202 and refresh jobs</span><small>How the cold-cache flow works and how to handle it well.</small></a>
   <a href="/arma-reforger-mods-api/#mod-object" class="landing-link-card"><i class="bi bi-diagram-3"></i><span>Mod structures</span><small>The JSON shapes for previews, details, dependencies, and scenarios.</small></a>
 </div>
-<p class="landing-note">The API also powers the <a href="/arma-reforger-mods/">mod browser</a>, <a href="/config-generator/">config generator</a>, and <a href="/config-validator/">config validator</a> on this site, so tool behavior and API behavior always match.</p>
+<p class="landing-note">The API also powers the <a href="/mods/">mod browser</a>, <a href="/config-generator/">config generator</a>, and <a href="/config-validator/">config validator</a> on this site, so tool behavior and API behavior always match.</p>

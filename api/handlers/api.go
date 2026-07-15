@@ -48,10 +48,23 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/robots.txt", a.serveRobots).Methods("GET", "HEAD")
 	router.HandleFunc("/sitemap.xml", a.serveSitemap).Methods("GET", "HEAD")
 	router.HandleFunc("/", a.servePublicPage("home")).Methods("GET", "HEAD")
-	router.HandleFunc("/arma-reforger-mods/", a.servePublicPage("mods")).Methods("GET", "HEAD")
-	router.HandleFunc("/arma-reforger-mods", a.servePublicPage("mods")).Methods("GET", "HEAD")
-	router.HandleFunc("/arma-reforger-mods/{id}/", a.serveModDetailPage).Methods("GET", "HEAD")
-	router.HandleFunc("/arma-reforger-mods/{id}", a.serveModDetailPage).Methods("GET", "HEAD")
+	router.HandleFunc("/mods/", a.servePublicPage("mods")).Methods("GET", "HEAD")
+	router.HandleFunc("/mods", a.servePublicPage("mods")).Methods("GET", "HEAD")
+	router.HandleFunc("/mods/{id}/", a.serveModDetailPage).Methods("GET", "HEAD")
+	router.HandleFunc("/mods/{id}", a.serveModDetailPage).Methods("GET", "HEAD")
+	modsRedirect := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/mods/", http.StatusMovedPermanently)
+	}
+	modDetailRedirect := func(w http.ResponseWriter, r *http.Request) {
+		id := strings.ToUpper(mux.Vars(r)["id"])
+		http.Redirect(w, r, "/mods/"+id+"/", http.StatusMovedPermanently)
+	}
+	router.HandleFunc("/arma-reforger-mods/", modsRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods", modsRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/mods-browser/", modsRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/mods-browser", modsRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods/{id}/", modDetailRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/arma-reforger-mods/{id}", modDetailRedirect).Methods("GET", "HEAD")
 
 	// Tool and guide pages. Each is registered with and without the trailing
 	// slash; servePublicPage 301s to the canonical trailing-slash path.
@@ -60,7 +73,7 @@ func (a *App) New() *mux.Router {
 		router.HandleFunc(strings.TrimSuffix(path, "/"), a.servePublicPage(slug)).Methods("GET", "HEAD")
 	}
 	for _, page := range toolPages {
-		if page.Path == "/arma-reforger-mods/" {
+		if page.Path == "/mods/" {
 			continue // registered above, ahead of the {id} detail routes
 		}
 		registerPage(page.Slug, page.Path)
@@ -68,12 +81,19 @@ func (a *App) New() *mux.Router {
 	for _, page := range guidePages {
 		registerPage(page.Slug, page.Path)
 	}
-	// /config-creator is an alternate name for the same tool.
+	// Alternate names for canonical tool routes.
 	configCreatorRedirect := func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/config-generator/", http.StatusMovedPermanently)
 	}
 	router.HandleFunc("/config-creator/", configCreatorRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/config-creator", configCreatorRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/config-builder/", configCreatorRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/config-builder", configCreatorRedirect).Methods("GET", "HEAD")
+	validatorRedirect := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/config-validator/", http.StatusMovedPermanently)
+	}
+	router.HandleFunc("/validator/", validatorRedirect).Methods("GET", "HEAD")
+	router.HandleFunc("/validator", validatorRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods-api/", a.servePublicPage("api")).Methods("GET", "HEAD")
 	router.HandleFunc("/arma-reforger-mods-api", a.servePublicPage("api")).Methods("GET", "HEAD")
 	// The former /docs pages are folded into the API reference.

@@ -1,0 +1,50 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>Find Mod ID</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Workshop mods</div>
+    <h1>How to Find an Arma Reforger Mod ID</h1>
+    <p class="landing-lede">An Arma Reforger mod ID is the Workshop identifier used in <code>game.mods</code>. You can copy it from this site's mod browser, from an official Workshop URL, or from an API response.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-search"></i> Search by name</span>
+      <span><i class="bi bi-clipboard"></i> Copy Workshop IDs</span>
+      <span><i class="bi bi-filetype-json"></i> Use in config.json</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Fastest method</strong><span>Search the mod browser and use the copy button next to the Workshop ID.</span></div>
+    <a href="/mods/" class="btn btn-primary"><i class="bi bi-search"></i> Browse Arma Reforger Mods</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>Find the ID in the mod browser</h2>
+    <p>Open the <a href="/mods/">Arma Reforger Mods Browser</a>, search by mod name, author, category, or known ID, then open a result. The detail page shows the Workshop ID, the current version when available, dependencies, scenarios, and a copyable config.json entry.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Find the ID in a Workshop URL</h2>
+    <p>Official Workshop mod pages include the ID in the URL path. It is usually a 16-character hexadecimal value. Copy only the ID, not the full URL, when writing <code>game.mods</code>.</p>
+    <pre><code>https://reforger.armaplatform.com/workshop/5965550F24A0C152
+                                        ^^^^^^^^^^^^^^^^
+                                        modId</code></pre>
+  </section>
+
+  <section class="guide-section">
+    <h2>Use the ID in config.json</h2>
+    <p>Place the ID in a mod object inside <code>game.mods</code>. The <code>name</code> field is optional and only helps admins read the file.</p>
+    <pre><code class="language-json">{
+  "modId": "5965550F24A0C152",
+  "name": "Example Workshop Mod"
+}</code></pre>
+  </section>
+
+  <section class="guide-section">
+    <h2>Check dependencies next</h2>
+    <p>Some mods require other Workshop entries. After finding the main ID, open the detail page and review dependencies, or run the list through the <a href="/mod-manager/">Arma Reforger Mod Manager</a>.</p>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Building the full server file?</strong><span>Send mods into the shared draft and export config.json when the list is ready.</span></div>
+    <a href="/config-generator/" class="btn btn-outline-secondary"><i class="bi bi-sliders"></i> Open the Config Generator</a>
+  </section>
+</article>

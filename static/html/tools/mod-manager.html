@@ -1,9 +1,9 @@
 <section class="tool-page" aria-label="Arma Reforger Mod Manager">
   <div class="tool-page-hero tool-page-hero-dashboard">
     <div>
-      <div class="tool-hero-kicker">Power your Arma Reforger server with the Reforger Mods API</div>
+      <div class="tool-hero-kicker">Edit the Arma Reforger config.json mods array</div>
       <h1>Arma Reforger Mod Manager</h1>
-      <p class="landing-lede">Turn Workshop search results into a clean <code>game.mods</code> array: add IDs, reorder entries, check dependencies, and export with confidence.</p>
+      <p class="landing-lede">Manage your Arma Reforger server mod list, resolve Workshop IDs, detect duplicates, reorder mods, and export a clean config.json mods array.</p>
     </div>
     <div class="tool-page-note"><i class="bi bi-list-check"></i> edits stay in your browser</div>
   </div>
@@ -17,7 +17,7 @@
         <button id="mm-deps" class="btn btn-outline-secondary" type="button"><i class="bi bi-diagram-3"></i> Check dependencies</button>
         <button id="mm-copy-mods" class="btn btn-primary" type="button"><i class="bi bi-clipboard"></i> Copy mods array</button>
         <button id="mm-download" class="btn btn-outline-secondary" type="button"><i class="bi bi-download"></i> Download config.json</button>
-        <a href="/config-generator/" class="btn btn-outline-secondary"><i class="bi bi-sliders"></i> Open in Config Builder</a>
+        <a href="/config-generator/" class="btn btn-outline-secondary"><i class="bi bi-sliders"></i> Open in Config Generator</a>
       </div>
       <div id="mm-deps-results" class="tool-results" aria-live="polite"></div>
       <noscript><p>The mod manager needs JavaScript. The <a href="/guides/how-to-add-mods/">adding mods guide</a> explains how to edit the mods array by hand.</p></noscript>
@@ -25,11 +25,31 @@
   </div>
   <div class="tool-page-info-grid">
     <section>
-      <h2>Working with the mods array</h2>
+      <h2>How to manage a Reforger mod list</h2>
       <p>Each entry in <code>game.mods</code> needs at least a <code>modId</code>. A <code>name</code> is optional but keeps the file readable, and a <code>version</code> pins the mod instead of using the latest release. The <a href="/guides/how-to-add-mods/">adding mods guide</a> covers the format in detail, and the <a href="/guides/arma-reforger-server-mods/">server mods guide</a> explains dependencies and update behavior.</p>
     </section>
     <section>
-      <h2>One working config, three tools</h2>
+      <h2>How to find Workshop mod IDs</h2>
+      <p>Search by mod name on this page, paste an ID from the official Workshop, or open the <a href="/mods/">Arma Reforger Mods Browser</a> to inspect mod detail pages and copy IDs.</p>
+    </section>
+    <section>
+      <h2>How mod ordering works</h2>
+      <p>The server handles required dependencies, but a consistent order helps admins review and maintain the file. Use the controls to move entries into a readable order before export.</p>
+    </section>
+    <section>
+      <h2>How duplicate mods are handled</h2>
+      <p>The shared validator checks for repeated <code>modId</code> values so you can remove duplicates before restart. Keeping one entry per Workshop ID avoids confusion over version pins and required flags.</p>
+    </section>
+    <section>
+      <h2>How dependencies are shown</h2>
+      <p>The dependency check compares your current list with dependency metadata from public Workshop pages. It suggests missing entries when data is available, but you decide what to add.</p>
+    </section>
+    <section>
+      <h2>How to export the mods array</h2>
+      <p>Copy only the <code>game.mods</code> array for an existing config, or download the full shared <code>config.json</code>. Validate the finished file with the <a href="/config-validator/">Arma Reforger Config.json Validator</a>.</p>
+    </section>
+    <section>
+      <h2>Related tools</h2>
       <p>This list is the same working config used by the <a href="/config-generator/">config generator</a>, so you can switch between the focused mods view and the full config editor at any time. When the list is final, validate the whole file with the <a href="/config-validator/">config validator</a>.</p>
     </section>
   </div>

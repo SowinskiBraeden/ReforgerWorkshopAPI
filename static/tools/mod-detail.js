@@ -31,7 +31,7 @@
       if (err.status === 404) {
         setStatus('');
         contentEl.innerHTML = '<div class="mod-list-empty">No Workshop mod was found for ID <code>' + RM.esc(modId) + '</code>.' +
-          '<br>Search for it in the <a href="/arma-reforger-mods/">mod browser</a> instead.</div>';
+          '<br>Search for it in the <a href="/mods/">mod browser</a> instead.</div>';
       } else if (err.stillRefreshing) {
         setStatus('Workshop data is still being fetched. <button type="button" class="btn btn-sm btn-outline-secondary" id="md-retry">Try again</button>');
         document.getElementById('md-retry').addEventListener('click', load);
@@ -58,7 +58,7 @@
   function dependencyCard(dep) {
     var depId = dependencyId(dep);
     var title = dep.name || depId || 'Unknown dependency';
-    var href = depId ? '/arma-reforger-mods/' + depId + '/' : (dep.originalModURL || '');
+    var href = depId ? '/mods/' + depId + '/' : (dep.originalModURL || '');
     var meta = depId ? '<code>' + RM.esc(depId) + '</code>' : '<span class="text-secondary">No ID available</span>';
     var body = '<div class="dependency-card-body"><strong>' + RM.esc(title) + '</strong><span>' + meta + '</span></div>';
     if (href) {

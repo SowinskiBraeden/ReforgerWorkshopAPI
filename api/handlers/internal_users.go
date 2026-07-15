@@ -88,7 +88,7 @@ func (a *App) sendKeyRevokedEmail(email string, key api.APIKeyRecord, reason str
 		body += "Reason: " + strings.TrimSpace(reason) + "\n\n"
 	}
 	body += "The key no longer works. If you believe this was a mistake, reply to this email or visit " +
-		a.Config.PublicBaseURL + "/support/ to get in touch.\n\n— Reforger Mods API\n"
+		a.Config.PublicBaseURL + "/support/ to get in touch.\n\n- Reforger Mods API\n"
 	mailer := a.Mailer
 	go func() {
 		if err := mailer.Send(email, "Your Reforger Mods API key was revoked", body); err != nil {

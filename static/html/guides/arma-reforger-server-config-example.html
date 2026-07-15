@@ -1,0 +1,83 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>Server Config Example</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>Arma Reforger Server Config Example</h1>
+    <p class="landing-lede">Use this example as a readable starting point for an Arma Reforger dedicated server config.json, then adjust names, ports, scenario, passwords, admins, and mods for your own host.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-filetype-json"></i> Working JSON shape</span>
+      <span><i class="bi bi-check2-square"></i> Validator friendly</span>
+      <span><i class="bi bi-collection"></i> Includes mods array</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Want a custom file instead?</strong><span>The generator builds this structure with form controls, live preview, and export.</span></div>
+    <a href="/config-generator/" class="btn btn-primary"><i class="bi bi-sliders"></i> Open the Config Generator</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>Example config.json</h2>
+    <p>This example is intentionally conservative. Replace the scenario, passwords, admin IDs, and Workshop mod IDs before using it on a public server. The official field reference is the <a href="{{ .OfficialServerConfigDocsURL }}" rel="noopener">Bohemia Interactive server config documentation</a>.</p>
+    <pre><code class="language-json">{
+  "bindAddress": "0.0.0.0",
+  "bindPort": 2001,
+  "publicAddress": "",
+  "publicPort": 2001,
+  "a2s": {
+    "address": "0.0.0.0",
+    "port": 17777
+  },
+  "game": {
+    "name": "My Arma Reforger Server",
+    "password": "",
+    "passwordAdmin": "replace-this-admin-password",
+    "admins": [],
+    "scenarioId": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+    "maxPlayers": 32,
+    "visible": true,
+    "crossPlatform": true,
+    "modsRequiredByDefault": true,
+    "mods": [
+      {
+        "modId": "5965550F24A0C152",
+        "name": "Example Workshop Mod"
+      }
+    ],
+    "gameProperties": {
+      "serverMaxViewDistance": 2500,
+      "networkViewDistance": 1000,
+      "serverMinGrassDistance": 50,
+      "fastValidation": true,
+      "battlEye": true
+    }
+  }
+}</code></pre>
+  </section>
+
+  <section class="guide-section guide-two-column">
+    <div>
+      <h2>What to change first</h2>
+      <ul class="guide-check-list">
+        <li>Set <code>game.name</code> to the server name players should see.</li>
+        <li>Replace <code>passwordAdmin</code> with a real secret and keep it out of shared files.</li>
+        <li>Choose the correct <code>scenarioId</code> for the mission you want to run.</li>
+        <li>Update ports if your host panel or firewall uses different values.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Where mods go</h2>
+      <p>Workshop mods belong inside <code>game.mods</code>. Each entry needs a <code>modId</code>. A <code>name</code> helps humans read the file, and a <code>version</code> can pin a specific release when you need that behavior.</p>
+    </div>
+  </section>
+
+  <section class="guide-section">
+    <h2>Validate before restart</h2>
+    <p>Copy the edited file into the <a href="/config-validator/">Arma Reforger Config.json Validator</a> before deploying. It catches JSON syntax problems, duplicate mod IDs, malformed mod entries, and common field type issues that are easy to miss by eye.</p>
+  </section>
+
+  <section class="guide-callout">
+    <div><strong>Need mod IDs?</strong><span>Search Workshop metadata, copy IDs, and add mods directly to the shared config draft.</span></div>
+    <a href="/mods/" class="btn btn-outline-secondary"><i class="bi bi-search"></i> Browse Workshop Mods</a>
+  </section>
+</article>

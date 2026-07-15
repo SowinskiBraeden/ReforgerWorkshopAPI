@@ -55,6 +55,30 @@ var guidePages = []publicPage{
 		Content:     guideAddModsHTML,
 	},
 	{
+		Path:        "/guides/arma-reforger-server-config-example/",
+		Slug:        "guide-server-config-example",
+		Title:       "Arma Reforger Server Config Example | Working config.json",
+		Description: "A practical Arma Reforger server config.json example with ports, scenarioId, game settings, mods, and notes on what to change before deployment.",
+		H1:          "Arma Reforger Server Config Example",
+		Keywords:    []string{"Arma Reforger server config example", "config.json example", "Arma Reforger dedicated server config", "server config.json"},
+		ChangeFreq:  "monthly",
+		Priority:    "0.7",
+		FullWidth:   true,
+		Content:     guideServerConfigExampleHTML,
+	},
+	{
+		Path:        "/guides/how-to-find-mod-id/",
+		Slug:        "guide-find-mod-id",
+		Title:       "How to Find an Arma Reforger Mod ID | Workshop IDs",
+		Description: "Find an Arma Reforger Workshop mod ID from the mod browser, official Workshop URLs, or API responses, then copy it into config.json.",
+		H1:          "How to Find an Arma Reforger Mod ID",
+		Keywords:    []string{"Arma Reforger mod ID", "find Workshop mod ID", "Arma Reforger Workshop ID", "config.json modId"},
+		ChangeFreq:  "monthly",
+		Priority:    "0.7",
+		FullWidth:   true,
+		Content:     guideFindModIDHTML,
+	},
+	{
 		Path:        "/guides/config-json-troubleshooting/",
 		Slug:        "guide-config-troubleshooting",
 		Title:       "Arma Reforger config.json Troubleshooting | Common Errors",
@@ -77,6 +101,30 @@ var guidePages = []publicPage{
 		Priority:    "0.7",
 		FullWidth:   true,
 		Content:     guideServerModsHTML,
+	},
+	{
+		Path:        "/guides/mod-dependencies/",
+		Slug:        "guide-mod-dependencies",
+		Title:       "Arma Reforger Mod Dependencies | How to Add Required Mods",
+		Description: "Understand Arma Reforger Workshop mod dependencies, how to find required mods, and how to add them to config.json without duplicating entries.",
+		H1:          "Arma Reforger Mod Dependencies",
+		Keywords:    []string{"Arma Reforger mod dependencies", "Workshop dependencies", "required mods config.json", "Reforger server mods"},
+		ChangeFreq:  "monthly",
+		Priority:    "0.7",
+		FullWidth:   true,
+		Content:     guideModDependenciesHTML,
+	},
+	{
+		Path:        "/guides/server-mod-order/",
+		Slug:        "guide-server-mod-order",
+		Title:       "Arma Reforger Server Mod Order | Organize config.json Mods",
+		Description: "Practical guidance for organizing Arma Reforger server mods in config.json, reviewing dependencies, removing duplicates, and exporting a readable mod list.",
+		H1:          "Arma Reforger Server Mod Order",
+		Keywords:    []string{"Arma Reforger mod order", "server mod order", "config.json mods order", "Arma Reforger mods array"},
+		ChangeFreq:  "monthly",
+		Priority:    "0.7",
+		FullWidth:   true,
+		Content:     guideServerModOrderHTML,
 	},
 	{
 		Path:        "/guides/api-integration/",
@@ -112,9 +160,17 @@ var guideFirstServerHTML = htmlFragmentTemplate("guides/deploy-first-arma-reforg
 
 var guideAddModsHTML = htmlFragmentTemplate("guides/how-to-add-mods.html", siteFragmentData{OfficialServerConfigDocsURL: officialServerConfigDocsURL})
 
+var guideServerConfigExampleHTML = htmlFragmentTemplate("guides/arma-reforger-server-config-example.html", siteFragmentData{OfficialServerConfigDocsURL: officialServerConfigDocsURL})
+
+var guideFindModIDHTML = htmlFragment("guides/how-to-find-mod-id.html")
+
 var guideTroubleshootingHTML = htmlFragmentTemplate("guides/config-json-troubleshooting.html", siteFragmentData{OfficialServerConfigDocsURL: officialServerConfigDocsURL})
 
 var guideServerModsHTML = htmlFragment("guides/arma-reforger-server-mods.html")
+
+var guideModDependenciesHTML = htmlFragment("guides/mod-dependencies.html")
+
+var guideServerModOrderHTML = htmlFragment("guides/server-mod-order.html")
 
 var guideAPIIntegrationHTML = htmlFragment("guides/api-integration.html")
 

@@ -61,7 +61,7 @@
       return '<div class="mod-search-row" data-mod-id="' + RM.esc(id) + '" data-mod-name="' + RM.esc(mod.name || '') + '">' +
         thumb +
         '<div class="mod-search-info">' +
-        '<a class="mod-search-name" href="/arma-reforger-mods/' + RM.esc(id) + '/" title="Open mod details">' + RM.esc(mod.name || id) + '</a>' +
+        '<a class="mod-search-name" href="/mods/' + RM.esc(id) + '/" title="Open mod details">' + RM.esc(mod.name || id) + '</a>' +
         '<span class="mod-search-meta">' + metaBits.join(' &middot; ') + '</span>' +
         '</div>' +
         btn +

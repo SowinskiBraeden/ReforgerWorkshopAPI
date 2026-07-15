@@ -197,7 +197,7 @@
   }
 
   function detailPath(id) {
-    return '/arma-reforger-mods/' + encodeURIComponent(String(id).toUpperCase()) + '/';
+    return '/mods/' + encodeURIComponent(String(id).toUpperCase()) + '/';
   }
 
   function cardHTML(mod) {

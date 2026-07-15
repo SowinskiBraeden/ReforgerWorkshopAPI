@@ -1,7 +1,8 @@
 <div class="changelog-page">
   <aside class="changelog-sidebar" aria-label="Changelog navigation">
     <div class="changelog-sidebar-title">Release Notes</div>
-    <a href="#v1-3-0" class="changelog-sidebar-link active">v1.3.0</a>
+    <a href="#v1-4-0" class="changelog-sidebar-link active">v1.4.0</a>
+    <a href="#v1-3-0" class="changelog-sidebar-link">v1.3.0</a>
     <a href="#v1-2-0" class="changelog-sidebar-link">v1.2.0</a>
     <a href="#v1-1-3" class="changelog-sidebar-link">v1.1.3</a>
     <a href="#v1-1-2" class="changelog-sidebar-link">v1.1.2</a>
@@ -17,6 +18,25 @@
       <p>Updates for the Reforger Mods API, mod browser, config tools, caching behavior, and documentation.</p>
     </section>
 
+    <section id="v1-4-0" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.4.0</span>
+          <h2>SEO and Tool Discovery Update</h2>
+          <time datetime="2026-07-15">Released 2026-07-15</time>
+        </div>
+        <span class="changelog-badge">Latest</span>
+      </div>
+      <h3>Improved</h3>
+      <ul>
+        <li>Expanded search-focused metadata and crawlable content across the mod browser, config validator, config generator, mod manager, API, pricing, and guide pages.</li>
+        <li>Added stronger internal linking between tools, documentation, and guides.</li>
+        <li>Improved canonical URLs, sitemap coverage, redirects, and structured data.</li>
+        <li>Improved public page performance and indexing readiness.</li>
+      </ul>
+      <p class="changelog-note">No public API response-schema changes are required.</p>
+    </section>
+
     <section id="v1-3-0" class="changelog-release">
       <div class="changelog-release-heading">
         <div>
@@ -24,7 +44,6 @@
           <h2>Subscription Billing and API Keys</h2>
           <time datetime="2026-07-12">Released 2026-07-12</time>
         </div>
-        <span class="changelog-badge">Latest</span>
       </div>
       <h3>Added</h3>
       <ul>
@@ -51,7 +70,7 @@
       </div>
       <h3>Added</h3>
       <ul>
-        <li>Public Arma Reforger mod browser at <a href="/arma-reforger-mods/">/arma-reforger-mods/</a>, powered by the public API, with search, sorting, pagination, mod detail pages, copy-mod-ID and copy-JSON actions, and correct handling of <code>202 Accepted</code> refreshes.</li>
+        <li>Public Arma Reforger mods browser, now available at <a href="/mods/">/mods/</a>, powered by the public API, with search, sorting, pagination, mod detail pages, copy-mod-ID and copy-JSON actions, and correct handling of <code>202 Accepted</code> refreshes.</li>
         <li>Config.json tools for server admins: a <a href="/config-validator/">config validator</a> with local, in-browser JSON and structure checks, a <a href="/config-generator/">config generator</a> with a form editor, live JSON preview, import/export, and a <a href="/mod-manager/">mod manager</a> for the <code>game.mods</code> array with name resolution, reordering, duplicate detection, and dependency suggestions.</li>
         <li>Shared working config across tools. Add to Config in the mod browser, the mod manager, and the config generator all edit the same browser-only draft.</li>
         <li><a href="/api/">API quickstart page</a> and new guides for config.json, adding mods, troubleshooting, running server mods, API integration, and refresh jobs.</li>

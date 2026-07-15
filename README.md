@@ -60,13 +60,24 @@ Error responses use this shape:
 
 Besides the API and documentation, the website serves free browser tools for Arma Reforger server admins, all powered by the same API:
 
-- `/arma-reforger-mods/` - searchable Workshop mod browser with mod detail pages
+- `/mods/` - searchable Workshop mod browser with mod detail pages
 - `/config-generator/` - form-based server `config.json` builder with live preview and export
 - `/config-validator/` - local, in-browser `config.json` validation with optional mod ID checks
 - `/mod-manager/` - editor for the `game.mods` array with name resolution and dependency suggestions
 - `/guides/` - server config and API integration guides
 
 Config editing happens client-side; configs are never uploaded.
+
+## Search Console Deployment Checklist
+
+1. Deploy SEO changes.
+2. Verify canonical URLs for the homepage, `/mods/`, `/config-generator/`, `/config-validator/`, `/mod-manager/`, `/api/`, `/pricing/`, and guide pages.
+3. Open `/sitemap.xml` and confirm it includes public tools, guides, API docs, pricing, and changelog pages.
+4. Confirm `/robots.txt` allows public tools and guides while excluding account, billing, API JSON, and internal paths.
+5. Test structured data for core tool pages and guides.
+6. Submit the sitemap in Google Search Console.
+7. Request indexing for core tool pages.
+8. Monitor impressions, clicks, CTR, and average position.
 
 ## Requirements
 

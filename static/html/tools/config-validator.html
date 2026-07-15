@@ -1,9 +1,9 @@
 <section class="tool-page" aria-label="Arma Reforger config.json Validator">
   <div class="tool-page-hero tool-page-hero-dashboard">
     <div>
-      <div class="tool-hero-kicker">Power your Arma Reforger server with the Reforger Mods API</div>
-      <h1>Arma Reforger config.json Validator</h1>
-      <p class="landing-lede">Catch broken JSON, bad ports, missing fields, duplicate mods, and malformed Workshop IDs before a restart takes your server offline.</p>
+      <div class="tool-hero-kicker">Validate Arma Reforger server config.json before restart</div>
+      <h1>Arma Reforger Config.json Validator</h1>
+      <p class="landing-lede">Paste or upload your Arma Reforger server config.json to check JSON syntax, required fields, duplicate mods, invalid Workshop IDs, and common server configuration problems.</p>
     </div>
     <div class="tool-page-note"><i class="bi bi-shield-lock"></i> runs in your browser &middot; nothing uploaded</div>
   </div>
@@ -37,7 +37,7 @@
   </div>
   <div class="tool-page-info-grid">
     <section>
-      <h2>What gets validated</h2>
+      <h2>What this validator checks</h2>
       <ul>
         <li><strong>JSON syntax</strong> with the line and column of the first error.</li>
         <li><strong>Structure</strong>: the config must be a JSON object, with objects and arrays where the server expects them.</li>
@@ -49,9 +49,29 @@
       <p>Checks are deliberately conservative: the validator flags what is publicly documented and clearly wrong, and stays quiet about fields it cannot verify, rather than inventing rules.</p>
     </section>
     <section>
-      <h2>Fixing common problems</h2>
+      <h2>How to validate config.json</h2>
+      <p>Paste the file, upload it, or load the example, then run validation. Fix syntax errors first because broken JSON prevents structural checks. After the syntax is valid, review field warnings, duplicate mod IDs, and optional Workshop lookup results.</p>
+    </section>
+    <section>
+      <h2>Common Arma Reforger config errors</h2>
       <p>The <a href="/guides/config-json-troubleshooting/">config.json troubleshooting guide</a> covers the usual startup failures: trailing commas, wrong quotes from chat apps and word processors, mods placed at the top level instead of inside <code>game</code>, and scenario IDs that do not match any installed content.</p>
       <p>To rebuild a broken config from scratch, use the <a href="/config-generator/">config generator</a>, and manage the mods array in the <a href="/mod-manager/">mod manager</a>.</p>
+    </section>
+    <section>
+      <h2>How duplicate mods are detected</h2>
+      <p>The validator reads <code>game.mods</code> and compares normalized <code>modId</code> values. If the same Workshop ID appears more than once, it reports the duplicate so you can keep one entry and remove the rest.</p>
+    </section>
+    <section>
+      <h2>How mod IDs are resolved</h2>
+      <p>Local checks verify that each <code>modId</code> is shaped like a Workshop ID. Optional Workshop checks send only the mod IDs to the API to look up names and detect missing or unavailable entries.</p>
+    </section>
+    <section>
+      <h2>Privacy and local validation</h2>
+      <p>JSON parsing and server-config checks run in your browser. Your full config file is not uploaded. Local storage is used only when you choose to work with the shared config draft across tools.</p>
+    </section>
+    <section>
+      <h2>Related tools</h2>
+      <p>Need to rebuild your config? Open the <a href="/config-generator/">Arma Reforger Config Generator</a>. Need Workshop IDs? Use the <a href="/mods/">Arma Reforger Mods Browser</a>. Only editing mods? Use the <a href="/mod-manager/">Arma Reforger Mod Manager</a>.</p>
     </section>
   </div>
 </section>

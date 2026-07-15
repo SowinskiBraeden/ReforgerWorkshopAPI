@@ -14,15 +14,15 @@ import (
 // below carries the crawlable copy, headings, and internal links.
 var toolPages = []publicPage{
 	{
-		Path:        "/arma-reforger-mods/",
+		Path:        "/mods/",
 		Slug:        "mods",
-		Title:       "Arma Reforger Mods | Workshop Mod Browser",
-		Description: "Search Arma Reforger Workshop mods, view details and dependencies, copy mod IDs, and add mods to a server config.json with a free mod browser.",
-		H1:          "Arma Reforger Mod Browser",
+		Title:       "Arma Reforger Mods Browser | Search Workshop Mods",
+		Description: "Search Arma Reforger Workshop mods, view mod IDs, versions, dependencies, and details, then add mods directly to your server config.",
+		H1:          "Arma Reforger Mods Browser",
 		Keywords:    []string{"Arma Reforger mods", "Arma Reforger Workshop browser", "Reforger mod search", "Workshop mod dependencies", "Arma Reforger mod IDs", "config.json mods"},
 		ChangeFreq:  "daily",
 		Priority:    "0.9",
-		ToolName:    "Arma Reforger Mod Browser",
+		ToolName:    "Arma Reforger Mods Browser",
 		FullWidth:   true,
 		Content:     modBrowserHTML,
 		Scripts:     []string{"/static/tools/common.js", "/static/tools/mod-browser.js"},
@@ -48,9 +48,9 @@ var toolPages = []publicPage{
 	{
 		Path:        "/config-validator/",
 		Slug:        "config-validator",
-		Title:       "Arma Reforger config.json Validator | Reforger Mods API",
-		Description: "Validate an Arma Reforger server config.json in your browser. Catch JSON syntax errors, invalid ports, duplicate mod IDs, and malformed mods entries before starting your server.",
-		H1:          "Arma Reforger config.json Validator",
+		Title:       "Arma Reforger Config.json Validator | Find Server Config Errors",
+		Description: "Validate an Arma Reforger server config.json, find JSON syntax errors, duplicate mod IDs, missing fields, and invalid mod entries.",
+		H1:          "Arma Reforger Config.json Validator",
 		Keywords:    []string{"Arma Reforger config validator", "config.json validator", "Arma Reforger server config", "Reforger JSON validator", "Arma Reforger mod ID validation"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.9",
@@ -76,8 +76,8 @@ var toolPages = []publicPage{
 	{
 		Path:        "/config-generator/",
 		Slug:        "config-generator",
-		Title:       "Arma Reforger Config Generator | Server config.json Builder",
-		Description: "Build an Arma Reforger server config.json with a form-based editor, a managed mods list, live JSON preview, validation, and export. Free and browser-based.",
+		Title:       "Arma Reforger Config Generator | Build Server Config.json",
+		Description: "Create an Arma Reforger server config.json, manage Workshop mods, validate settings, and export a ready-to-use server configuration.",
 		H1:          "Arma Reforger Server Config Generator",
 		Keywords:    []string{"Arma Reforger config generator", "Arma Reforger config.json builder", "server config generator", "Reforger config editor", "Arma Reforger server tools"},
 		ChangeFreq:  "monthly",
@@ -104,8 +104,8 @@ var toolPages = []publicPage{
 	{
 		Path:        "/mod-manager/",
 		Slug:        "mod-manager",
-		Title:       "Arma Reforger Mod Manager | Edit the config.json Mods List",
-		Description: "Manage the mods array of an Arma Reforger server config.json. Add mods by ID, resolve names from the Workshop, reorder and remove entries, and export the result.",
+		Title:       "Arma Reforger Mod Manager | Build and Export Your Mod List",
+		Description: "Search, add, remove, reorder, and validate Arma Reforger Workshop mods, then export the finished mods array for config.json.",
 		H1:          "Arma Reforger Mod Manager",
 		Keywords:    []string{"Arma Reforger mod manager", "config.json mods manager", "Arma Reforger dependencies", "Workshop mod list editor", "Reforger server mods"},
 		ChangeFreq:  "monthly",
@@ -132,9 +132,9 @@ var toolPages = []publicPage{
 	{
 		Path:        "/api/",
 		Slug:        "api-quickstart",
-		Title:       "Reforger Mods API Quickstart | Arma Reforger Workshop Data API",
-		Description: "Get started with the Reforger Mods API in minutes. Base URL, mod search and detail endpoints, 202 Accepted handling, and copy-paste examples in curl and Python.",
-		H1:          "Reforger Mods API Quickstart",
+		Title:       "Arma Reforger Mods API | Workshop Metadata for Developers",
+		Description: "Use a documented Arma Reforger Workshop API for mod search, metadata, dependencies, versions, and server-tool integrations.",
+		H1:          "Arma Reforger Mods API",
 		Keywords:    []string{"Reforger Mods API quickstart", "Arma Reforger API", "Workshop data API", "Arma Reforger mod search API", "202 Accepted refresh jobs"},
 		ChangeFreq:  "monthly",
 		Priority:    "0.9",
@@ -169,7 +169,7 @@ func (a *App) serveModDetailPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := strings.ToUpper(rawID)
-	path := "/arma-reforger-mods/" + id + "/"
+	path := "/mods/" + id + "/"
 	if r.URL.Path != path {
 		http.Redirect(w, r, path, http.StatusMovedPermanently)
 		return
@@ -180,7 +180,7 @@ func (a *App) serveModDetailPage(w http.ResponseWriter, r *http.Request) {
 	page := publicPage{
 		Path:        path,
 		Slug:        "mods",
-		Title:       "Arma Reforger Mod " + id + " | Reforger Mods API",
+		Title:       "Arma Reforger Mod " + id + " | Workshop Mod Details",
 		Description: "Details for Arma Reforger Workshop mod " + id + ": author, version, size, dependencies, scenarios, and a ready-to-copy config.json mods entry.",
 		H1:          "Arma Reforger Mod " + id,
 		Keywords:    []string{"Arma Reforger mod " + id, "Workshop mod details", "Arma Reforger mod dependencies", "config.json mod entry"},

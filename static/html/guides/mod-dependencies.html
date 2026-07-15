@@ -1,0 +1,42 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>Mod Dependencies</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Workshop mods</div>
+    <h1>Arma Reforger Mod Dependencies</h1>
+    <p class="landing-lede">Some Workshop mods depend on other mods. A server config should include the main mod and any required dependencies so the server can resolve the full mod set at startup.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-diagram-3"></i> Dependency checks</span>
+      <span><i class="bi bi-list-check"></i> Missing mod suggestions</span>
+      <span><i class="bi bi-check2-square"></i> Validate before deploy</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Check a mod list</strong><span>The mod manager compares your current list against dependency metadata from public Workshop pages.</span></div>
+    <a href="/mod-manager/" class="btn btn-primary"><i class="bi bi-list-check"></i> Open the Mod Manager</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>Where dependency data comes from</h2>
+    <p>Reforger Mods API reads dependency metadata from public Workshop pages when the Workshop exposes it. The data is cached, so it can lag behind the official page. Treat it as a practical setup aid, not an official entitlement or moderation signal.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>How to add required mods</h2>
+    <p>Open the main mod in the <a href="/mods/">Arma Reforger Mods Browser</a>, review the dependencies section, then add each required mod to <code>game.mods</code>. The <a href="/mod-manager/">Mod Manager</a> can suggest missing dependencies from your current list.</p>
+    <pre><code class="language-json">"mods": [
+  { "modId": "5965550F24A0C152", "name": "Main Mod" },
+  { "modId": "5A0C1525965550F2", "name": "Required Dependency" }
+]</code></pre>
+  </section>
+
+  <section class="guide-section">
+    <h2>Avoid duplicate entries</h2>
+    <p>If two mods depend on the same Workshop item, include it once. Duplicate IDs make the file harder to maintain and can hide which version pin or required flag you intended to keep.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Validate the final config</h2>
+    <p>After adding dependencies, run the full file through the <a href="/config-validator/">Arma Reforger Config.json Validator</a>. It flags malformed mod IDs, duplicate IDs, and structure problems before you restart the server.</p>
+  </section>
+</article>

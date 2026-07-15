@@ -179,7 +179,7 @@ func (a *App) deliverLoginEmail(email string, rawToken string, intro string) {
 		"Use this one-time link to sign in:\n" + link + "\n\n" +
 		"The link expires in 30 minutes and can only be used once.\n" +
 		"If you did not request it, you can ignore this email.\n\n" +
-		"— Reforger Mods API\n"
+		"- Reforger Mods API\n"
 	mailer := a.Mailer
 	go func() {
 		if err := mailer.Send(email, "Sign in to Reforger Mods API", body); err != nil {

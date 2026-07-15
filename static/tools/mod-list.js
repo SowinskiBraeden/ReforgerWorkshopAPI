@@ -24,7 +24,7 @@
       var mods = RM.configMods(RM.ensureConfig());
       if (!mods.length) {
         container.innerHTML = '<div class="mod-list-empty">No mods in your working config yet.<br>' +
-          'Add them from the <a href="/arma-reforger-mods/">mod browser</a> or by Workshop ID.</div>';
+          'Add them from the <a href="/mods/">mod browser</a> or by Workshop ID.</div>';
         return;
       }
       var dupes = RM.duplicateModIds(mods);

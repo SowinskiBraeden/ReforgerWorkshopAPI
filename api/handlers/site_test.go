@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -50,7 +51,14 @@ func TestPublicPagesRenderIndexableMetadata(t *testing.T) {
 			assertContains(t, body, `meta name="date" content="`+pageLastMod(page)+`"`)
 			assertContains(t, body, `rel="canonical" href="https://reforgermods.test`+page.Path+`"`)
 			assertContains(t, body, "<h1>"+page.H1+"</h1>")
-			assertContains(t, body, `<meta name="robots" content="index, follow, max-image-preview:large">`)
+			if page.NoIndex {
+				assertContains(t, body, `<meta name="robots" content="noindex, nofollow">`)
+				if got := rec.Header().Get("X-Robots-Tag"); got != "noindex, nofollow" {
+					t.Fatalf("X-Robots-Tag = %q, want page noindex", got)
+				}
+			} else {
+				assertContains(t, body, `<meta name="robots" content="index, follow, max-image-preview:large">`)
+			}
 			assertContains(t, body, `<meta property="og:updated_time" content="`+pageLastMod(page)+`">`)
 			assertContains(t, body, `"@type":"WebPage"`)
 			assertContains(t, body, `href="/static/index.css?v=`+staticAssetVersion()+`"`)
@@ -72,6 +80,9 @@ func TestRobotsAndSitemapUseConfiguredPublicOrigin(t *testing.T) {
 		t.Fatalf("robots status = %d, want 200", robotsRec.Code)
 	}
 	assertContains(t, robotsRec.Body.String(), "Sitemap: https://reforgermods.test/sitemap.xml")
+	assertContains(t, robotsRec.Body.String(), "Disallow: /account/")
+	assertContains(t, robotsRec.Body.String(), "Disallow: /billing/success/")
+	assertContains(t, robotsRec.Body.String(), "Disallow: /v1/")
 
 	sitemapReq := httptest.NewRequest(http.MethodGet, "/sitemap.xml", nil)
 	sitemapRec := httptest.NewRecorder()
@@ -83,8 +94,40 @@ func TestRobotsAndSitemapUseConfiguredPublicOrigin(t *testing.T) {
 		t.Fatalf("sitemap XML declaration was not rendered correctly: %q", sitemapRec.Body.String()[:20])
 	}
 	for _, page := range publicPages {
+		if page.NoIndex {
+			if strings.Contains(sitemapRec.Body.String(), "<loc>https://reforgermods.test"+page.Path+"</loc>") {
+				t.Fatalf("sitemap should exclude noindex page %s", page.Path)
+			}
+			continue
+		}
 		assertContains(t, sitemapRec.Body.String(), "<loc>https://reforgermods.test"+page.Path+"</loc>")
 		assertContains(t, sitemapRec.Body.String(), "<lastmod>"+pageLastMod(page)+"</lastmod>")
+	}
+}
+
+func TestPublicPageTitlesDescriptionsAndCanonicalsAreUnique(t *testing.T) {
+	titles := map[string]string{}
+	descriptions := map[string]string{}
+	paths := map[string]string{}
+	for _, page := range publicPages {
+		if page.NoIndex {
+			continue
+		}
+		if page.Title == "" || page.Description == "" || page.Path == "" {
+			t.Fatalf("page %s must have path, title, and description", page.Slug)
+		}
+		if prev := titles[page.Title]; prev != "" {
+			t.Fatalf("duplicate title %q on %s and %s", page.Title, prev, page.Path)
+		}
+		if prev := descriptions[page.Description]; prev != "" {
+			t.Fatalf("duplicate description %q on %s and %s", page.Description, prev, page.Path)
+		}
+		if prev := paths[page.Path]; prev != "" {
+			t.Fatalf("duplicate path %q on %s and %s", page.Path, prev, page.Slug)
+		}
+		titles[page.Title] = page.Path
+		descriptions[page.Description] = page.Path
+		paths[page.Path] = page.Slug
 	}
 }
 
@@ -183,7 +226,7 @@ func TestToolPagesHaveSEOEnhancements(t *testing.T) {
 func TestModDetailPageHasIndexableMetadata(t *testing.T) {
 	app := testSiteApp(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/arma-reforger-mods/5965550F24A0C152/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/mods/5965550F24A0C152/", nil)
 	req.Host = "reforgermods.test"
 	rec := httptest.NewRecorder()
 	app.Router.ServeHTTP(rec, req)
@@ -192,12 +235,47 @@ func TestModDetailPageHasIndexableMetadata(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	assertContains(t, body, `<title>Arma Reforger Mod 5965550F24A0C152 | Reforger Mods API</title>`)
-	assertContains(t, body, `rel="canonical" href="https://reforgermods.test/arma-reforger-mods/5965550F24A0C152/"`)
+	assertContains(t, body, `<title>Arma Reforger Mod 5965550F24A0C152 | Workshop Mod Details</title>`)
+	assertContains(t, body, `rel="canonical" href="https://reforgermods.test/mods/5965550F24A0C152/"`)
 	assertContains(t, body, `meta name="keywords" content="Arma Reforger mod 5965550F24A0C152`)
 	assertContains(t, body, `"@type":"WebPage"`)
 	assertContains(t, body, `"@type":"BreadcrumbList"`)
 	assertContains(t, body, `"name":"Arma Reforger Mods"`)
+}
+
+func TestPublicPagesEmitValidStructuredData(t *testing.T) {
+	app := testSiteApp(t)
+	for _, page := range publicPages {
+		if page.NoIndex {
+			continue
+		}
+		t.Run(page.Path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, page.Path, nil)
+			req.Host = "reforgermods.test"
+			rec := httptest.NewRecorder()
+			app.Router.ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			body := rec.Body.String()
+			start := strings.Index(body, `<script type="application/ld+json">`)
+			if start < 0 {
+				t.Fatalf("missing JSON-LD")
+			}
+			start += len(`<script type="application/ld+json">`)
+			end := strings.Index(body[start:], `</script>`)
+			if end < 0 {
+				t.Fatalf("unterminated JSON-LD")
+			}
+			var parsed map[string]any
+			if err := json.Unmarshal([]byte(body[start:start+end]), &parsed); err != nil {
+				t.Fatalf("invalid JSON-LD: %v", err)
+			}
+			if parsed["@context"] != "https://schema.org" {
+				t.Fatalf("@context = %v, want schema.org", parsed["@context"])
+			}
+		})
+	}
 }
 
 func TestAPIRoutesRemainJSONAndNoIndex(t *testing.T) {
@@ -280,6 +358,31 @@ func TestDocsRoutesRedirectToAPIReference(t *testing.T) {
 		"/docs":                 "/arma-reforger-mods-api/",
 		"/docs/mod-structures/": "/arma-reforger-mods-api/#mod-object",
 		"/docs/mods/":           "/arma-reforger-mods-api/#mod-object",
+	}
+	for path, want := range cases {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		app.Router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusMovedPermanently {
+			t.Fatalf("%s status = %d, want 301", path, rec.Code)
+		}
+		if got := rec.Header().Get("Location"); got != want {
+			t.Fatalf("%s Location = %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestLegacyToolRoutesRedirectToCanonicalPages(t *testing.T) {
+	app := testSiteApp(t)
+
+	cases := map[string]string{
+		"/arma-reforger-mods/":                  "/mods/",
+		"/arma-reforger-mods/5965550f24a0c152/": "/mods/5965550F24A0C152/",
+		"/mods-browser/":                        "/mods/",
+		"/config-builder/":                      "/config-generator/",
+		"/config-creator/":                      "/config-generator/",
+		"/validator/":                           "/config-validator/",
 	}
 	for path, want := range cases {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

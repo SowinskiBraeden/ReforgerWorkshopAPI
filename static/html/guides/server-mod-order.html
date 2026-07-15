@@ -1,0 +1,38 @@
+<article class="guide-article">
+  <nav class="tool-breadcrumb guide-breadcrumb" aria-label="Breadcrumb"><a href="/guides/">Guides</a> <span>/</span> <span>Server Mod Order</span></nav>
+  <header class="guide-header">
+    <div class="guide-kicker">Server administration</div>
+    <h1>Arma Reforger Server Mod Order</h1>
+    <p class="landing-lede">Arma Reforger server configs store mods as an ordered JSON array. Dependency resolution is handled by the server and Workshop data, but a readable order makes the file easier to review and maintain.</p>
+    <div class="guide-summary" aria-label="Guide summary">
+      <span><i class="bi bi-list-ol"></i> Organize mods</span>
+      <span><i class="bi bi-diagram-3"></i> Review dependencies</span>
+      <span><i class="bi bi-download"></i> Export clean JSON</span>
+    </div>
+  </header>
+
+  <section class="guide-callout guide-callout-action">
+    <div><strong>Need to reorder a list?</strong><span>The mod manager lets you move entries, remove duplicates, check dependencies, and export the result.</span></div>
+    <a href="/mod-manager/" class="btn btn-primary"><i class="bi bi-list-check"></i> Open the Mod Manager</a>
+  </section>
+
+  <section class="guide-section">
+    <h2>Use order for readability</h2>
+    <p>A practical order is base frameworks and required libraries first, then gameplay changes, maps or scenarios, factions, vehicles, weapons, equipment, audio, and small utility mods. This is an admin-maintenance convention, not a claim that every mod requires manual load-order tuning.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Keep dependencies visible</h2>
+    <p>When a mod has required dependencies, place the dependency near the mod that needs it or group all shared dependencies near the top. The important part is that each required Workshop ID appears once in <code>game.mods</code>.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Remove duplicates before export</h2>
+    <p>Duplicate mod IDs make future edits ambiguous. If you are merging mod lists from multiple communities, paste the result into the <a href="/config-validator/">Config.json Validator</a> or use the <a href="/mod-manager/">Mod Manager</a> before deploying.</p>
+  </section>
+
+  <section class="guide-section">
+    <h2>Export the finished list</h2>
+    <p>When the order is clean, copy the <code>mods</code> array for an existing config or export the full file from the <a href="/config-generator/">Config Generator</a>. Keep a backup before restarting a production server.</p>
+  </section>
+</article>

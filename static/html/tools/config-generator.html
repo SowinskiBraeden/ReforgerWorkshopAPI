@@ -1,9 +1,9 @@
 <section class="tool-page" aria-label="Arma Reforger Server Config Generator">
   <div class="tool-page-hero tool-page-hero-dashboard">
     <div>
-      <div class="tool-hero-kicker">Power your Arma Reforger server with the Reforger Mods API</div>
+      <div class="tool-hero-kicker">Build an Arma Reforger server config.json</div>
       <h1>Arma Reforger Server Config Generator</h1>
-      <p class="landing-lede">Build a deployable server <code>config.json</code> with guided fields, managed mods, live JSON preview, and validation before restart.</p>
+      <p class="landing-lede">Build an Arma Reforger server config.json with guided settings, Workshop mod management, live validation, and export tools.</p>
     </div>
     <div class="tool-page-note"><i class="bi bi-shield-lock"></i> stored in your browser &middot; nothing uploaded</div>
   </div>
@@ -39,7 +39,7 @@
       <div id="cg-form"></div>
       <section id="cg-mod-section" class="cg-section-panel d-none">
         <h2 class="tool-section-title">Mods</h2>
-        <p class="cg-field-help mb-2">Search the Workshop by name, paste a mod ID, or send mods over from the <a href="/arma-reforger-mods/">mod browser</a>.</p>
+        <p class="cg-field-help mb-2">Search the Workshop by name, paste a mod ID, or send mods over from the <a href="/mods/">mods browser</a>.</p>
         <div id="cg-mod-search"></div>
         <div id="cg-mods"></div>
       </section>
@@ -76,20 +76,45 @@
   </div>
   <div class="tool-page-info-grid">
     <section>
-      <h2>How it works</h2>
+      <h2>How to create an Arma Reforger server config</h2>
       <ul>
         <li>Start from a blank config, load a minimal working example, or import your existing <code>config.json</code>.</li>
         <li>Edit common fields through the form: bind and public address and port, A2S, RCON, server name, passwords, scenario, player limits, platform settings, and frequently used game properties.</li>
-        <li>Manage <code>game.mods</code> visually: search Workshop mods by name without leaving the editor, paste a mod ID, or send mods over from the <a href="/arma-reforger-mods/">mod browser</a>. Resolve names and versions, reorder, remove, and get warned about duplicates.</li>
+        <li>Manage <code>game.mods</code> visually: search Workshop mods by name without leaving the editor, paste a mod ID, or send mods over from the <a href="/mods/">mods browser</a>. Resolve names and versions, reorder, remove, and get warned about duplicates.</li>
       </ul>
     </section>
     <section>
-      <h2>Good to know</h2>
+      <h2>Config.json example</h2>
+      <pre><code class="language-json">{
+  "bindAddress": "0.0.0.0",
+  "bindPort": 2001,
+  "game": {
+    "name": "My Reforger Server",
+    "scenarioId": "{ECC61978EDCC2B5A}Missions/23_Campaign.conf",
+    "maxPlayers": 32,
+    "mods": []
+  }
+}</code></pre>
+    </section>
+    <section>
+      <h2>Important server settings</h2>
+      <p>The form covers the common fields admins edit most often: bind and public ports, A2S, RCON, server name, passwords, admins, scenario ID, player count, platform settings, game properties, operating options, and the startup command line.</p>
+    </section>
+    <section>
+      <h2>How to add mods</h2>
+      <p>Search Workshop mods inside the Mods section, paste a known Workshop ID, or add mods from the <a href="/mods/">Arma Reforger Mods Browser</a>. The generated output writes them into <code>game.mods</code>.</p>
+    </section>
+    <section>
+      <h2>How to validate the finished config</h2>
       <ul>
         <li>Unknown fields from an imported config are preserved exactly; the generator only changes what you edit.</li>
         <li>The preview is always the real output: copy it, or download it as <code>config.json</code>.</li>
         <li>Before deploying, run the result through the <a href="/config-validator/">config validator</a>, and read the <a href="/guides/arma-reforger-config-json/">config.json field guide</a> for what each setting does.</li>
       </ul>
+    </section>
+    <section>
+      <h2>Related guides</h2>
+      <p>Read the <a href="/guides/arma-reforger-server-config-example/">server config example</a>, the <a href="/guides/how-to-add-mods/">mod setup guide</a>, or the <a href="/guides/config-json-troubleshooting/">config troubleshooting guide</a> when you need to understand the generated file.</p>
     </section>
   </div>
 </section>

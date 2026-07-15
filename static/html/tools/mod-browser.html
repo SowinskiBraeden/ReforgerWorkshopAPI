@@ -1,9 +1,9 @@
-<section class="mod-browser-page" aria-label="Arma Reforger Mod Browser">
+<section class="mod-browser-page" aria-label="Arma Reforger Mods Browser">
   <div class="mod-browser-hero">
     <div class="mod-browser-hero-top">
       <div>
-        <h1>Arma Reforger Mod Browser</h1>
-        <p class="landing-lede">Fast, cached Workshop search for finding mods, copying IDs, checking metadata, and feeding clean entries into server configs.</p>
+        <h1>Arma Reforger Mods Browser</h1>
+        <p class="landing-lede">Search indexed Arma Reforger Workshop mod data, inspect Workshop IDs, versions, dependencies, scenarios, and add mods directly to a working server config.</p>
       </div>
     </div>
     <div class="mod-browser-hero-info">
@@ -13,7 +13,7 @@
       </section>
       <section>
         <h2>Where the data comes from</h2>
-        <p>Results are cached public Workshop metadata normalized by the <a href="/api/">Reforger Mods API</a>. First-time searches can still use the background refresh flow while cached data remains fast.</p>
+        <p>Results are cached public Workshop metadata normalized by the <a href="/api/">Reforger Mods API</a>. First-time searches can still use the background refresh flow while cached data remains responsive.</p>
       </section>
     </div>
   </div>
@@ -62,6 +62,29 @@
     <div id="mb-results" class="mod-grid"></div>
     <nav id="mb-pagination" class="tool-pagination" aria-label="Result pages"></nav>
     <noscript><p>The interactive mod browser needs JavaScript. The same data is available as plain JSON from the public API:</p><pre><code>curl https://api.reforgermods.net/v1/mods?search=radio</code></pre><p>See the <a href="/arma-reforger-mods-api/">API reference</a> for all endpoints.</p></noscript>
+  </div>
+
+  <div class="tool-page-info-grid">
+    <section>
+      <h2>How to find an Arma Reforger mod ID</h2>
+      <p>Search by mod name, author, category, or paste a 16-character Workshop ID. Each result shows copy actions for the ID and for a ready-to-use <code>game.mods</code> JSON entry. Detail pages also show the official Workshop link so you can verify the source before deploying.</p>
+    </section>
+    <section>
+      <h2>How to add a mod to config.json</h2>
+      <p>Use <strong>Add to Config</strong> from a result or detail page to send the mod into the shared browser draft used by the <a href="/config-generator/">Arma Reforger Config Generator</a> and <a href="/mod-manager/">Arma Reforger Mod Manager</a>. You can also copy the JSON snippet and paste it into <code>game.mods</code> by hand.</p>
+    </section>
+    <section>
+      <h2>How dependencies work</h2>
+      <p>When Workshop exposes dependency data, the mod detail page lists the required mods. Dependency information can lag behind the official Workshop cache, so review the list before restart and validate the finished file with the <a href="/config-validator/">Config.json Validator</a>.</p>
+    </section>
+    <section>
+      <h2>Popular mod categories</h2>
+      <p>Category filters help narrow common server-admin searches: gameplay changes, weapons, vehicles, terrains, equipment, factions, scenarios, AI, audio, and miscellaneous tools. These are search filters, not rankings or endorsements.</p>
+    </section>
+    <section>
+      <h2>Related tools</h2>
+      <p>Building a server config? Open the <a href="/config-generator/">Arma Reforger Server Config Generator</a>. Only editing the mod list? Use the <a href="/mod-manager/">Arma Reforger Mod Manager</a>. Building an integration? Start with the <a href="/api/">Arma Reforger Mods API</a>.</p>
+    </section>
   </div>
 
 </section>
