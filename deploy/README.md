@@ -56,6 +56,8 @@ Only enable `PUBLIC_CANONICAL_REDIRECTS=true` when the proxy preserves the origi
 
 `BILLING_ENABLED=true` enables Stripe Checkout, Customer Portal, webhook processing, and API-key authentication. Keep Stripe secrets and `API_KEY_HASH_SECRET` only in the systemd environment file, not in the repository. The billing database should also live under `/var/lib/reforgermods-api`; it can be the same SQLite file as the index database if you want one persistent store, or the separate default shown above.
 
+Because the app uses `github.com/mattn/go-sqlite3`, production binaries must be built with CGO enabled. On Debian/Ubuntu, install `build-essential` and build with `CGO_ENABLED=1`; a `CGO_ENABLED=0` binary will crash when opening SQLite.
+
 Suggested production index settings:
 
 ```env

@@ -425,6 +425,19 @@ func TestHealthDoesNotExposeBillingReadiness(t *testing.T) {
 	}
 }
 
+func TestHealthAllowsHead(t *testing.T) {
+	app := testBillingApp(t, "https://stripe.invalid")
+	req := httptest.NewRequest(http.MethodHead, "/v1/health", nil)
+	req.RemoteAddr = "203.0.113.24:1234"
+	rec := httptest.NewRecorder()
+
+	app.Router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestProductionBillingConfigValidation(t *testing.T) {
 	cfg := testSiteConfig()
 	cfg.BillingEnabled = true

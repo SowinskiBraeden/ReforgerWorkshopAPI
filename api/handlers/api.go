@@ -228,7 +228,7 @@ func (a *App) registerAPIRoutes(router *mux.Router, deprecated bool) {
 		}
 		return a.Middleware.Wrap(h)
 	}
-	router.Handle("/health", wrap(a.healthCheckHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/health", wrap(a.healthCheckHandler)).Methods("GET", "HEAD", "OPTIONS")
 	router.Handle("/mod/{id}", wrap(a.ModByIDHandler)).Methods("GET", "OPTIONS")
 	router.Handle("/mods", wrap(a.ModsHandler)).Methods("GET", "OPTIONS")
 	router.Handle("/mods/{page}", wrap(a.ModsByPageHandler)).Methods("GET", "OPTIONS")

@@ -229,9 +229,11 @@ curl http://localhost:8000/v1/health
 Build a local binary:
 
 ```bash
-go build -o reforger-workshop-api .
+CGO_ENABLED=1 go build -o reforger-workshop-api .
 ./reforger-workshop-api
 ```
+
+SQLite support uses `github.com/mattn/go-sqlite3`, so production binaries must be built with CGO enabled and a C compiler installed. On Debian/Ubuntu, install `build-essential` before building.
 
 ## Docker
 
