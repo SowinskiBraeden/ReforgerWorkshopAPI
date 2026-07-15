@@ -1,0 +1,43 @@
+<section class="billing-page billing-page-hero billing-page-compact billing-backdrop" aria-label="Account billing" data-account-billing>
+  <div class="billing-backdrop-hero">
+    <div class="billing-hero">
+      <span class="billing-kicker">Account</span>
+      <h1>Account Billing</h1>
+      <p>Open the Stripe Customer Portal to update payment methods, view invoices, change plans, or cancel your subscription.</p>
+    </div>
+  </div>
+
+  <div class="billing-login" data-login-panel hidden>
+    <span class="billing-kicker">Passwordless sign-in</span>
+    <h2>Sign in with your email</h2>
+    <p>Enter the email you used at checkout and we&rsquo;ll send a one-time sign-in link. No passwords, no separate account to set up.</p>
+    <form class="billing-login-form" data-login-form>
+      <label class="visually-hidden" for="login-email">Email address</label>
+      <input id="login-email" type="email" required placeholder="you@example.com" autocomplete="email">
+      <button type="submit" class="billing-primary">Email me a sign-in link</button>
+    </form>
+    <p class="billing-note">No subscription yet? <a href="/pricing/">See API plans</a>.</p>
+  </div>
+
+  <div class="billing-dashboard" data-dashboard hidden>
+    <div class="billing-account-strip">
+      <div>
+        <span class="billing-kicker">Signed in</span>
+        <p data-account-summary></p>
+      </div>
+      <div class="billing-strip-actions">
+        <a class="billing-secondary" href="/account/api-keys/">API keys</a>
+        <button type="button" class="billing-secondary" data-sign-out>Sign out</button>
+      </div>
+    </div>
+    <div class="billing-account-strip">
+      <div>
+        <span class="billing-kicker">Stripe Customer Portal</span>
+        <p>Manage payment methods, invoices, plan changes, and cancellation — all handled securely by Stripe.</p>
+      </div>
+      <button type="button" class="billing-primary" data-open-portal>Open billing portal</button>
+    </div>
+  </div>
+
+  <p class="billing-status" data-billing-status></p>
+</section>

@@ -1,0 +1,84 @@
+<section class="billing-page billing-page-hero billing-backdrop" aria-label="API pricing">
+  <div class="billing-backdrop-hero">
+    <div class="billing-hero billing-hero-center">
+      <span class="billing-kicker">API plans</span>
+      <h1>Simple pricing for the Reforger Mods API</h1>
+      <p>Anonymous access stays free forever. Paid monthly plans add personal API keys and higher rate limits for bots, hosting panels, dashboards, and community integrations.</p>
+    </div>
+  </div>
+
+  <div class="billing-plans">
+    <article class="billing-plan">
+      <div class="billing-plan-head">
+        <span class="billing-plan-label billing-badge billing-badge-free">Free</span>
+        <p class="billing-plan-tagline">For trying things out</p>
+      </div>
+      <div class="billing-plan-price">
+        <span class="billing-plan-amount">$0</span>
+        <span class="billing-plan-period">forever</span>
+      </div>
+      <ul class="billing-plan-features">
+        <li><i class="bi bi-check2"></i>Full cached mod, search, and detail endpoints</li>
+        <li><i class="bi bi-check2"></i>No API key or sign-up required</li>
+        <li><i class="bi bi-check2"></i>60 requests/min shared anonymous limit</li>
+        <li><i class="bi bi-check2"></i>Community support</li>
+      </ul>
+      <a class="billing-secondary billing-plan-cta" href="/arma-reforger-mods-api/">Read the API docs</a>
+    </article>
+
+    <article class="billing-plan billing-plan-featured">
+      <span class="billing-plan-flag">Most popular</span>
+      <div class="billing-plan-head">
+        <span class="billing-plan-label billing-badge billing-badge-developer">Developer</span>
+        <p class="billing-plan-tagline">For tools, bots, and integrations</p>
+      </div>
+      <div class="billing-plan-price">
+        <span class="billing-plan-amount">$5</span>
+        <span class="billing-plan-period">/ month</span>
+      </div>
+      <ul class="billing-plan-features">
+        <li><i class="bi bi-check2"></i>Everything in Free</li>
+        <li><i class="bi bi-check2"></i>Your own 300 requests/min rate limit</li>
+        <li><i class="bi bi-check2"></i>2 active API keys, rotate any time</li>
+        <li><i class="bi bi-check2"></i>Named keys with instant revoke</li>
+        <li><i class="bi bi-check2"></i>Email sign-in key management</li>
+        <li><i class="bi bi-check2"></i>Email support</li>
+      </ul>
+      <button type="button" class="billing-primary billing-plan-cta" data-checkout-plan="developer">Subscribe to Developer</button>
+    </article>
+
+    <article class="billing-plan">
+      <div class="billing-plan-head">
+        <span class="billing-plan-label billing-badge billing-badge-pro">Pro</span>
+        <p class="billing-plan-tagline">For panels and high-volume services</p>
+      </div>
+      <div class="billing-plan-price">
+        <span class="billing-plan-amount">$19</span>
+        <span class="billing-plan-period">/ month</span>
+      </div>
+      <ul class="billing-plan-features">
+        <li><i class="bi bi-check2"></i>Everything in Developer</li>
+        <li><i class="bi bi-check2"></i>Your own 1,200 requests/min rate limit</li>
+        <li><i class="bi bi-check2"></i>10 active API keys for teams and services</li>
+        <li><i class="bi bi-check2"></i>Built for hosting panels and server tools</li>
+        <li><i class="bi bi-check2"></i>Priority email support</li>
+      </ul>
+      <button type="button" class="billing-primary billing-plan-cta" data-checkout-plan="pro">Subscribe to Pro</button>
+    </article>
+  </div>
+
+  <p class="billing-status" data-billing-status></p>
+
+  <p class="billing-fineprint">Prices in USD. Rate limits apply per account, shared across all of your keys. Cancel any time from the Stripe Customer Portal — your keys stay active until the end of the billing period. Payments are processed by Stripe; we never see your card details.</p>
+
+  <div class="billing-account-strip billing-manage-strip">
+    <div>
+      <span class="billing-kicker">Already subscribed?</span>
+      <p>Sign in with your email to view, create, or revoke API keys, or to manage billing.</p>
+    </div>
+    <div class="billing-strip-actions">
+      <a class="billing-secondary" href="/account/api-keys/">Manage API keys</a>
+      <a class="billing-secondary" href="/account/billing/">Billing portal</a>
+    </div>
+  </div>
+</section>

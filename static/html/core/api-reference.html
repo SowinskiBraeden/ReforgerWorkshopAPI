@@ -15,6 +15,7 @@
       <a href="#get-mods-page" class="api-docs-sidebar-link"><code>GET /v1/mods/{page}</code></a>
       <a href="#get-search" class="api-docs-sidebar-link"><code>GET /v1/search</code></a>
       <a href="#get-mod" class="api-docs-sidebar-link"><code>GET /v1/mod/{id}</code></a>
+      <a href="#get-rate-limits" class="api-docs-sidebar-link"><code>GET /v1/rate-limits</code></a>
       <a href="#get-job" class="api-docs-sidebar-link"><code>GET /v1/refresh/jobs/{id}</code></a>
     </div>
     <div class="api-docs-sidebar-group">
@@ -47,18 +48,23 @@
     <section id="authentication" class="api-docs-section">
       <h2>Authentication &amp; Identification</h2>
       <p>The public tier requires no API key. Send an identifying <code>User-Agent</code> or <code>X-API-Client</code> header so traffic can be supported without blocking legitimate tools.</p>
+      <p>Paid API keys can be sent with either <code>X-API-Key</code> or <code>Authorization: Bearer</code>. Paid limits are shared across all active keys on the same account, so creating additional keys does not multiply throughput.</p>
       <div class="api-code-card"><div class="api-code-title">Required header</div><pre><code>User-Agent: my-discord-bot/2.1 (contact: dev@example.com)</code></pre></div>
+      <div class="api-code-card"><div class="api-code-title">Paid API key header</div><pre><code>Authorization: Bearer rfm_live_...
+X-API-Key: rfm_live_...</code></pre></div>
     </section>
 
     <section id="rate-limits" class="api-docs-section">
       <h2>Rate Limits</h2>
-      <p>Limits apply per client on the public tier. Higher limits will be available on future API key tiers.</p>
+      <p>Limits apply per resolved client IP on the public tier and per billing account on paid API key tiers. Every response includes rate-limit headers, and paid requests also include <code>X-API-Plan</code>.</p>
       <div class="api-stat-grid">
         <div><strong>60/min</strong><span>Default limit per resolved client IP</span></div>
-        <div><strong>20</strong><span>Burst allowance</span></div>
+        <div><strong>300/min</strong><span>Developer plan account limit</span></div>
+        <div><strong>1,200/min</strong><span>Pro plan account limit</span></div>
         <div><strong>429</strong><span>Returned when exceeded</span></div>
       </div>
-      <p class="mt-3">On <code>429 Too Many Requests</code> or <code>503 Service Unavailable</code>, wait for <code>Retry-After</code> and retry later. Batch and cache on your side instead of polling, and do not request variations of the same query to bypass caching &mdash; there is no public cache-bypass or force-refresh parameter.</p>
+      <p class="mt-3">Call <a href="#get-rate-limits"><code>GET /v1/rate-limits</code></a> with your API key to inspect the current plan, request limit, burst allowance, and whether the limit is shared by account or client IP.</p>
+      <p>On <code>429 Too Many Requests</code> or <code>503 Service Unavailable</code>, wait for <code>Retry-After</code> and retry later. Batch and cache on your side instead of polling, and do not request variations of the same query to bypass caching &mdash; there is no public cache-bypass or force-refresh parameter.</p>
     </section>
 
     <section id="caching" class="api-docs-section">
@@ -264,6 +270,38 @@ print(res.json())</code></pre>
   }
 }</code></pre></div>
       <p><code>dependencies</code>, <code>scenarios</code>, <code>tags</code>, and optional metadata may be empty when the Workshop does not provide them. Field-by-field types are documented in the <a href="#mod-object">mod object structure</a>.</p>
+    </section>
+
+    <section id="get-rate-limits" class="api-docs-section api-endpoint-doc">
+      <div class="api-docs-endpoint-heading"><span class="api-method api-method-get">GET</span><h2>/v1/rate-limits</h2></div>
+      <p>Returns the rate-limit tier resolved for the request. Send an API key to check the paid plan attached to that key; omit the key to see the public client-IP tier.</p>
+      <div class="api-code-tabs" data-api-code-tabs>
+        <div class="api-code-tablist" role="tablist"><button type="button" class="active" data-api-code-tab="curl">curl</button><button type="button" data-api-code-tab="javascript">JavaScript</button><button type="button" data-api-code-tab="python">Python</button></div>
+        <pre data-api-code-panel="curl"><code class="language-bash">curl -H "Authorization: Bearer rfm_live_..." \
+  https://api.reforgermods.net/v1/rate-limits</code></pre>
+        <pre data-api-code-panel="javascript" hidden><code class="language-javascript">const res = await fetch("https://api.reforgermods.net/v1/rate-limits", {
+  headers: { "Authorization": "Bearer rfm_live_..." }
+});
+console.log(await res.json());</code></pre>
+        <pre data-api-code-panel="python" hidden><code class="language-python">import requests
+
+res = requests.get("https://api.reforgermods.net/v1/rate-limits", headers={
+    "Authorization": "Bearer rfm_live_..."
+}, timeout=10)
+print(res.json())</code></pre>
+      </div>
+      <div class="api-code-card"><div class="api-code-title">200 OK</div><pre><code>{
+  "authenticated": true,
+  "rate_limit": {
+    "plan": "pro",
+    "limit_per_minute": 1200,
+    "burst": 120,
+    "window": "1 minute",
+    "shared_by": "account",
+    "active_key_limit": 10
+  }
+}</code></pre></div>
+      <p>Invalid, revoked, or inactive paid keys return the same authentication errors as other API routes.</p>
     </section>
 
     <section id="get-job" class="api-docs-section api-endpoint-doc">

@@ -19,6 +19,28 @@ PUBLIC_CANONICAL_REDIRECTS=true
 INDEX_ENABLED=true
 INDEX_DB_PATH=/var/lib/reforgermods-api/reforgermods-index.db
 INDEX_REFRESH_ENABLED=true
+
+BILLING_ENABLED=true
+BILLING_DB_PATH=/var/lib/reforgermods-api/reforgermods-billing.db
+STRIPE_SECRET_KEY=sk_test_REPLACE_ME
+STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
+STRIPE_DEVELOPER_PRICE_ID=price_REPLACE_ME
+STRIPE_PRO_PRICE_ID=price_REPLACE_ME
+BILLING_SUCCESS_URL=https://reforgermods.net/account/api-keys/?checkout=success
+BILLING_CANCEL_URL=https://reforgermods.net/pricing
+BILLING_PORTAL_RETURN_URL=https://reforgermods.net/account/billing
+API_KEY_HASH_SECRET=replace-with-random-secret
+ACCOUNT_SESSION_SECRET=replace-with-random-secret
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=apikey-or-username
+SMTP_PASSWORD=REPLACE_ME
+SMTP_FROM=Reforger Mods API <no-reply@reforgermods.net>
+RATE_LIMIT_FREE_PER_MINUTE=60
+RATE_LIMIT_DEVELOPER_PER_MINUTE=300
+RATE_LIMIT_PRO_PER_MINUTE=1200
+DEVELOPER_MAX_ACTIVE_KEYS=2
+PRO_MAX_ACTIVE_KEYS=10
 ```
 
 `FULL_URL` remains a legacy fallback for generated API links. `PUBLIC_BASE_URL` drives canonical links, Open Graph URLs, robots.txt, and sitemap.xml. `API_BASE_URL` drives documentation examples and API response links.
@@ -26,6 +48,8 @@ INDEX_REFRESH_ENABLED=true
 Only enable `PUBLIC_CANONICAL_REDIRECTS=true` when the proxy preserves the original `Host` header. The Go app redirects duplicate public HTML routes to `PUBLIC_BASE_URL`; it does not redirect API JSON routes.
 
 `INDEX_ENABLED=true` opens the SQLite index during startup, runs migrations, and enables WAL mode. Startup fails loudly if the database cannot be opened. Make sure the service user can write to `/var/lib/reforgermods-api`; the packaged systemd unit already grants this path through `ReadWritePaths`.
+
+`BILLING_ENABLED=true` enables Stripe Checkout, Customer Portal, webhook processing, and API-key authentication. Keep Stripe secrets and `API_KEY_HASH_SECRET` only in the systemd environment file, not in the repository. The billing database should also live under `/var/lib/reforgermods-api`; it can be the same SQLite file as the index database if you want one persistent store, or the separate default shown above.
 
 Suggested production index settings:
 

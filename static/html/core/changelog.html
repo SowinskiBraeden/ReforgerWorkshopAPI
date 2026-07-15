@@ -1,7 +1,8 @@
 <div class="changelog-page">
   <aside class="changelog-sidebar" aria-label="Changelog navigation">
     <div class="changelog-sidebar-title">Release Notes</div>
-    <a href="#v1-2-0" class="changelog-sidebar-link active">v1.2.0</a>
+    <a href="#v1-3-0" class="changelog-sidebar-link active">v1.3.0</a>
+    <a href="#v1-2-0" class="changelog-sidebar-link">v1.2.0</a>
     <a href="#v1-1-3" class="changelog-sidebar-link">v1.1.3</a>
     <a href="#v1-1-2" class="changelog-sidebar-link">v1.1.2</a>
     <a href="#v1-1-1" class="changelog-sidebar-link">v1.1.1</a>
@@ -16,6 +17,33 @@
       <p>Updates for the Reforger Mods API, mod browser, config tools, caching behavior, and documentation.</p>
     </section>
 
+    <section id="v1-3-0" class="changelog-release">
+      <div class="changelog-release-heading">
+        <div>
+          <span class="changelog-version">v1.3.0</span>
+          <h2>Subscription Billing and API Keys</h2>
+          <time datetime="2026-07-12">Released 2026-07-12</time>
+        </div>
+        <span class="changelog-badge">Latest</span>
+      </div>
+      <h3>Added</h3>
+      <ul>
+        <li>Stripe Checkout support for paid API subscriptions.</li>
+        <li>Developer and Pro API plans with server-side mapped Stripe price IDs.</li>
+        <li>API key generation, one-time reveal, hash-only storage, and validation.</li>
+        <li>Subscription-aware API access and rate-limit tiers.</li>
+        <li>Stripe webhook handling for checkout, subscription, and invoice lifecycle events.</li>
+        <li>Customer Portal support for billing management.</li>
+      </ul>
+      <h3>Security</h3>
+      <ul>
+        <li>API keys are shown only once and stored as hashes.</li>
+        <li>Stripe webhooks are verified using signing secrets.</li>
+        <li>Stripe secrets are configured through environment variables only.</li>
+      </ul>
+      <p class="changelog-note">No existing public API response schemas were changed.</p>
+    </section>
+
     <section id="v1-2-0" class="changelog-release">
       <div class="changelog-release-heading">
         <div>
@@ -23,7 +51,6 @@
           <h2>Server Admin Tools and Persistent Indexing</h2>
           <time datetime="2026-07-10">Released 2026-07-10</time>
         </div>
-        <span class="changelog-badge">Latest</span>
       </div>
       <h3>Added</h3>
       <ul>

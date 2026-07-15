@@ -141,6 +141,25 @@ func TestMiddlewareGeneratesRequestIDHeader(t *testing.T) {
 	}
 }
 
+func TestMiddlewareAllowsSameOriginPOSTWithoutCORSAllowlist(t *testing.T) {
+	cfg := testConfig()
+	m := NewMiddleware(cfg)
+	handler := m.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	r := httptest.NewRequest(http.MethodPost, "http://localhost:8000/billing/checkout", nil)
+	r.RemoteAddr = "127.0.0.1:1234"
+	r.Host = "localhost:8000"
+	r.Header.Set("Origin", "http://localhost:8000")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, r)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s, want 200", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestRateLimitRejectsSpoofByUntrustedForwardedFor(t *testing.T) {
 	cfg := testConfig()
 	m := NewMiddleware(cfg)

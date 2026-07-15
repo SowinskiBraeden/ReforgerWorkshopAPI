@@ -37,6 +37,10 @@ type Config struct {
 
 	AnonymousRateLimitPerMinute int
 	AnonymousRateBurst          int
+	DeveloperRateLimitPerMinute int
+	ProRateLimitPerMinute       int
+	DeveloperMaxActiveKeys      int
+	ProMaxActiveKeys            int
 	RateLimitClientTTL          time.Duration
 
 	CacheMaxEntries          int
@@ -79,6 +83,30 @@ type Config struct {
 	MetricsStatePath          string
 	MetricsFlushInterval      time.Duration
 
+	BillingEnabled         bool
+	BillingDBPath          string
+	StripeSecretKey        string
+	StripeWebhookSecret    string
+	StripeDeveloperPriceID string
+	StripeProPriceID       string
+	BillingSuccessURL      string
+	BillingCancelURL       string
+	BillingPortalReturnURL string
+	APIKeyHashSecret       string
+	AppEnv                 string
+	StripeAPIBaseURL       string
+
+	AccountSessionSecret string
+	AccountSessionTTL    time.Duration
+	LoginTokenTTL        time.Duration
+	LoginTokenCooldown   time.Duration
+
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -90,7 +118,9 @@ var current *Config
 // New sets up all config related services
 func New() *Config {
 
-	_ = godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		fmt.Fprintln(os.Stderr, "warning: .env was not loaded; check .env syntax")
+	}
 
 	//setup zap logger and replace default Logger
 	logger, err := setLogger(os.Getenv("ENV"))
@@ -120,8 +150,12 @@ func New() *Config {
 		MaxBodyBytes:      int64(envInt("MAX_BODY_BYTES", 1048576)),
 		MaxQueryLength:    envInt("MAX_QUERY_LENGTH", 2048),
 
-		AnonymousRateLimitPerMinute: envInt("ANON_RATE_LIMIT_PER_MINUTE", 60),
+		AnonymousRateLimitPerMinute: envInt("RATE_LIMIT_FREE_PER_MINUTE", envInt("ANON_RATE_LIMIT_PER_MINUTE", 60)),
 		AnonymousRateBurst:          envInt("ANON_RATE_BURST", 20),
+		DeveloperRateLimitPerMinute: envInt("RATE_LIMIT_DEVELOPER_PER_MINUTE", 300),
+		ProRateLimitPerMinute:       envInt("RATE_LIMIT_PRO_PER_MINUTE", 1200),
+		DeveloperMaxActiveKeys:      envInt("DEVELOPER_MAX_ACTIVE_KEYS", 2),
+		ProMaxActiveKeys:            envInt("PRO_MAX_ACTIVE_KEYS", 10),
 		RateLimitClientTTL:          envDuration("RATE_LIMIT_CLIENT_TTL", 10*time.Minute),
 
 		CacheMaxEntries:          envInt("CACHE_MAX_ENTRIES", 1000),
@@ -166,6 +200,30 @@ func New() *Config {
 		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", false),
 		MetricsStatePath:          envString("METRICS_STATE_PATH", ""),
 		MetricsFlushInterval:      envDuration("METRICS_FLUSH_INTERVAL", 15*time.Second),
+
+		BillingEnabled:         envBool("BILLING_ENABLED", false),
+		BillingDBPath:          envString("BILLING_DB_PATH", "/var/lib/reforgermods-api/reforgermods-billing.db"),
+		StripeSecretKey:        strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")),
+		StripeWebhookSecret:    strings.TrimSpace(os.Getenv("STRIPE_WEBHOOK_SECRET")),
+		StripeDeveloperPriceID: strings.TrimSpace(os.Getenv("STRIPE_DEVELOPER_PRICE_ID")),
+		StripeProPriceID:       strings.TrimSpace(os.Getenv("STRIPE_PRO_PRICE_ID")),
+		BillingSuccessURL:      envString("BILLING_SUCCESS_URL", publicBaseURL+"/account/api-keys/?checkout=success"),
+		BillingCancelURL:       envString("BILLING_CANCEL_URL", publicBaseURL+"/pricing"),
+		BillingPortalReturnURL: envString("BILLING_PORTAL_RETURN_URL", publicBaseURL+"/account/billing"),
+		APIKeyHashSecret:       strings.TrimSpace(os.Getenv("API_KEY_HASH_SECRET")),
+		AppEnv:                 strings.ToLower(envString("APP_ENV", "sandbox")),
+		StripeAPIBaseURL:       strings.TrimRight(envString("STRIPE_API_BASE_URL", ""), "/"),
+
+		AccountSessionSecret: strings.TrimSpace(os.Getenv("ACCOUNT_SESSION_SECRET")),
+		AccountSessionTTL:    envDuration("ACCOUNT_SESSION_TTL", 30*24*time.Hour),
+		LoginTokenTTL:        envDuration("LOGIN_TOKEN_TTL", 30*time.Minute),
+		LoginTokenCooldown:   envDuration("LOGIN_TOKEN_COOLDOWN", time.Minute),
+
+		SMTPHost:     envString("SMTP_HOST", ""),
+		SMTPPort:     envInt("SMTP_PORT", 587),
+		SMTPUsername: strings.TrimSpace(os.Getenv("SMTP_USERNAME")),
+		SMTPPassword: os.Getenv("SMTP_PASSWORD"),
+		SMTPFrom:     envString("SMTP_FROM", ""),
 
 		ReadHeaderTimeout: envDuration("SERVER_READ_HEADER_TIMEOUT", 5*time.Second),
 		ReadTimeout:       envDuration("SERVER_READ_TIMEOUT", 10*time.Second),

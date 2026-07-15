@@ -1,0 +1,73 @@
+<section class="billing-page billing-page-hero billing-page-compact billing-backdrop" aria-label="API key management" data-account-api-keys>
+  <div class="billing-backdrop-hero">
+    <div class="billing-hero">
+      <span class="billing-kicker">Account</span>
+      <h1>API Keys</h1>
+      <p>View active keys, create named keys for services, and revoke credentials that should no longer have paid API access.</p>
+    </div>
+  </div>
+
+  <div class="billing-login" data-login-panel hidden>
+    <span class="billing-kicker">Passwordless sign-in</span>
+    <h2>Sign in with your email</h2>
+    <div class="billing-result" data-checkout-success hidden></div>
+    <p>Enter the email you used at checkout and we&rsquo;ll send a one-time sign-in link. No passwords, no separate account to set up.</p>
+    <form class="billing-login-form" data-login-form>
+      <label class="visually-hidden" for="login-email">Email address</label>
+      <input id="login-email" type="email" required placeholder="you@example.com" autocomplete="email">
+      <button type="submit" class="billing-primary">Email me a sign-in link</button>
+    </form>
+    <p class="billing-note">No subscription yet? <a href="/pricing/">See API plans</a>.</p>
+  </div>
+
+  <div class="billing-dashboard" data-dashboard hidden>
+    <div class="billing-account-strip">
+      <div>
+        <span class="billing-kicker">Signed in</span>
+        <p data-account-summary></p>
+      </div>
+      <div class="billing-strip-actions">
+        <a class="billing-secondary" href="/account/billing/">Billing</a>
+        <button type="button" class="billing-secondary" data-sign-out>Sign out</button>
+      </div>
+    </div>
+
+    <div class="billing-section">
+      <div class="billing-section-head">
+        <h2>Active keys</h2>
+        <span class="billing-key-count" data-key-count></span>
+      </div>
+      <div data-keys-result></div>
+    </div>
+
+    <div class="billing-section">
+      <div class="billing-section-head">
+        <h2>Rate limits</h2>
+      </div>
+      <div class="billing-rate-limit-grid" data-rate-limit-summary></div>
+      <p class="billing-section-hint" data-rate-limit-hint></p>
+    </div>
+
+    <div class="billing-section">
+      <div class="billing-section-head">
+        <h2>Create a key</h2>
+      </div>
+      <p class="billing-section-hint">Name a key for each app, bot, or panel so you can revoke one without breaking the others. All keys share your account rate limit, and each key is shown only once at creation.</p>
+      <form class="billing-toolbar" data-create-key-form>
+        <label class="visually-hidden" for="key-name">New key name</label>
+        <input id="key-name" type="text" name="name" placeholder="e.g. Production panel" maxlength="80" autocomplete="off">
+        <button type="submit" class="billing-primary" data-create-key-button>Create key</button>
+      </form>
+      <div class="billing-limit-notice" data-key-limit-note hidden>
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <div>
+          <strong>Key limit reached</strong>
+          <p data-key-limit-text>Revoke a key above to create a new one.</p>
+        </div>
+      </div>
+      <div class="billing-result" data-key-reveal hidden></div>
+    </div>
+  </div>
+
+  <p class="billing-status" data-billing-status></p>
+</section>

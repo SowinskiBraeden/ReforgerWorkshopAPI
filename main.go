@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const version string = "1.2.0"
+const version string = "1.3.0"
 
 func main() {
 	a := handlers.App{}
@@ -29,7 +29,16 @@ func main() {
 	})
 	a.Initialize() // Initialize router
 
-	zap.S().Infow(fmt.Sprintf("ReforgerWorkshopAPI v%s is up and running", version), "url", a.Config.BaseURL, "bind_address", a.Config.BindAddress)
+	zap.S().Infow(
+		fmt.Sprintf("ReforgerWorkshopAPI v%s is up and running", version),
+		"url", a.Config.BaseURL,
+		"bind_address", a.Config.BindAddress,
+		"billing_enabled", a.Config.BillingEnabled,
+		"billing_store_open", a.BillingStore != nil,
+		"stripe_configured", a.Config.StripeSecretKey != "",
+		"developer_price_configured", a.Config.StripeDeveloperPriceID != "",
+		"pro_price_configured", a.Config.StripeProPriceID != "",
+	)
 	server := &http.Server{
 		Addr:              a.Config.BindAddress,
 		Handler:           a.Router,

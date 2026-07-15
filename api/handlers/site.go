@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	htmltemplate "html/template"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	texttemplate "text/template"
 	"time"
 )
@@ -139,6 +142,80 @@ var corePages = []publicPage{
 		Content:     termsFallbackHTML,
 	},
 	{
+		Path:        "/pricing/",
+		Slug:        "pricing",
+		Title:       "API Pricing | Reforger Mods API",
+		Description: "Free, Developer, and Pro monthly API plans for Reforger Mods API.",
+		H1:          "Simple pricing for the Reforger Mods API",
+		Keywords:    []string{"Reforger Mods API pricing", "API key pricing", "Arma Reforger API plans"},
+		ChangeFreq:  "monthly",
+		Priority:    "0.7",
+		FullWidth:   true,
+		Content:     pricingHTML,
+		Scripts:     []string{"/static/billing.js"},
+		FAQ: []faqItem{
+			{
+				Question: "Do I need an account to use the API?",
+				Answer:   "No. Anonymous cached access is free and needs no key. Paid plans use passwordless email sign-in: your email at checkout is your account, and a one-time sign-in link manages your keys.",
+			},
+			{
+				Question: "How do I get my API key after subscribing?",
+				Answer:   "Your key is shown once right after checkout, and a sign-in link is emailed to you. You can sign in with your email any time to create, name, or revoke keys from any device.",
+			},
+			{
+				Question: "What happens if I lose my API key?",
+				Answer:   "Keys are stored hashed and cannot be shown again. Sign in with your email on the API keys page, revoke the lost key, and create a new one — it takes under a minute.",
+			},
+			{
+				Question: "How many API keys do I get?",
+				Answer:   "Developer includes 2 active keys and Pro includes 10, so you can use a separate key per app or service. All keys share your account's rate limit, and revoking a key frees its slot immediately.",
+			},
+			{
+				Question: "Can I cancel my subscription?",
+				Answer:   "Yes, any time from the Stripe Customer Portal on the account billing page. Paid keys keep working until the end of the current billing period.",
+			},
+		},
+	},
+	{
+		Path:        "/billing/success/",
+		Slug:        "billing-success",
+		Title:       "Billing Success | Reforger Mods API",
+		Description: "Retrieve your Reforger Mods API key after a successful Stripe Checkout subscription.",
+		H1:          "Billing Success",
+		Keywords:    []string{"Reforger Mods API key", "billing success"},
+		ChangeFreq:  "yearly",
+		Priority:    "0.1",
+		FullWidth:   true,
+		Content:     billingSuccessHTML,
+		Scripts:     []string{"/static/billing.js"},
+	},
+	{
+		Path:        "/account/billing/",
+		Slug:        "account-billing",
+		Title:       "Account Billing | Reforger Mods API",
+		Description: "Open the Stripe Customer Portal for Reforger Mods API billing management.",
+		H1:          "Account Billing",
+		Keywords:    []string{"Reforger Mods API billing", "Stripe customer portal"},
+		ChangeFreq:  "yearly",
+		Priority:    "0.1",
+		FullWidth:   true,
+		Content:     accountBillingHTML,
+		Scripts:     []string{"/static/billing.js"},
+	},
+	{
+		Path:        "/account/api-keys/",
+		Slug:        "account-api-keys",
+		Title:       "API Keys | Reforger Mods API",
+		Description: "View, create, and revoke Reforger Mods API keys.",
+		H1:          "API Keys",
+		Keywords:    []string{"Reforger Mods API keys", "API key management"},
+		ChangeFreq:  "yearly",
+		Priority:    "0.1",
+		FullWidth:   true,
+		Content:     accountAPIKeysHTML,
+		Scripts:     []string{"/static/billing.js"},
+	},
+	{
 		Path:        "/support/",
 		Slug:        "support",
 		Title:       "Support | Reforger Mods API",
@@ -224,9 +301,9 @@ func legacyPageRedirect(page string) string {
 	return ""
 }
 
-// serveComingSoon renders the placeholder page for API keys and pricing.
+// serveComingSoon renders the API key options page.
 // It is intentionally not part of publicPages, so it stays out of the
-// sitemap and is served with noindex until the feature ships.
+// sitemap and is served with noindex until API key self-serve is fully live.
 func (a *App) serveComingSoon(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/coming-soon/" {
 		http.Redirect(w, r, "/coming-soon/", http.StatusMovedPermanently)
@@ -235,9 +312,9 @@ func (a *App) serveComingSoon(w http.ResponseWriter, r *http.Request) {
 	page := publicPage{
 		Path:        "/coming-soon/",
 		Slug:        "coming-soon",
-		Title:       "Coming Soon | Reforger Mods API",
-		Description: "API keys and paid tiers for Reforger Mods API are in development. The public tier stays free at 60 requests per minute.",
-		H1:          "Coming soon",
+		Title:       "Get an API Key | Reforger Mods API",
+		Description: "Monthly API key options for Reforger Mods API, with higher request limits for projects that need more throughput than the public tier.",
+		H1:          "Get an API Key",
 		FullWidth:   true,
 		Content:     comingSoonHTML,
 	}
@@ -394,8 +471,31 @@ func pageLastMod(page publicPage) string {
 	return defaultPageLastMod
 }
 
+var staticVersionOnce sync.Once
+var staticVersionValue string
+
+// staticAssetVersion cache-busts static asset URLs with the newest mtime
+// under ./static, so edited JS/CSS is picked up on the next restart without
+// hand-bumping a date. Falls back to the page lastmod date when the static
+// directory is unavailable (e.g. in tests).
 func staticAssetVersion() string {
-	return strings.ReplaceAll(defaultPageLastMod, "-", "")
+	staticVersionOnce.Do(func() {
+		staticVersionValue = strings.ReplaceAll(defaultPageLastMod, "-", "")
+		var latest time.Time
+		_ = filepath.WalkDir("./static", func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			if info, err := d.Info(); err == nil && info.ModTime().After(latest) {
+				latest = info.ModTime()
+			}
+			return nil
+		})
+		if !latest.IsZero() {
+			staticVersionValue = strconv.FormatInt(latest.Unix(), 10)
+		}
+	})
+	return staticVersionValue
 }
 
 func pageKeywords(page publicPage) string {
@@ -629,3 +729,7 @@ var changelogFallbackHTML = htmlFragment("core/changelog.html")
 var privacyFallbackHTML = htmlFragment("core/privacy.html")
 var termsFallbackHTML = htmlFragment("core/terms.html")
 var supportFallbackHTML = htmlFragment("core/support.html")
+var pricingHTML = htmlFragment("core/pricing.html")
+var billingSuccessHTML = htmlFragment("core/billing-success.html")
+var accountBillingHTML = htmlFragment("core/account-billing.html")
+var accountAPIKeysHTML = htmlFragment("core/account-api-keys.html")

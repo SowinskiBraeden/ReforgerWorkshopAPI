@@ -23,6 +23,7 @@ GET /v1/mods                        first page of mod previews
 GET /v1/mods/{page}                 specific page (positive integer)
 GET /v1/search?search={query}       convenience alias for first-page search
 GET /v1/mod/{mod_id}                full detail for one mod
+GET /v1/rate-limits                 current public or API-key rate limit
 GET /v1/refresh/jobs/{id}           status of a background refresh job</code></pre>
     <p>List endpoints accept <code>search</code>, <code>sort</code>, and Workshop tag filters through <code>tags</code> or the single-value <code>category</code> alias.</p>
   </section>
@@ -35,6 +36,7 @@ GET /v1/refresh/jobs/{id}           status of a background refresh job</code></p
     <div>
       <h2>Identify your client</h2>
       <p>Send a <code>User-Agent</code> or <code>X-API-Client</code> header that names your project and gives a way to reach you.</p>
+      <p>For paid access, send your API key with <code>X-API-Key</code> or <code>Authorization: Bearer</code>. Paid limits are shared across the account, and <code>/v1/rate-limits</code> reports the active plan for the key.</p>
       <pre><code>User-Agent: my-server-panel/2.1 (+https://example.com; admin@example.com)</code></pre>
     </div>
   </section>

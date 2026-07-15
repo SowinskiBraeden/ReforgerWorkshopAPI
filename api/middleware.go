@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -13,10 +15,25 @@ import (
 	"golang.org/x/time/rate"
 )
 
+type contextKey string
+
+const (
+	ContextBillingAuthKey contextKey = "billing_auth"
+)
+
+type BillingAuth struct {
+	Plan      string
+	AccountID string
+	KeyID     string
+}
+
 type RateIdentity struct {
-	Bucket string
-	Limit  int
-	Burst  int
+	Bucket        string
+	Limit         int
+	Burst         int
+	RejectStatus  int
+	RejectCode    string
+	RejectMessage string
 }
 
 type IdentityResolver func(r *http.Request, clientIP string) RateIdentity
@@ -66,6 +83,17 @@ func NewMiddleware(cfg config.Config, metrics ...*Metrics) *MiddlewareChain {
 	}
 	go m.cleanup()
 	return m
+}
+
+func (m *MiddlewareChain) SetIdentityResolver(resolver IdentityResolver) {
+	if resolver != nil {
+		m.identityResolver = resolver
+	}
+}
+
+func BillingAuthFromContext(ctx context.Context) (BillingAuth, bool) {
+	auth, ok := ctx.Value(ContextBillingAuthKey).(BillingAuth)
+	return auth, ok
 }
 
 // Middleware is kept for older tests/imports. New code should use NewMiddleware.
@@ -137,6 +165,17 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		clientIP = m.ClientIP(r)
 		countryCode = m.CountryCode(r)
 		identity := m.identityResolver(r, clientIP)
+		if identity.RejectStatus > 0 {
+			config.WriteError(recorder, r, identity.RejectStatus, identity.RejectCode, identity.RejectMessage)
+			return
+		}
+		plan := strings.TrimPrefix(identity.Bucket, "plan:")
+		if i := strings.Index(plan, ":"); i >= 0 {
+			plan = plan[:i]
+		}
+		if plan == "free" || plan == "developer" || plan == "pro" {
+			recorder.Header().Set("X-API-Plan", plan)
+		}
 		if identity.Limit <= 0 {
 			identity.Limit = m.cfg.AnonymousRateLimitPerMinute
 		}
@@ -341,16 +380,37 @@ func (m *MiddlewareChain) applyCORS(w http.ResponseWriter, r *http.Request) bool
 	if origin == "" {
 		return true
 	}
+	if requestOrigin(r) == origin {
+		return true
+	}
 	for _, allowed := range m.cfg.AllowedOrigins {
 		if origin == allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization, X-API-Client")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization, X-API-Client, X-API-Key")
 			return true
 		}
 	}
 	return false
+}
+
+func requestOrigin(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); forwarded != "" {
+		scheme = strings.Split(forwarded, ",")[0]
+	}
+	host := r.Host
+	if host == "" {
+		host = r.URL.Host
+	}
+	if host == "" {
+		return ""
+	}
+	return (&url.URL{Scheme: strings.TrimSpace(scheme), Host: host}).String()
 }
 
 func (m *MiddlewareChain) isTrustedProxy(ip net.IP) bool {

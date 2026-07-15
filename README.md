@@ -146,6 +146,54 @@ INDEX_HOT_LOAD_LIMIT=500
 
 When enabled, SQLite is opened in WAL mode and used as a warm cache for API response bodies, list pages, mod metadata, mod details, and local mod search. The in-memory cache remains the hot layer. Unknown resources still return the existing `202 Accepted` refresh-job response.
 
+Stripe subscription billing for paid API keys is optional:
+
+```text
+BILLING_ENABLED=true
+BILLING_DB_PATH=/var/lib/reforgermods-api/reforgermods-billing.db
+STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_DEVELOPER_PRICE_ID=price_...
+STRIPE_PRO_PRICE_ID=price_...
+BILLING_SUCCESS_URL=https://reforgermods.net/account/api-keys/?checkout=success
+BILLING_CANCEL_URL=https://reforgermods.net/pricing
+BILLING_PORTAL_RETURN_URL=https://reforgermods.net/account/billing
+API_KEY_HASH_SECRET=replace-with-random-secret
+ACCOUNT_SESSION_SECRET=replace-with-random-secret
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=apikey-or-username
+SMTP_PASSWORD=${SMTP_PASSWORD}
+SMTP_FROM=Reforger Mods API <no-reply@reforgermods.net>
+RATE_LIMIT_FREE_PER_MINUTE=60
+RATE_LIMIT_DEVELOPER_PER_MINUTE=300
+RATE_LIMIT_PRO_PER_MINUTE=1200
+DEVELOPER_MAX_ACTIVE_KEYS=2
+PRO_MAX_ACTIVE_KEYS=10
+```
+
+Paid rate limits are enforced per account, shared across all of an account's keys, so extra keys never multiply throughput. Active key counts are capped per plan (`DEVELOPER_MAX_ACTIVE_KEYS`/`PRO_MAX_ACTIVE_KEYS`); revoking a key frees its slot immediately.
+
+Get `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, price IDs, and webhook signing secrets from the Stripe Dashboard. Put Stripe secrets, `API_KEY_HASH_SECRET`, and `ACCOUNT_SESSION_SECRET` in the systemd environment file, not in the repository. Checkout Sessions are created by `POST /billing/checkout` with server-side mapped Stripe price IDs and `mode=subscription`. Configure Stripe webhooks to send subscription lifecycle events to `POST /stripe/webhook`.
+
+Key management uses passwordless email sign-in. The email used at Stripe Checkout is the account: subscribers request a one-time sign-in link (`POST /account/login`), the link (`GET /account/verify`) sets a signed session cookie, and the cookie authenticates key management (`/account/api-keys`) and the Customer Portal (`/billing/portal`). Sign-in links are delivered over SMTP; without SMTP configured they are logged instead, which is only suitable for local development. The webhook also emails a sign-in link after checkout so key access never depends on the browser that paid.
+
+Manual Stripe sandbox checklist:
+
+1. Start the app with `sk_test`, `whsec`, Developer price, and Pro price values.
+2. Open `/pricing`.
+3. Click Developer.
+4. Complete Stripe Checkout using test card `4242 4242 4242 4242`.
+5. Confirm redirect to `/account/api-keys/?checkout=success`.
+6. Request the sign-in link for the checkout email.
+7. Create an API key after signing in.
+8. Call the API with `X-API-Key`.
+9. Confirm `X-API-Plan` is `developer`.
+10. Open Customer Portal from `/account/billing`.
+11. Cancel the subscription.
+12. Confirm the webhook downgrades the account and revokes paid API access.
+
 ## Build and Run
 
 Run tests:

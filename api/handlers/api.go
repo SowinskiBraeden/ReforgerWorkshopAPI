@@ -29,6 +29,9 @@ type App struct {
 	Middleware     *api.MiddlewareChain
 	Metrics        *api.Metrics
 	MetricsStore   *api.MetricsStore
+	BillingStore   *api.BillingStore
+	StripeClient   api.StripeClient
+	Mailer         api.Mailer
 }
 
 // New creates a new mux router and all the routes
@@ -103,6 +106,13 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/terms", a.servePublicPage("terms")).Methods("GET", "HEAD")
 	router.HandleFunc("/support/", a.servePublicPage("support")).Methods("GET", "HEAD")
 	router.HandleFunc("/support", a.servePublicPage("support")).Methods("GET", "HEAD")
+	router.HandleFunc("/pricing/", a.servePublicPage("pricing")).Methods("GET", "HEAD")
+	router.HandleFunc("/pricing", a.servePublicPage("pricing")).Methods("GET", "HEAD")
+	router.HandleFunc("/billing/success/", a.servePublicPage("billing-success")).Methods("GET", "HEAD")
+	router.HandleFunc("/billing/success", a.servePublicPage("billing-success")).Methods("GET", "HEAD")
+	router.HandleFunc("/account/billing/", a.servePublicPage("account-billing")).Methods("GET", "HEAD")
+	router.HandleFunc("/account/billing", a.servePublicPage("account-billing")).Methods("GET", "HEAD")
+	router.HandleFunc("/account/api-keys/", a.servePublicPage("account-api-keys")).Methods("GET", "HEAD")
 
 	a.Metrics = api.NewMetrics()
 
@@ -143,12 +153,47 @@ func (a *App) New() *mux.Router {
 			a.IndexScheduler.Start()
 		}
 	}
+	if a.Config.BillingEnabled {
+		if err := a.validateProductionBillingConfig(); err != nil {
+			zap.S().Fatalw("production billing configuration invalid", "error", err)
+		}
+		store, err := api.OpenBillingStore(a.Config.BillingDBPath)
+		if err != nil {
+			zap.S().Fatalw("billing storage unavailable", "path", a.Config.BillingDBPath, "error", err)
+		}
+		a.BillingStore = store
+		a.StripeClient = api.StripeClient{
+			SecretKey: a.Config.StripeSecretKey,
+			BaseURL:   a.Config.StripeAPIBaseURL,
+		}
+		a.Mailer = api.Mailer{
+			Host:     a.Config.SMTPHost,
+			Port:     a.Config.SMTPPort,
+			Username: a.Config.SMTPUsername,
+			Password: a.Config.SMTPPassword,
+			From:     a.Config.SMTPFrom,
+		}
+	}
 	a.Middleware = api.NewMiddleware(a.Config, a.Metrics)
+	a.configureBillingIdentityResolver()
 
 	// API Routes. Unversioned routes are retained as deprecated aliases.
 	v1 := router.PathPrefix("/v1").Subrouter()
 	a.registerAPIRoutes(v1, false)
 	a.registerAPIRoutes(router, true)
+	router.Handle("/billing/checkout", a.Middleware.Wrap(http.HandlerFunc(a.BillingCheckoutHandler))).Methods("POST", "OPTIONS")
+	router.Handle("/billing/session", a.Middleware.Wrap(http.HandlerFunc(a.BillingSessionHandler))).Methods("GET", "OPTIONS")
+	router.Handle("/billing/portal", a.Middleware.Wrap(http.HandlerFunc(a.BillingPortalHandler))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/stripe/webhook", a.StripeWebhookHandler).Methods("POST")
+	router.Handle("/account/login", a.Middleware.Wrap(http.HandlerFunc(a.AccountLoginHandler))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/account/verify", a.AccountVerifyHandler).Methods("GET")
+	router.Handle("/account/logout", a.Middleware.Wrap(http.HandlerFunc(a.AccountLogoutHandler))).Methods("POST", "OPTIONS")
+	router.Handle("/account/session", a.Middleware.Wrap(http.HandlerFunc(a.AccountSessionHandler))).Methods("GET", "OPTIONS")
+	router.Handle("/account/api-keys", a.Middleware.Wrap(http.HandlerFunc(a.AccountAPIKeysHandler))).Methods("GET", "OPTIONS")
+	router.Handle("/account/api-keys", a.Middleware.Wrap(http.HandlerFunc(a.CreateAccountAPIKeyHandler))).Methods("POST", "OPTIONS")
+	router.Handle("/account/api-keys/{id}", a.Middleware.Wrap(http.HandlerFunc(a.DeleteAccountAPIKeyHandler))).Methods("DELETE", "OPTIONS")
+	router.Handle("/rate-limits", a.Middleware.Wrap(http.HandlerFunc(a.RateLimitsHandler))).Methods("GET", "OPTIONS")
+	v1.Handle("/rate-limits", a.Middleware.Wrap(http.HandlerFunc(a.RateLimitsHandler))).Methods("GET", "OPTIONS")
 	router.HandleFunc("/internal/metrics", a.internalMetricsHandler).Methods("GET")
 	router.HandleFunc("/internal/metrics/panel", a.internalMetricsPanelHandler).Methods("GET")
 	v1.HandleFunc("/internal/metrics", a.internalMetricsHandler).Methods("GET")
@@ -166,7 +211,7 @@ func (a *App) registerAPIRoutes(router *mux.Router, deprecated bool) {
 		}
 		return a.Middleware.Wrap(h)
 	}
-	router.Handle("/health", wrap(healthCheckHandler)).Methods("GET", "OPTIONS")
+	router.Handle("/health", wrap(a.healthCheckHandler)).Methods("GET", "OPTIONS")
 	router.Handle("/mod/{id}", wrap(a.ModByIDHandler)).Methods("GET", "OPTIONS")
 	router.Handle("/mods", wrap(a.ModsHandler)).Methods("GET", "OPTIONS")
 	router.Handle("/mods/{page}", wrap(a.ModsByPageHandler)).Methods("GET", "OPTIONS")
@@ -202,20 +247,26 @@ func (a *App) Shutdown(ctx context.Context) error {
 			firstErr = err
 		}
 	}
+	if a.BillingStore != nil {
+		if err := a.BillingStore.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 
 	return firstErr
 }
 
-func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
+	data := models.HealthCheckData{
+		Code:  http.StatusOK,
+		Alive: true,
+	}
 	b, _ := json.Marshal(models.HealthCheckResponse{
 		Status: "success",
-		Data: models.HealthCheckData{
-			Code:  http.StatusOK,
-			Alive: true,
-		},
+		Data:   data,
 	})
 	_, _ = io.Writer.Write(w, b)
 }

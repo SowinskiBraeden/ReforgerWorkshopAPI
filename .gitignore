@@ -1,5 +1,11 @@
 .env
 logs/
+data/
+
+# Local SQLite stores (billing/index) created when running from the repo root.
+*.db
+*.db-shm
+*.db-wal
 
 # Local-only source/scratch media.
 static/assets/cinematics/
