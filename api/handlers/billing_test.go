@@ -34,7 +34,7 @@ func TestCreateCheckoutSessionCreatesProductAndPersistsSession(t *testing.T) {
 			assertFormValue(t, r.Form, "line_items[0][price]", "price_dev")
 			assertFormValue(t, r.Form, "line_items[0][quantity]", "1")
 			assertFormValue(t, r.Form, "mode", "subscription")
-			assertFormValue(t, r.Form, "success_url", "https://reforgermods.test/account/api-keys/?checkout=success")
+			assertFormValue(t, r.Form, "success_url", "https://reforgermods.test/account/api-keys/?checkout=success&session_id={CHECKOUT_SESSION_ID}")
 			assertFormValue(t, r.Form, "cancel_url", "https://reforgermods.test/pricing")
 			assertFormValue(t, r.Form, "customer_email", "buyer@example.com")
 			assertFormValue(t, r.Form, "metadata[plan]", "developer")
@@ -558,7 +558,7 @@ func testBillingAppWithConfig(t *testing.T, stripeBaseURL string, adjust func(*c
 	cfg.StripeWebhookSecret = "whsec_test"
 	cfg.StripeDeveloperPriceID = "price_dev"
 	cfg.StripeProPriceID = "price_pro"
-	cfg.BillingSuccessURL = "https://reforgermods.test/account/api-keys/?checkout=success"
+	cfg.BillingSuccessURL = "https://reforgermods.test/account/api-keys/?checkout=success&session_id={CHECKOUT_SESSION_ID}"
 	cfg.BillingCancelURL = "https://reforgermods.test/pricing"
 	cfg.BillingPortalReturnURL = "https://reforgermods.test/account/billing"
 	cfg.APIKeyHashSecret = "test-secret"

@@ -30,7 +30,7 @@ STRIPE_SECRET_KEY=sk_test_REPLACE_ME
 STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
 STRIPE_DEVELOPER_PRICE_ID=price_REPLACE_ME
 STRIPE_PRO_PRICE_ID=price_REPLACE_ME
-BILLING_SUCCESS_URL=https://reforgermods.net/account/api-keys/?checkout=success
+BILLING_SUCCESS_URL=https://reforgermods.net/account/api-keys/?checkout=success&session_id={CHECKOUT_SESSION_ID}
 BILLING_CANCEL_URL=https://reforgermods.net/pricing
 BILLING_PORTAL_RETURN_URL=https://reforgermods.net/account/billing
 API_KEY_HASH_SECRET=replace-with-random-secret

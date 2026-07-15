@@ -215,7 +215,7 @@ func New() *Config {
 		StripeWebhookSecret:    strings.TrimSpace(os.Getenv("STRIPE_WEBHOOK_SECRET")),
 		StripeDeveloperPriceID: strings.TrimSpace(os.Getenv("STRIPE_DEVELOPER_PRICE_ID")),
 		StripeProPriceID:       strings.TrimSpace(os.Getenv("STRIPE_PRO_PRICE_ID")),
-		BillingSuccessURL:      envString("BILLING_SUCCESS_URL", publicBaseURL+"/account/api-keys/?checkout=success"),
+		BillingSuccessURL:      envString("BILLING_SUCCESS_URL", publicBaseURL+"/account/api-keys/?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
 		BillingCancelURL:       envString("BILLING_CANCEL_URL", publicBaseURL+"/pricing"),
 		BillingPortalReturnURL: envString("BILLING_PORTAL_RETURN_URL", publicBaseURL+"/account/billing"),
 		APIKeyHashSecret:       strings.TrimSpace(os.Getenv("API_KEY_HASH_SECRET")),

@@ -66,9 +66,13 @@
     var loginResult = qs('login');
     if (loginResult === 'invalid') status('That sign-in link is invalid or has expired. Request a new one below.');
     if (loginResult === 'success') status('Signed in.');
-    showCheckoutSuccessNotice();
 
     wireLoginForm();
+    if (qs('checkout') === 'success' && qs('session_id')) {
+      reconcileCheckoutSession();
+      return;
+    }
+    showCheckoutSuccessNotice();
     request('/account/session', { method: 'GET' }).then(function (body) {
       if (body.authenticated) showDashboard(body);
       else showLogin();
@@ -86,6 +90,35 @@
     if (!target) return;
     target.hidden = false;
     target.innerHTML = '<div class="billing-reveal"><span class="billing-kicker">Subscription active</span><p>Your subscription is active. Sign in with the email you used at checkout to create and manage API keys.</p></div>';
+  }
+
+  function reconcileCheckoutSession() {
+    var target = document.querySelector('[data-checkout-success]');
+    if (target) {
+      target.hidden = false;
+      target.innerHTML = '<div class="billing-reveal"><span class="billing-kicker">Subscription active</span><p>Verifying your Stripe Checkout session...</p></div>';
+    }
+    showLogin();
+    request('/billing/session?session_id=' + encodeURIComponent(qs('session_id')), { method: 'GET' }).then(function (body) {
+      var notice = checkoutSessionNotice(body);
+      showDashboard({ email: body.email || '', plan: body.plan || '', subscription_status: body.status || '' });
+      var dashboardTarget = document.querySelector('[data-checkout-dashboard-result]');
+      if (dashboardTarget) {
+        dashboardTarget.hidden = false;
+        dashboardTarget.innerHTML = notice;
+        var copy = dashboardTarget.querySelector('[data-copy-key]');
+        if (copy) copy.addEventListener('click', function () { copyText(body.api_key, copy, 'Copied'); });
+      }
+    }).catch(function (err) {
+      if (target) target.innerHTML = '<div class="billing-reveal"><span class="billing-kicker">Checkout needs attention</span><p>' + escapeHTML(err.message) + '</p></div>';
+    });
+  }
+
+  function checkoutSessionNotice(body) {
+    var key = body.api_key
+      ? '<div class="billing-reveal"><span class="billing-kicker">One-time API key</span><code class="billing-key">' + escapeHTML(body.api_key) + '</code><button class="billing-secondary" data-copy-key>Copy key</button></div>'
+      : '<div class="billing-reveal"><span class="billing-kicker">API key ready</span><p>Key prefix: <code>' + escapeHTML(body.api_key_prefix || '') + '</code></p></div>';
+    return '<div class="billing-reveal"><span class="billing-kicker">Subscription active</span><p>' + escapeHTML(displayPlan(body.plan)) + ' plan · ' + escapeHTML(body.status || '') + '</p><p class="billing-note">Signed in as <strong>' + escapeHTML(body.email || 'your checkout email') + '</strong>.</p></div>' + key;
   }
 
   function showDashboard(session) {

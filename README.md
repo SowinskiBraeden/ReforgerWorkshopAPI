@@ -156,7 +156,7 @@ STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_DEVELOPER_PRICE_ID=price_...
 STRIPE_PRO_PRICE_ID=price_...
-BILLING_SUCCESS_URL=https://reforgermods.net/account/api-keys/?checkout=success
+BILLING_SUCCESS_URL=https://reforgermods.net/account/api-keys/?checkout=success&session_id={CHECKOUT_SESSION_ID}
 BILLING_CANCEL_URL=https://reforgermods.net/pricing
 BILLING_PORTAL_RETURN_URL=https://reforgermods.net/account/billing
 API_KEY_HASH_SECRET=replace-with-random-secret
@@ -197,7 +197,7 @@ Manual Stripe sandbox checklist:
 2. Open `/pricing`.
 3. Click Developer.
 4. Complete Stripe Checkout using test card `4242 4242 4242 4242`.
-5. Confirm redirect to `/account/api-keys/?checkout=success`.
+5. Confirm redirect to `/account/api-keys/?checkout=success&session_id=cs_...`.
 6. Request the sign-in link for the checkout email.
 7. Create an API key after signing in.
 8. Call the API with `X-API-Key`.
