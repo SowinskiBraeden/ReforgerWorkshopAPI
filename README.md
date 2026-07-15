@@ -169,6 +169,7 @@ SMTP_FROM=Reforger Mods API <no-reply@reforgermods.net>
 RATE_LIMIT_FREE_PER_MINUTE=60
 RATE_LIMIT_DEVELOPER_PER_MINUTE=300
 RATE_LIMIT_PRO_PER_MINUTE=1200
+RATE_LIMIT_INTERNAL_PER_MINUTE=5000
 DEVELOPER_MAX_ACTIVE_KEYS=2
 PRO_MAX_ACTIVE_KEYS=10
 ```
@@ -178,6 +179,17 @@ Paid rate limits are enforced per account, shared across all of an account's key
 Get `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, price IDs, and webhook signing secrets from the Stripe Dashboard. Put Stripe secrets, `API_KEY_HASH_SECRET`, and `ACCOUNT_SESSION_SECRET` in the systemd environment file, not in the repository. Checkout Sessions are created by `POST /billing/checkout` with server-side mapped Stripe price IDs and `mode=subscription`. Configure Stripe webhooks to send subscription lifecycle events to `POST /stripe/webhook`.
 
 Key management uses passwordless email sign-in. The email used at Stripe Checkout is the account: subscribers request a one-time sign-in link (`POST /account/login`), the link (`GET /account/verify`) sets a signed session cookie, and the cookie authenticates key management (`/account/api-keys`) and the Customer Portal (`/billing/portal`). Sign-in links are delivered over SMTP; without SMTP configured they are logged instead, which is only suitable for local development. The webhook also emails a sign-in link after checkout so key access never depends on the browser that paid.
+
+The internal admin panel at `/internal/metrics/panel` uses username/password login:
+
+```text
+INTERNAL_METRICS_ENABLED=true
+INTERNAL_ADMIN_USERNAME=admin
+INTERNAL_ADMIN_PASSWORD=replace-with-random-password
+INTERNAL_ADMIN_SESSION_SECRET=replace-with-random-secret
+```
+
+The panel includes aggregate metrics, recent redacted request logs, API client summaries, and subscriber/key diagnostics.
 
 Manual Stripe sandbox checklist:
 

@@ -2040,7 +2040,15 @@ code.hljs {
   border-radius: 6px;
   grid-template-columns: minmax(220px, 1fr) auto auto auto;
   min-height: 64px;
-  padding: 0.75rem 0.9rem;
+  padding: 0.85rem 1rem;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.billing-key-card:hover {
+  background: var(--site-card-hover);
+  border-color: color-mix(in srgb, var(--site-accent-strong) 32%, var(--site-border));
 }
 
 .billing-primary:disabled {
@@ -2053,10 +2061,16 @@ code.hljs {
 }
 
 .billing-key-card code {
+  background: var(--site-inset);
+  border: 1px solid var(--site-border);
+  border-radius: 4px;
   color: var(--site-text-muted);
-  display: block;
-  margin-top: 0.25rem;
+  display: inline-block;
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
+  max-width: 100%;
   overflow-wrap: anywhere;
+  padding: 0.22rem 0.5rem;
 }
 
 .billing-key-name {

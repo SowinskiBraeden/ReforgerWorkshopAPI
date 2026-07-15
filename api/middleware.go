@@ -121,9 +121,11 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 			}
 			m.metrics.RecordRequestMetric(RequestMetricDetails{
 				Duration:      latency,
+				RequestID:     requestID,
 				ClientIP:      clientIP,
 				CountryCode:   countryCode,
 				UserAgent:     r.UserAgent(),
+				Headers:       redactedRequestHeaders(r.Header),
 				Source:        m.TrafficSource(r, clientIP),
 				Method:        r.Method,
 				Path:          r.URL.Path,
@@ -131,6 +133,9 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 				StatusCode:    recorder.statusCode,
 				CacheStatus:   recorder.Header().Get("X-Cache"),
 				EndpointGroup: EndpointGroupForRequest(r.URL.Path, r.URL.RawQuery),
+				APIPlan:       billingPlanFromRequestContext(r),
+				AccountID:     billingAccountFromRequestContext(r),
+				KeyID:         billingKeyFromRequestContext(r),
 			})
 			zap.S().Infow("request completed",
 				"requestId", requestID,
@@ -173,7 +178,7 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		if i := strings.Index(plan, ":"); i >= 0 {
 			plan = plan[:i]
 		}
-		if plan == "free" || plan == "developer" || plan == "pro" {
+		if plan == "free" || plan == "developer" || plan == "pro" || plan == "internal" {
 			recorder.Header().Set("X-API-Plan", plan)
 		}
 		if identity.Limit <= 0 {
@@ -245,9 +250,6 @@ func (m *MiddlewareChain) CountryCode(r *http.Request) string {
 }
 
 func (m *MiddlewareChain) TrafficSource(r *http.Request, clientIP string) string {
-	if userAgentMatches(r.UserAgent(), m.ownClientPatterns) {
-		return TrafficSourceOwnPanel
-	}
 	ip := net.ParseIP(strings.TrimSpace(clientIP))
 	if ip == nil {
 		return TrafficSourceUnknown
@@ -267,6 +269,56 @@ func (m *MiddlewareChain) TrafficSource(r *http.Request, clientIP string) string
 		return TrafficSourceInternal
 	}
 	return TrafficSourceExternal
+}
+
+func billingPlanFromRequestContext(r *http.Request) string {
+	auth, ok := BillingAuthFromContext(r.Context())
+	if !ok {
+		return ""
+	}
+	return auth.Plan
+}
+
+func billingAccountFromRequestContext(r *http.Request) string {
+	auth, ok := BillingAuthFromContext(r.Context())
+	if !ok {
+		return ""
+	}
+	return auth.AccountID
+}
+
+func billingKeyFromRequestContext(r *http.Request) string {
+	auth, ok := BillingAuthFromContext(r.Context())
+	if !ok {
+		return ""
+	}
+	return auth.KeyID
+}
+
+func redactedRequestHeaders(headers http.Header) map[string]string {
+	out := make(map[string]string, len(headers))
+	for key, values := range headers {
+		name := http.CanonicalHeaderKey(key)
+		if sensitiveRequestHeader(name) {
+			out[name] = "[redacted]"
+			continue
+		}
+		value := strings.Join(values, ", ")
+		if len(value) > 300 {
+			value = value[:300] + "..."
+		}
+		out[name] = value
+	}
+	return out
+}
+
+func sensitiveRequestHeader(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "authorization", "cookie", "set-cookie", "x-api-key", "stripe-signature", "proxy-authorization":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeClientPatterns(patterns []string) []string {

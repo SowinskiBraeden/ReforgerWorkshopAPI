@@ -478,6 +478,8 @@ func (a *App) priceIDForPlan(plan string) (string, bool) {
 
 func normalizeBillingPlan(plan string) string {
 	switch strings.ToLower(strings.TrimSpace(plan)) {
+	case api.PlanInternal:
+		return api.PlanInternal
 	case api.PlanDeveloper:
 		return api.PlanDeveloper
 	case api.PlanPro:

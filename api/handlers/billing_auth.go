@@ -30,6 +30,17 @@ func (a *App) configureBillingIdentityResolver() {
 		if err != nil {
 			return invalidKeyIdentity()
 		}
+		internalKey, ok, err := a.BillingStore.GetInternalAPIKeyByHash(r.Context(), hash)
+		if err == nil && ok {
+			if !internalKey.IsActive || internalKey.RevokedAt != nil {
+				return invalidKeyIdentity()
+			}
+			auth := api.BillingAuth{Plan: api.PlanInternal, AccountID: "internal", KeyID: internalKey.ID}
+			*r = *r.WithContext(context.WithValue(r.Context(), api.ContextBillingAuthKey, auth))
+			go a.BillingStore.TouchInternalAPIKeyUsed(context.Background(), internalKey.ID)
+			limits := a.rateLimitInfo(api.PlanInternal)
+			return api.RateIdentity{Bucket: "plan:" + api.PlanInternal + ":" + internalKey.ID, Limit: limits.Limit, Burst: limits.Burst}
+		}
 		record, account, ok, err := a.BillingStore.GetAPIKeyByHash(r.Context(), hash)
 		if err != nil || !ok || !record.IsActive || !record.RevokedAt.IsZero() {
 			return invalidKeyIdentity()
@@ -59,6 +70,9 @@ func (a *App) rateLimitInfo(plan string) rateLimitInfo {
 		SharedBy: "client_ip",
 	}
 	switch plan {
+	case api.PlanInternal:
+		info.Limit = a.Config.InternalRateLimitPerMinute
+		info.SharedBy = "internal_key"
 	case api.PlanDeveloper:
 		info.Limit = a.Config.DeveloperRateLimitPerMinute
 		info.SharedBy = "account"

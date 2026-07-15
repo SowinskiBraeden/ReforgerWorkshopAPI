@@ -19,6 +19,7 @@ import (
 )
 
 const latestMetricEventsLimit = 25
+const requestLogLimit = 500
 const (
 	metricsTopLimit             = 25
 	metricsMaxTrackedClients    = 200
@@ -106,6 +107,7 @@ type Metrics struct {
 
 	latestCaches  []MetricEvent
 	latestScrapes []MetricEvent
+	requestLogs   []RequestLogEntry
 	locations     map[string]*locationMetricState
 
 	hourBuckets  map[string]*metricBucketState
@@ -115,9 +117,11 @@ type Metrics struct {
 
 type RequestMetricDetails struct {
 	Duration      time.Duration
+	RequestID     string
 	ClientIP      string
 	CountryCode   string
 	UserAgent     string
+	Headers       map[string]string
 	Source        string
 	Method        string
 	Path          string
@@ -125,6 +129,30 @@ type RequestMetricDetails struct {
 	StatusCode    int
 	CacheStatus   string
 	EndpointGroup string
+	APIPlan       string
+	AccountID     string
+	KeyID         string
+}
+
+type RequestLogEntry struct {
+	At            time.Time         `json:"at"`
+	RequestID     string            `json:"requestId"`
+	Method        string            `json:"method"`
+	Path          string            `json:"path"`
+	RawQuery      string            `json:"rawQuery,omitempty"`
+	StatusCode    int               `json:"statusCode"`
+	DurationMs    int64             `json:"durationMs"`
+	ClientIP      string            `json:"clientIp"`
+	CountryCode   string            `json:"countryCode"`
+	UserAgent     string            `json:"userAgent"`
+	Client        string            `json:"client"`
+	Source        string            `json:"source"`
+	EndpointGroup string            `json:"endpointGroup"`
+	CacheStatus   string            `json:"cacheStatus,omitempty"`
+	APIPlan       string            `json:"apiPlan,omitempty"`
+	AccountID     string            `json:"accountId,omitempty"`
+	KeyID         string            `json:"keyId,omitempty"`
+	Headers       map[string]string `json:"headers,omitempty"`
 }
 
 type MetricEvent struct {
@@ -157,6 +185,7 @@ type MetricsSnapshot struct {
 	ClientSummaries      []ClientSummarySnapshot       `json:"clientSummaries"`
 	Retention            RetentionMetrics              `json:"retention"`
 	Geography            GeographyMetrics              `json:"geography"`
+	RequestLogs          []RequestLogEntry             `json:"requestLogs"`
 }
 
 type RequestMetrics struct {
@@ -494,7 +523,29 @@ func (m *Metrics) RecordRequestMetric(details RequestMetricDetails) {
 	if m == nil {
 		return
 	}
-	now := m.now().UTC()
+	m.recordRequestMetricAt(details, m.now().UTC())
+}
+
+func (m *Metrics) RecordHistoricalRequestMetric(details RequestMetricDetails, at time.Time) {
+	if m == nil {
+		return
+	}
+	if at.IsZero() {
+		at = m.now()
+	}
+	m.recordRequestMetricAt(details, at.UTC())
+}
+
+func (m *Metrics) TotalRequests() uint64 {
+	if m == nil {
+		return 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.totalRequests
+}
+
+func (m *Metrics) recordRequestMetricAt(details RequestMetricDetails, now time.Time) {
 	client := NormalizeUserAgent(details.UserAgent)
 	source := normalizeTrafficSource(details.Source)
 	method := strings.ToUpper(strings.TrimSpace(details.Method))
@@ -536,6 +587,26 @@ func (m *Metrics) RecordRequestMetric(details RequestMetricDetails) {
 	if details.CacheStatus != "" {
 		m.recordClientCacheLocked(client, details.CacheStatus)
 	}
+	m.requestLogs = appendRequestLog(m.requestLogs, RequestLogEntry{
+		At:            now,
+		RequestID:     details.RequestID,
+		Method:        method,
+		Path:          path,
+		RawQuery:      details.RawQuery,
+		StatusCode:    details.StatusCode,
+		DurationMs:    details.Duration.Milliseconds(),
+		ClientIP:      strings.TrimSpace(details.ClientIP),
+		CountryCode:   countryCode,
+		UserAgent:     sanitizeMetricKey(details.UserAgent, "unknown", 240),
+		Client:        client,
+		Source:        source,
+		EndpointGroup: group,
+		CacheStatus:   details.CacheStatus,
+		APIPlan:       strings.TrimSpace(details.APIPlan),
+		AccountID:     strings.TrimSpace(details.AccountID),
+		KeyID:         strings.TrimSpace(details.KeyID),
+		Headers:       cloneStringMap(details.Headers),
+	})
 	m.pruneRetentionLocked(now)
 }
 
@@ -856,6 +927,7 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 	clientSummaries := topClientSummaries(m.clientSummaries, metricsTopLimit)
 	retention := m.retentionLocked(now)
 	geography := m.geographyLocked()
+	requestLogs := cloneRequestLogs(m.requestLogs)
 	startedAt := m.startedAt
 	m.mu.Unlock()
 
@@ -887,6 +959,7 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 		ClientSummaries:      clientSummaries,
 		Retention:            retention,
 		Geography:            geography,
+		RequestLogs:          requestLogs,
 	}
 }
 
@@ -1732,6 +1805,41 @@ func cloneStringUint64Map(in map[string]uint64) map[string]uint64 {
 		out[key] = value
 	}
 	return out
+}
+
+func cloneStringMap(in map[string]string) map[string]string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(in))
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
+}
+
+func appendRequestLog(logs []RequestLogEntry, entry RequestLogEntry) []RequestLogEntry {
+	logs = append([]RequestLogEntry{entry}, logs...)
+	if len(logs) > requestLogLimit {
+		return logs[:requestLogLimit]
+	}
+	return logs
+}
+
+func cloneRequestLogs(logs []RequestLogEntry) []RequestLogEntry {
+	out := make([]RequestLogEntry, len(logs))
+	for i, entry := range logs {
+		entry.Headers = cloneStringMap(entry.Headers)
+		out[i] = entry
+	}
+	return out
+}
+
+func limitRequestLogs(logs []RequestLogEntry) []RequestLogEntry {
+	if len(logs) > requestLogLimit {
+		logs = logs[:requestLogLimit]
+	}
+	return cloneRequestLogs(logs)
 }
 
 func averageDurationMs(total time.Duration, count uint64) float64 {

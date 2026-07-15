@@ -31,6 +31,7 @@ const (
 	PlanFree      = "free"
 	PlanDeveloper = "developer"
 	PlanPro       = "pro"
+	PlanInternal  = "internal"
 
 	SubscriptionStatusNone = "none"
 )
@@ -44,6 +45,45 @@ type Account struct {
 	SubscriptionStatus   string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+}
+
+type AdminAccountSummary struct {
+	ID                   string            `json:"id"`
+	Email                string            `json:"email"`
+	StripeCustomerID     string            `json:"stripeCustomerId,omitempty"`
+	StripeSubscriptionID string            `json:"stripeSubscriptionId,omitempty"`
+	Plan                 string            `json:"plan"`
+	SubscriptionStatus   string            `json:"subscriptionStatus"`
+	CreatedAt            time.Time         `json:"createdAt"`
+	UpdatedAt            time.Time         `json:"updatedAt"`
+	KeyCount             int               `json:"keyCount"`
+	ActiveKeyCount       int               `json:"activeKeyCount"`
+	LastKeyUsedAt        *time.Time        `json:"lastKeyUsedAt,omitempty"`
+	Keys                 []AdminKeySummary `json:"keys"`
+}
+
+type AdminKeySummary struct {
+	ID         string     `json:"id"`
+	Prefix     string     `json:"prefix"`
+	LastFour   string     `json:"lastFour,omitempty"`
+	Name       string     `json:"name,omitempty"`
+	Plan       string     `json:"plan"`
+	IsActive   bool       `json:"isActive"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	RevokedAt  *time.Time `json:"revokedAt,omitempty"`
+}
+
+type InternalAPIKeyRecord struct {
+	ID         string     `json:"id"`
+	KeyHash    string     `json:"-"`
+	KeyPrefix  string     `json:"prefix"`
+	Name       string     `json:"name,omitempty"`
+	IsActive   bool       `json:"isActive"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	RevokedAt  *time.Time `json:"revokedAt,omitempty"`
+	LastFour   string     `json:"lastFour,omitempty"`
 }
 
 type APIKeyRecord struct {
@@ -182,6 +222,18 @@ func (s *BillingStore) Migrate(ctx context.Context) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_api_keys_account ON api_keys(account_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);`,
+		`CREATE TABLE IF NOT EXISTS internal_api_keys (
+			id TEXT PRIMARY KEY,
+			key_hash TEXT NOT NULL UNIQUE,
+			key_prefix TEXT NOT NULL,
+			name TEXT,
+			is_active BOOLEAN NOT NULL DEFAULT true,
+			created_at TIMESTAMP NOT NULL,
+			last_used_at TIMESTAMP,
+			revoked_at TIMESTAMP,
+			last_four TEXT
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_internal_api_keys_prefix ON internal_api_keys(key_prefix);`,
 		`CREATE TABLE IF NOT EXISTS login_tokens (
 			id TEXT PRIMARY KEY,
 			account_id TEXT NOT NULL,
@@ -277,6 +329,82 @@ func (s *BillingStore) GetAccountBySubscription(ctx context.Context, subscriptio
 
 func (s *BillingStore) GetAccountByEmail(ctx context.Context, email string) (Account, bool, error) {
 	return s.getAccount(ctx, `WHERE email = ? COLLATE NOCASE ORDER BY updated_at DESC LIMIT 1`, strings.TrimSpace(email))
+}
+
+func (s *BillingStore) AdminAccountSummaries(ctx context.Context, limit int) ([]AdminAccountSummary, error) {
+	if s == nil || s.db == nil {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, COALESCE(email, ''), COALESCE(stripe_customer_id, ''),
+		COALESCE(stripe_subscription_id, ''), plan, subscription_status, created_at, updated_at
+		FROM accounts ORDER BY updated_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []AdminAccountSummary
+	byID := make(map[string]int)
+	for rows.Next() {
+		var account AdminAccountSummary
+		var createdAt, updatedAt sqliteTime
+		if err := rows.Scan(&account.ID, &account.Email, &account.StripeCustomerID, &account.StripeSubscriptionID, &account.Plan, &account.SubscriptionStatus, &createdAt, &updatedAt); err != nil {
+			return nil, err
+		}
+		account.CreatedAt = createdAt.Time
+		account.UpdatedAt = updatedAt.Time
+		accounts = append(accounts, account)
+		byID[account.ID] = len(accounts) - 1
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(accounts) == 0 {
+		return accounts, nil
+	}
+
+	keyRows, err := s.db.QueryContext(ctx, `SELECT id, account_id, key_prefix, COALESCE(last_four, ''), COALESCE(name, ''),
+		plan, is_active, created_at, COALESCE(last_used_at, ''), COALESCE(revoked_at, '')
+		FROM api_keys ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer keyRows.Close()
+	for keyRows.Next() {
+		var accountID string
+		var key AdminKeySummary
+		var createdAt, lastUsedAt, revokedAt sqliteTime
+		if err := keyRows.Scan(&key.ID, &accountID, &key.Prefix, &key.LastFour, &key.Name, &key.Plan, &key.IsActive, &createdAt, &lastUsedAt, &revokedAt); err != nil {
+			return nil, err
+		}
+		index, ok := byID[accountID]
+		if !ok {
+			continue
+		}
+		account := &accounts[index]
+		key.CreatedAt = createdAt.Time
+		if !lastUsedAt.Time.IsZero() {
+			value := lastUsedAt.Time
+			key.LastUsedAt = &value
+		}
+		if !revokedAt.Time.IsZero() {
+			value := revokedAt.Time
+			key.RevokedAt = &value
+		}
+		account.KeyCount++
+		if key.IsActive && key.RevokedAt == nil {
+			account.ActiveKeyCount++
+		}
+		if key.LastUsedAt != nil && (account.LastKeyUsedAt == nil || key.LastUsedAt.After(*account.LastKeyUsedAt)) {
+			value := *key.LastUsedAt
+			account.LastKeyUsedAt = &value
+		}
+		account.Keys = append(account.Keys, key)
+	}
+	return accounts, keyRows.Err()
 }
 
 func (s *BillingStore) getAccount(ctx context.Context, where string, arg string) (Account, bool, error) {
@@ -390,6 +518,81 @@ func (s *BillingStore) TouchAPIKeyUsed(ctx context.Context, keyID string) {
 		return
 	}
 	_, _ = s.db.ExecContext(ctx, `UPDATE api_keys SET last_used_at = ? WHERE id = ?`, s.now().UTC(), keyID)
+}
+
+func (s *BillingStore) CreateInternalAPIKey(ctx context.Context, key InternalAPIKeyRecord) (InternalAPIKeyRecord, error) {
+	if s == nil || s.db == nil {
+		return key, nil
+	}
+	if key.ID == "" {
+		key.ID = newID("ikey")
+	}
+	now := s.now().UTC()
+	if key.CreatedAt.IsZero() {
+		key.CreatedAt = now
+	}
+	key.IsActive = true
+	_, err := s.db.ExecContext(ctx, `INSERT INTO internal_api_keys (
+		id, key_hash, key_prefix, name, is_active, created_at, last_four
+	) VALUES (?, ?, ?, ?, true, ?, ?)`,
+		key.ID, key.KeyHash, key.KeyPrefix, key.Name, key.CreatedAt.UTC(), key.LastFour,
+	)
+	return key, err
+}
+
+func (s *BillingStore) InternalAPIKeys(ctx context.Context) ([]InternalAPIKeyRecord, error) {
+	if s == nil || s.db == nil {
+		return nil, nil
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, key_hash, key_prefix, COALESCE(name, ''), is_active,
+		created_at, COALESCE(last_used_at, ''), COALESCE(revoked_at, ''), COALESCE(last_four, '')
+		FROM internal_api_keys ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []InternalAPIKeyRecord
+	for rows.Next() {
+		key, err := scanInternalAPIKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, key)
+	}
+	return out, rows.Err()
+}
+
+func (s *BillingStore) GetInternalAPIKeyByHash(ctx context.Context, hash string) (InternalAPIKeyRecord, bool, error) {
+	var key InternalAPIKeyRecord
+	if s == nil || s.db == nil || hash == "" {
+		return key, false, nil
+	}
+	row := s.db.QueryRowContext(ctx, `SELECT id, key_hash, key_prefix, COALESCE(name, ''), is_active,
+		created_at, COALESCE(last_used_at, ''), COALESCE(revoked_at, ''), COALESCE(last_four, '')
+		FROM internal_api_keys WHERE key_hash = ?`, hash)
+	key, err := scanInternalAPIKey(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return key, false, nil
+	}
+	if err != nil {
+		return key, false, err
+	}
+	return key, true, nil
+}
+
+func (s *BillingStore) RevokeInternalAPIKey(ctx context.Context, keyID string) error {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `UPDATE internal_api_keys SET is_active = false, revoked_at = ? WHERE id = ?`, s.now().UTC(), keyID)
+	return err
+}
+
+func (s *BillingStore) TouchInternalAPIKeyUsed(ctx context.Context, keyID string) {
+	if s == nil || s.db == nil || keyID == "" {
+		return
+	}
+	_, _ = s.db.ExecContext(ctx, `UPDATE internal_api_keys SET last_used_at = ? WHERE id = ?`, s.now().UTC(), keyID)
 }
 
 // CreateLoginToken stores a hashed single-use sign-in token. It reports
@@ -583,6 +786,25 @@ func scanAPIKey(row apiKeyScanner) (APIKeyRecord, error) {
 	key.CreatedAt = createdAt.Time
 	key.LastUsedAt = lastUsedAt.Time
 	key.RevokedAt = revokedAt.Time
+	return key, nil
+}
+
+func scanInternalAPIKey(row apiKeyScanner) (InternalAPIKeyRecord, error) {
+	var key InternalAPIKeyRecord
+	var createdAt, lastUsedAt, revokedAt sqliteTime
+	err := row.Scan(&key.ID, &key.KeyHash, &key.KeyPrefix, &key.Name, &key.IsActive, &createdAt, &lastUsedAt, &revokedAt, &key.LastFour)
+	if err != nil {
+		return key, err
+	}
+	key.CreatedAt = createdAt.Time
+	if !lastUsedAt.Time.IsZero() {
+		value := lastUsedAt.Time
+		key.LastUsedAt = &value
+	}
+	if !revokedAt.Time.IsZero() {
+		value := revokedAt.Time
+		key.RevokedAt = &value
+	}
 	return key, nil
 }
 

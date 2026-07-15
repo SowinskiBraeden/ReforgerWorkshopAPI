@@ -97,8 +97,8 @@ func TestTrafficSourceClassification(t *testing.T) {
 		t.Fatalf("internal source = %q, want %q", got, TrafficSourceInternal)
 	}
 	r.Header.Set("User-Agent", "ReforgerPanel/1.0")
-	if got := m.TrafficSource(r, "203.0.113.10"); got != TrafficSourceOwnPanel {
-		t.Fatalf("own-panel source = %q, want %q", got, TrafficSourceOwnPanel)
+	if got := m.TrafficSource(r, "203.0.113.10"); got != TrafficSourceExternal {
+		t.Fatalf("panel-like external source = %q, want %q", got, TrafficSourceExternal)
 	}
 	r.Header.Set("User-Agent", "curl/8.21.0")
 	if got := m.TrafficSource(r, "8.8.8.8"); got != TrafficSourceExternal {

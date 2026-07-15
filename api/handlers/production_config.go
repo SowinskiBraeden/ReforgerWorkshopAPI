@@ -6,6 +6,9 @@ import (
 )
 
 func (a *App) validateProductionBillingConfig() error {
+	if err := a.validateProductionInternalAdminConfig(); err != nil {
+		return err
+	}
 	if !a.productionBillingEnabled() {
 		return nil
 	}
@@ -42,4 +45,24 @@ func (a *App) validateProductionBillingConfig() error {
 
 func (a *App) productionBillingEnabled() bool {
 	return a.Config.BillingEnabled && strings.EqualFold(strings.TrimSpace(a.Config.AppEnv), "production")
+}
+
+func (a *App) validateProductionInternalAdminConfig() error {
+	if !a.Config.InternalMetricsEnabled || !strings.EqualFold(strings.TrimSpace(a.Config.AppEnv), "production") {
+		return nil
+	}
+	var missing []string
+	if strings.TrimSpace(a.Config.InternalAdminUsername) == "" {
+		missing = append(missing, "INTERNAL_ADMIN_USERNAME")
+	}
+	if a.Config.InternalAdminPassword == "" {
+		missing = append(missing, "INTERNAL_ADMIN_PASSWORD")
+	}
+	if strings.TrimSpace(a.Config.InternalAdminSessionSecret) == "" {
+		missing = append(missing, "INTERNAL_ADMIN_SESSION_SECRET")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("production internal admin requires: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }

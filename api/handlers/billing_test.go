@@ -354,6 +354,49 @@ func TestRateLimitsEndpointReportsAPIKeyPlan(t *testing.T) {
 	assertContains(t, rec.Body.String(), `"shared_by":"account"`)
 }
 
+func TestAdminCanCreateInternalAPIKeyWithInternalRateLimit(t *testing.T) {
+	app := testBillingAppWithConfig(t, "https://stripe.invalid", func(cfg *config.Config) {
+		cfg.InternalMetricsEnabled = true
+		cfg.InternalAdminUsername = "admin"
+		cfg.InternalAdminPassword = "secret-password"
+		cfg.InternalAdminSessionSecret = "admin-session"
+		cfg.InternalRateLimitPerMinute = 5000
+	})
+	cookie := adminLoginCookie(t, app)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/internal/admin/api-keys", strings.NewReader(`{"name":"Config Builder"}`))
+	createReq.AddCookie(cookie)
+	createRec := httptest.NewRecorder()
+	app.Router.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status = %d, body = %s", createRec.Code, createRec.Body.String())
+	}
+	var created struct {
+		APIKey string `json:"api_key"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(created.APIKey, "rfm_test_") {
+		t.Fatalf("api key = %q, want rfm_test_ prefix", created.APIKey)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	req.RemoteAddr = "203.0.113.50:1234"
+	req.Header.Set("X-API-Key", created.APIKey)
+	rec := httptest.NewRecorder()
+	app.Router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("internal key status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("X-API-Plan"); got != api.PlanInternal {
+		t.Fatalf("X-API-Plan = %q, want internal", got)
+	}
+	if got := rec.Header().Get("RateLimit-Limit"); got != "5000" {
+		t.Fatalf("RateLimit-Limit = %q, want 5000", got)
+	}
+}
+
 func TestHealthDoesNotExposeBillingReadiness(t *testing.T) {
 	app := testBillingApp(t, "https://stripe.invalid")
 	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)

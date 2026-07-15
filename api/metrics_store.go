@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -213,6 +214,77 @@ func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
 	return nil
 }
 
+func ImportRequestMetricsFromLogs(metrics *Metrics, logDir string) (int, error) {
+	if metrics == nil || strings.TrimSpace(logDir) == "" {
+		return 0, nil
+	}
+	paths, err := filepath.Glob(filepath.Join(logDir, "*.log"))
+	if err != nil {
+		return 0, err
+	}
+	sort.Strings(paths)
+	if len(paths) > 14 {
+		paths = paths[len(paths)-14:]
+	}
+	imported := 0
+	for _, path := range paths {
+		count, err := importRequestMetricsFromLogFile(metrics, path)
+		imported += count
+		if err != nil {
+			return imported, err
+		}
+	}
+	return imported, nil
+}
+
+func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	imported := 0
+	for scanner.Scan() {
+		var entry struct {
+			Timestamp   time.Time `json:"ts"`
+			Message     string    `json:"msg"`
+			RequestID   string    `json:"requestId"`
+			ClientIP    string    `json:"clientIP"`
+			CountryCode string    `json:"countryCode"`
+			Method      string    `json:"method"`
+			Path        string    `json:"path"`
+			Query       string    `json:"query"`
+			Status      int       `json:"status"`
+			LatencyMs   int64     `json:"latencyMs"`
+			UserAgent   string    `json:"userAgent"`
+		}
+		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil || entry.Message != "request completed" {
+			continue
+		}
+		metrics.RecordHistoricalRequestMetric(RequestMetricDetails{
+			Duration:      time.Duration(entry.LatencyMs) * time.Millisecond,
+			RequestID:     entry.RequestID,
+			ClientIP:      entry.ClientIP,
+			CountryCode:   entry.CountryCode,
+			UserAgent:     entry.UserAgent,
+			Source:        TrafficSourceUnknown,
+			Method:        entry.Method,
+			Path:          entry.Path,
+			RawQuery:      entry.Query,
+			StatusCode:    entry.Status,
+			EndpointGroup: EndpointGroupForRequest(entry.Path, entry.Query),
+		}, entry.Timestamp)
+		imported++
+	}
+	return imported, scanner.Err()
+}
+
 type metricsPersistentState struct {
 	Version int       `json:"version"`
 	SavedAt time.Time `json:"savedAt"`
@@ -267,8 +339,9 @@ type metricsPersistentState struct {
 	ClientSummaries      map[string]persistentClientMetricState   `json:"clientSummaries"`
 	ScrapeErrorsByReason map[string]uint64                        `json:"scrapeErrorsByReason"`
 
-	LatestCaches  []MetricEvent `json:"latestCaches"`
-	LatestScrapes []MetricEvent `json:"latestScrapes"`
+	LatestCaches  []MetricEvent     `json:"latestCaches"`
+	LatestScrapes []MetricEvent     `json:"latestScrapes"`
+	RequestLogs   []RequestLogEntry `json:"requestLogs"`
 
 	Locations    map[string]persistentLocationMetricState `json:"locations"`
 	HourBuckets  map[string]persistentMetricBucketState   `json:"hourBuckets"`
@@ -437,6 +510,7 @@ func (m *Metrics) persistentState() metricsPersistentState {
 
 		LatestCaches:  cloneMetricEvents(m.latestCaches),
 		LatestScrapes: cloneMetricEvents(m.latestScrapes),
+		RequestLogs:   cloneRequestLogs(m.requestLogs),
 
 		Locations:    persistentLocations(m.locations),
 		HourBuckets:  persistentBuckets(m.hourBuckets),
@@ -519,6 +593,7 @@ func (m *Metrics) restorePersistentState(state metricsPersistentState) {
 
 	m.latestCaches = limitMetricEvents(state.LatestCaches)
 	m.latestScrapes = limitMetricEvents(state.LatestScrapes)
+	m.requestLogs = limitRequestLogs(state.RequestLogs)
 
 	m.locations = restoreLocations(state.Locations)
 	m.hourBuckets = restoreBuckets(state.HourBuckets)

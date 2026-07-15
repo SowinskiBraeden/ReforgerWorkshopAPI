@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -15,10 +14,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func TestInternalMetricsRequiresTokenWhenConfigured(t *testing.T) {
+func TestInternalMetricsRequiresAdminLogin(t *testing.T) {
 	app := App{Config: testHandlerConfig()}
 	app.Config.InternalMetricsEnabled = true
-	app.Config.InternalMetricsToken = "secret-token"
+	app.Config.InternalAdminUsername = "admin"
+	app.Config.InternalAdminPassword = "secret-password"
+	app.Config.InternalAdminSessionSecret = "session-secret"
 	app.Metrics = api.NewMetrics()
 	app.Cache = api.NewResponseCache(app.Config, app.Metrics)
 
@@ -27,26 +28,23 @@ func TestInternalMetricsRequiresTokenWhenConfigured(t *testing.T) {
 	w := httptest.NewRecorder()
 	app.internalMetricsHandler(w, r)
 	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status without token = %d, want 401", w.Code)
-	}
-	if got := w.Header().Get("WWW-Authenticate"); !strings.Contains(got, "Internal Metrics") {
-		t.Fatalf("WWW-Authenticate = %q, want Internal Metrics realm", got)
+		t.Fatalf("status without login = %d, want 401", w.Code)
 	}
 
 	r = httptest.NewRequest(http.MethodGet, "/internal/metrics", nil)
 	r.RemoteAddr = "203.0.113.10:1234"
-	r.Header.Set("Authorization", "Bearer secret-token")
+	r.AddCookie(adminLoginCookie(t, &app))
 	w = httptest.NewRecorder()
 	app.internalMetricsHandler(w, r)
 	if w.Code != http.StatusOK {
-		t.Fatalf("status with token = %d, want 200", w.Code)
+		t.Fatalf("status with admin cookie = %d, want 200", w.Code)
 	}
 	if got := w.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
 	}
 }
 
-func TestInternalMetricsRejectsUnsetToken(t *testing.T) {
+func TestInternalMetricsRejectsUnsetAdminCredentials(t *testing.T) {
 	app := App{Config: testHandlerConfig()}
 	app.Config.InternalMetricsEnabled = true
 	app.Metrics = api.NewMetrics()
@@ -57,25 +55,39 @@ func TestInternalMetricsRejectsUnsetToken(t *testing.T) {
 	w := httptest.NewRecorder()
 	app.internalMetricsHandler(w, r)
 	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("unset token status = %d, want 401", w.Code)
+		t.Fatalf("unset admin status = %d, want 401", w.Code)
 	}
 }
 
-func TestInternalMetricsPanelServesShellWithBasicAuth(t *testing.T) {
+func TestInternalMetricsPanelServesLoginThenShell(t *testing.T) {
 	app := App{Config: testHandlerConfig()}
 	app.Config.InternalMetricsEnabled = true
-	app.Config.InternalMetricsToken = "secret-token"
+	app.Config.InternalAdminUsername = "admin"
+	app.Config.InternalAdminPassword = "secret-password"
+	app.Config.InternalAdminSessionSecret = "session-secret"
 
 	r := httptest.NewRequest(http.MethodGet, "/internal/metrics/panel", nil)
 	r.RemoteAddr = "203.0.113.10:1234"
-	r.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("admin:secret-token")))
 	w := httptest.NewRecorder()
+	app.internalMetricsPanelHandler(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("login page status = %d, want 200", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Admin Login") {
+		t.Fatal("unauthenticated panel did not serve login page")
+	}
+
+	r = httptest.NewRequest(http.MethodGet, "/internal/metrics/panel", nil)
+	r.RemoteAddr = "203.0.113.10:1234"
+	r.AddCookie(adminLoginCookie(t, &app))
+	w = httptest.NewRecorder()
 	app.internalMetricsPanelHandler(w, r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("panel status = %d, want 200", w.Code)
 	}
-	if !strings.Contains(w.Body.String(), "Internal Metrics") {
+	if !strings.Contains(w.Body.String(), "Admin Panel") {
 		t.Fatal("panel body did not include title")
 	}
 	if !strings.Contains(w.Body.String(), `rel="icon"`) {
@@ -84,6 +96,21 @@ func TestInternalMetricsPanelServesShellWithBasicAuth(t *testing.T) {
 	if got := w.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
 	}
+}
+
+func adminLoginCookie(t *testing.T, app *App) *http.Cookie {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, "/internal/login", strings.NewReader(`{"username":"admin","password":"secret-password"}`))
+	w := httptest.NewRecorder()
+	app.internalLoginHandler(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("admin login status = %d, body = %s", w.Code, w.Body.String())
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("admin login did not set a cookie")
+	}
+	return cookies[0]
 }
 
 func TestRefreshJobHandlerReturnsSafeJobStatus(t *testing.T) {

@@ -39,6 +39,7 @@ type Config struct {
 	AnonymousRateBurst          int
 	DeveloperRateLimitPerMinute int
 	ProRateLimitPerMinute       int
+	InternalRateLimitPerMinute  int
 	DeveloperMaxActiveKeys      int
 	ProMaxActiveKeys            int
 	RateLimitClientTTL          time.Duration
@@ -74,10 +75,13 @@ type Config struct {
 	UpstreamConcurrency int
 	UpstreamUserAgent   string
 
-	InternalMetricsEnabled   bool
-	InternalMetricsToken     string
-	MetricsOwnClientPatterns []string
-	MetricsInternalCIDRs     string
+	InternalMetricsEnabled     bool
+	InternalMetricsToken       string
+	InternalAdminUsername      string
+	InternalAdminPassword      string
+	InternalAdminSessionSecret string
+	MetricsOwnClientPatterns   []string
+	MetricsInternalCIDRs       string
 
 	MetricsPersistenceEnabled bool
 	MetricsStatePath          string
@@ -154,6 +158,7 @@ func New() *Config {
 		AnonymousRateBurst:          envInt("ANON_RATE_BURST", 20),
 		DeveloperRateLimitPerMinute: envInt("RATE_LIMIT_DEVELOPER_PER_MINUTE", 300),
 		ProRateLimitPerMinute:       envInt("RATE_LIMIT_PRO_PER_MINUTE", 1200),
+		InternalRateLimitPerMinute:  envInt("RATE_LIMIT_INTERNAL_PER_MINUTE", 5000),
 		DeveloperMaxActiveKeys:      envInt("DEVELOPER_MAX_ACTIVE_KEYS", 2),
 		ProMaxActiveKeys:            envInt("PRO_MAX_ACTIVE_KEYS", 10),
 		RateLimitClientTTL:          envDuration("RATE_LIMIT_CLIENT_TTL", 10*time.Minute),
@@ -189,8 +194,11 @@ func New() *Config {
 		UpstreamConcurrency: envInt("UPSTREAM_CONCURRENCY", 4),
 		UpstreamUserAgent:   envString("UPSTREAM_USER_AGENT", "Cedarline Reforger Mods API/1.0 (+https://cedarline.digital)"),
 
-		InternalMetricsEnabled: envBool("INTERNAL_METRICS_ENABLED", true),
-		InternalMetricsToken:   strings.TrimSpace(os.Getenv("INTERNAL_METRICS_TOKEN")),
+		InternalMetricsEnabled:     envBool("INTERNAL_METRICS_ENABLED", true),
+		InternalMetricsToken:       strings.TrimSpace(os.Getenv("INTERNAL_METRICS_TOKEN")),
+		InternalAdminUsername:      strings.TrimSpace(os.Getenv("INTERNAL_ADMIN_USERNAME")),
+		InternalAdminPassword:      os.Getenv("INTERNAL_ADMIN_PASSWORD"),
+		InternalAdminSessionSecret: strings.TrimSpace(os.Getenv("INTERNAL_ADMIN_SESSION_SECRET")),
 		MetricsOwnClientPatterns: envCSVWithDefault(
 			"METRICS_OWN_CLIENT_PATTERNS",
 			[]string{"node", "ReforgerPanel", "DZRPanel"},
