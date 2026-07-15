@@ -53,6 +53,7 @@ func (a *App) BillingCheckoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	account, err := a.BillingStore.UpsertAccount(r.Context(), api.Account{Email: email, Plan: api.PlanFree, SubscriptionStatus: api.SubscriptionStatusNone})
 	if err != nil {
+		zap.S().Warnw("billing account preparation failed", "error", err, "email_present", email != "")
 		config.WriteError(w, r, http.StatusInternalServerError, "ACCOUNT_STORE_FAILED", "Failed to prepare billing account.")
 		return
 	}
