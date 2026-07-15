@@ -333,7 +333,7 @@ func (a *App) processStripeEvent(r *http.Request, event stripeWebhookEvent) erro
 			return err
 		}
 		return a.BillingStore.RevokePaidKeysForAccount(r.Context(), account.ID)
-	case "invoice.paid":
+	case "invoice.paid", "invoice.payment_succeeded":
 		return a.updateInvoiceSubscriptionStatus(r, event.Data.Object, "active")
 	case "invoice.payment_failed":
 		return a.updateInvoiceSubscriptionStatus(r, event.Data.Object, "past_due")

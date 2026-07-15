@@ -425,6 +425,7 @@ type persistentMetricBucketState struct {
 
 type persistentMetricRollup struct {
 	Requests uint64 `json:"requests"`
+	Errors   uint64 `json:"errors"`
 
 	ResponseCount      uint64 `json:"responseCount"`
 	ResponseTotalNanos int64  `json:"responseTotalNanos"`
@@ -435,8 +436,19 @@ type persistentMetricRollup struct {
 	CacheMisses uint64 `json:"cacheMisses"`
 	CacheStales uint64 `json:"cacheStales"`
 
+	CacheHitTimes   persistentDurationStat `json:"cacheHitTimes"`
+	CacheStaleTimes persistentDurationStat `json:"cacheStaleTimes"`
+	CacheMissTimes  persistentDurationStat `json:"cacheMissTimes"`
+
 	Scrapes      uint64 `json:"scrapes"`
 	ScrapeErrors uint64 `json:"scrapeErrors"`
+}
+
+type persistentDurationStat struct {
+	Count      uint64 `json:"count"`
+	TotalNanos int64  `json:"totalNanos"`
+	MinNanos   int64  `json:"minNanos"`
+	MaxNanos   int64  `json:"maxNanos"`
 }
 
 func (m *Metrics) persistentState() metricsPersistentState {
@@ -693,6 +705,7 @@ func restoreBuckets(
 func persistentRollup(rollup metricRollup) persistentMetricRollup {
 	return persistentMetricRollup{
 		Requests: rollup.requests,
+		Errors:   rollup.errors,
 
 		ResponseCount:      rollup.responseCount,
 		ResponseTotalNanos: int64(rollup.responseTotal),
@@ -703,6 +716,10 @@ func persistentRollup(rollup metricRollup) persistentMetricRollup {
 		CacheMisses: rollup.cacheMisses,
 		CacheStales: rollup.cacheStales,
 
+		CacheHitTimes:   persistentStat(rollup.cacheHitTimes),
+		CacheStaleTimes: persistentStat(rollup.cacheStaleTimes),
+		CacheMissTimes:  persistentStat(rollup.cacheMissTimes),
+
 		Scrapes:      rollup.scrapes,
 		ScrapeErrors: rollup.scrapeErrors,
 	}
@@ -711,6 +728,7 @@ func persistentRollup(rollup metricRollup) persistentMetricRollup {
 func restoreRollup(stored persistentMetricRollup) metricRollup {
 	return metricRollup{
 		requests: stored.Requests,
+		errors:   stored.Errors,
 
 		responseCount: stored.ResponseCount,
 		responseTotal: time.Duration(stored.ResponseTotalNanos),
@@ -721,8 +739,30 @@ func restoreRollup(stored persistentMetricRollup) metricRollup {
 		cacheMisses: stored.CacheMisses,
 		cacheStales: stored.CacheStales,
 
+		cacheHitTimes:   restoreStat(stored.CacheHitTimes),
+		cacheStaleTimes: restoreStat(stored.CacheStaleTimes),
+		cacheMissTimes:  restoreStat(stored.CacheMissTimes),
+
 		scrapes:      stored.Scrapes,
 		scrapeErrors: stored.ScrapeErrors,
+	}
+}
+
+func persistentStat(stat durationStat) persistentDurationStat {
+	return persistentDurationStat{
+		Count:      stat.count,
+		TotalNanos: int64(stat.total),
+		MinNanos:   int64(stat.min),
+		MaxNanos:   int64(stat.max),
+	}
+}
+
+func restoreStat(stored persistentDurationStat) durationStat {
+	return durationStat{
+		count: stored.Count,
+		total: time.Duration(stored.TotalNanos),
+		min:   time.Duration(stored.MinNanos),
+		max:   time.Duration(stored.MaxNanos),
 	}
 }
 

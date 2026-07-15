@@ -367,13 +367,31 @@ type RequestWindowMetrics struct {
 type RetentionWindow struct {
 	Window     string         `json:"window"`
 	BucketSize string         `json:"bucketSize"`
+	Summary    WindowSummary  `json:"summary"`
 	Buckets    []MetricBucket `json:"buckets"`
+}
+
+// WindowSummary aggregates every retained bucket in a retention window so the
+// admin overview cards can follow the day/week/month/year selector.
+type WindowSummary struct {
+	Requests           uint64                   `json:"requests"`
+	Errors             uint64                   `json:"errors"`
+	ResponseTime       ResponseTimeMetrics      `json:"responseTime"`
+	Cache              CacheRollup              `json:"cache"`
+	CacheResponseTimes CacheResponseTimeMetrics `json:"cacheResponseTimes"`
+}
+
+type CacheResponseTimeMetrics struct {
+	Hit   ResponseTimeMetrics `json:"hit"`
+	Stale ResponseTimeMetrics `json:"stale"`
+	Miss  ResponseTimeMetrics `json:"miss"`
 }
 
 type MetricBucket struct {
 	Start        time.Time           `json:"start"`
 	End          time.Time           `json:"end"`
 	Requests     uint64              `json:"requests"`
+	Errors       uint64              `json:"errors"`
 	ResponseTime ResponseTimeMetrics `json:"responseTime"`
 	Cache        CacheRollup         `json:"cache"`
 	Scrapes      ScrapeRollup        `json:"scrapes"`
@@ -463,16 +481,62 @@ type acceptedFlowState struct {
 }
 
 type metricRollup struct {
-	requests      uint64
-	responseCount uint64
-	responseTotal time.Duration
-	responseMin   time.Duration
-	responseMax   time.Duration
-	cacheHits     uint64
-	cacheMisses   uint64
-	cacheStales   uint64
-	scrapes       uint64
-	scrapeErrors  uint64
+	requests        uint64
+	errors          uint64
+	responseCount   uint64
+	responseTotal   time.Duration
+	responseMin     time.Duration
+	responseMax     time.Duration
+	cacheHits       uint64
+	cacheMisses     uint64
+	cacheStales     uint64
+	cacheHitTimes   durationStat
+	cacheStaleTimes durationStat
+	cacheMissTimes  durationStat
+	scrapes         uint64
+	scrapeErrors    uint64
+}
+
+// durationStat tracks count/total/min/max so averages and extremes can be
+// merged across buckets.
+type durationStat struct {
+	count uint64
+	total time.Duration
+	min   time.Duration
+	max   time.Duration
+}
+
+func (d *durationStat) record(duration time.Duration) {
+	d.count++
+	d.total += duration
+	if d.min == 0 || duration < d.min {
+		d.min = duration
+	}
+	if duration > d.max {
+		d.max = duration
+	}
+}
+
+func (d *durationStat) merge(other durationStat) {
+	d.count += other.count
+	d.total += other.total
+	if other.min > 0 && (d.min == 0 || other.min < d.min) {
+		d.min = other.min
+	}
+	if other.max > d.max {
+		d.max = other.max
+	}
+}
+
+func (d durationStat) responseTime() ResponseTimeMetrics {
+	out := ResponseTimeMetrics{
+		HighMs: d.max.Milliseconds(),
+		LowMs:  d.min.Milliseconds(),
+	}
+	if d.count > 0 {
+		out.AverageMs = float64(d.total.Microseconds()) / float64(d.count) / 1000
+	}
+	return out
 }
 
 func NewMetrics() *Metrics {
@@ -548,6 +612,10 @@ func (m *Metrics) TotalRequests() uint64 {
 func (m *Metrics) recordRequestMetricAt(details RequestMetricDetails, now time.Time) {
 	client := NormalizeUserAgent(details.UserAgent)
 	source := normalizeTrafficSource(details.Source)
+	if source == TrafficSourceInternal || source == TrafficSourceInternalLoopback {
+		client = SiteClientName
+	}
+	cacheStatus := strings.ToUpper(strings.TrimSpace(details.CacheStatus))
 	method := strings.ToUpper(strings.TrimSpace(details.Method))
 	if method == "" {
 		method = "GET"
@@ -577,15 +645,15 @@ func (m *Metrics) recordRequestMetricAt(details RequestMetricDetails, now time.T
 	if details.Duration > m.responseMax {
 		m.responseMax = details.Duration
 	}
-	m.rollupForLocked(now, hourBucket).recordRequest(details.Duration)
-	m.rollupForLocked(now, dayBucket).recordRequest(details.Duration)
-	m.rollupForLocked(now, monthBucket).recordRequest(details.Duration)
+	m.rollupForLocked(now, hourBucket).recordRequest(details.Duration, details.StatusCode, cacheStatus)
+	m.rollupForLocked(now, dayBucket).recordRequest(details.Duration, details.StatusCode, cacheStatus)
+	m.rollupForLocked(now, monthBucket).recordRequest(details.Duration, details.StatusCode, cacheStatus)
 	m.incrementWindowCounterLocked(m.userAgents, client, now, metricsMaxTrackedClients)
 	m.trafficSources[source]++
 	m.recordEndpointLocked(method, path, group, now)
 	m.recordClientRequestLocked(client, now, countryCode, source, group, details.StatusCode)
-	if details.CacheStatus != "" {
-		m.recordClientCacheLocked(client, details.CacheStatus)
+	if cacheStatus != "" {
+		m.recordClientCacheLocked(client, cacheStatus)
 	}
 	m.requestLogs = appendRequestLog(m.requestLogs, RequestLogEntry{
 		At:            now,
@@ -601,7 +669,7 @@ func (m *Metrics) recordRequestMetricAt(details RequestMetricDetails, now time.T
 		Client:        client,
 		Source:        source,
 		EndpointGroup: group,
-		CacheStatus:   details.CacheStatus,
+		CacheStatus:   cacheStatus,
 		APIPlan:       strings.TrimSpace(details.APIPlan),
 		AccountID:     strings.TrimSpace(details.AccountID),
 		KeyID:         strings.TrimSpace(details.KeyID),
@@ -1152,6 +1220,11 @@ const (
 	TrafficSourceOwnPanel         = "own-panel"
 	TrafficSourceUnknown          = "unknown"
 )
+
+// SiteClientName replaces the user agent for requests arriving from internal
+// IPs so API usage by the website itself (e.g. the mod browser) is visible as
+// its own client in metrics.
+const SiteClientName = "reforgermods.net"
 
 func NormalizeUserAgent(raw string) string {
 	ua := strings.TrimSpace(raw)
@@ -1926,24 +1999,41 @@ func (m *Metrics) retentionLocked(now time.Time) RetentionMetrics {
 		Day: RetentionWindow{
 			Window:     "24h",
 			BucketSize: "1h",
+			Summary:    m.windowSummaryLocked(now, hourBucket, 24),
 			Buckets:    m.bucketsLocked(now, hourBucket, 24),
 		},
 		Week: RetentionWindow{
 			Window:     "7d",
 			BucketSize: "1d",
+			Summary:    m.windowSummaryLocked(now, dayBucket, 7),
 			Buckets:    m.bucketsLocked(now, dayBucket, 7),
 		},
 		Month: RetentionWindow{
 			Window:     "31d",
 			BucketSize: "1d",
+			Summary:    m.windowSummaryLocked(now, dayBucket, 31),
 			Buckets:    m.bucketsLocked(now, dayBucket, 31),
 		},
 		Year: RetentionWindow{
 			Window:     "12mo",
 			BucketSize: "1mo",
+			Summary:    m.windowSummaryLocked(now, monthBucket, 12),
 			Buckets:    m.bucketsLocked(now, monthBucket, 12),
 		},
 	}
+}
+
+func (m *Metrics) windowSummaryLocked(now time.Time, kind bucketKind, count int) WindowSummary {
+	var merged metricRollup
+	currentStart := bucketStart(now, kind)
+	buckets := m.bucketMap(kind)
+	for i := count - 1; i >= 0; i-- {
+		start := addBuckets(currentStart, kind, -i)
+		if bucket := buckets[bucketKey(start, kind)]; bucket != nil {
+			merged.merge(bucket.data)
+		}
+	}
+	return merged.windowSummary()
 }
 
 func (m *Metrics) bucketsLocked(now time.Time, kind bucketKind, count int) []MetricBucket {
@@ -2023,7 +2113,7 @@ func bucketKey(start time.Time, kind bucketKind) string {
 	}
 }
 
-func (r *metricRollup) recordRequest(duration time.Duration) {
+func (r *metricRollup) recordRequest(duration time.Duration, statusCode int, cacheStatus string) {
 	r.requests++
 	r.responseCount++
 	r.responseTotal += duration
@@ -2032,6 +2122,56 @@ func (r *metricRollup) recordRequest(duration time.Duration) {
 	}
 	if duration > r.responseMax {
 		r.responseMax = duration
+	}
+	if statusCode >= 400 {
+		r.errors++
+	}
+	switch cacheStatus {
+	case "HIT":
+		r.cacheHitTimes.record(duration)
+	case "STALE":
+		r.cacheStaleTimes.record(duration)
+	case "MISS":
+		r.cacheMissTimes.record(duration)
+	}
+}
+
+func (r *metricRollup) merge(other metricRollup) {
+	r.requests += other.requests
+	r.errors += other.errors
+	r.responseCount += other.responseCount
+	r.responseTotal += other.responseTotal
+	if other.responseMin > 0 && (r.responseMin == 0 || other.responseMin < r.responseMin) {
+		r.responseMin = other.responseMin
+	}
+	if other.responseMax > r.responseMax {
+		r.responseMax = other.responseMax
+	}
+	r.cacheHits += other.cacheHits
+	r.cacheMisses += other.cacheMisses
+	r.cacheStales += other.cacheStales
+	r.cacheHitTimes.merge(other.cacheHitTimes)
+	r.cacheStaleTimes.merge(other.cacheStaleTimes)
+	r.cacheMissTimes.merge(other.cacheMissTimes)
+	r.scrapes += other.scrapes
+	r.scrapeErrors += other.scrapeErrors
+}
+
+func (r metricRollup) windowSummary() WindowSummary {
+	return WindowSummary{
+		Requests:     r.requests,
+		Errors:       r.errors,
+		ResponseTime: r.responseTime(),
+		Cache: CacheRollup{
+			Hits:   r.cacheHits,
+			Misses: r.cacheMisses,
+			Stales: r.cacheStales,
+		},
+		CacheResponseTimes: CacheResponseTimeMetrics{
+			Hit:   r.cacheHitTimes.responseTime(),
+			Stale: r.cacheStaleTimes.responseTime(),
+			Miss:  r.cacheMissTimes.responseTime(),
+		},
 	}
 }
 
@@ -2047,6 +2187,7 @@ func (r metricRollup) metricBucket(start time.Time, end time.Time) MetricBucket 
 		Start:        start,
 		End:          end,
 		Requests:     r.requests,
+		Errors:       r.errors,
 		ResponseTime: r.responseTime(),
 		Cache: CacheRollup{
 			Hits:   r.cacheHits,

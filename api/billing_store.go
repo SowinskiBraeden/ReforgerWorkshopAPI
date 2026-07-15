@@ -507,6 +507,47 @@ func (s *BillingStore) GetAPIKeyByHash(ctx context.Context, hash string) (APIKey
 	return key, account, true, nil
 }
 
+func (s *BillingStore) GetAPIKeyByID(ctx context.Context, accountID string, keyID string) (APIKeyRecord, bool, error) {
+	var key APIKeyRecord
+	if s == nil || s.db == nil || strings.TrimSpace(keyID) == "" {
+		return key, false, nil
+	}
+	row := s.db.QueryRowContext(ctx, `SELECT id, account_id, key_hash, key_prefix, COALESCE(name, ''), plan,
+		is_active, created_at, COALESCE(last_used_at, ''), COALESCE(revoked_at, ''), COALESCE(last_four, '')
+		FROM api_keys WHERE id = ? AND account_id = ?`, keyID, accountID)
+	key, err := scanAPIKey(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return key, false, nil
+	}
+	if err != nil {
+		return key, false, err
+	}
+	return key, true, nil
+}
+
+// DeleteAccount removes an account together with its API keys and login
+// tokens. Metrics and Stripe records are left untouched.
+func (s *BillingStore) DeleteAccount(ctx context.Context, accountID string) error {
+	if s == nil || s.db == nil || strings.TrimSpace(accountID) == "" {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM login_tokens WHERE account_id = ?`, accountID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM api_keys WHERE account_id = ?`, accountID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM accounts WHERE id = ?`, accountID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *BillingStore) RevokeAPIKey(ctx context.Context, accountID string, keyID string) error {
 	if s == nil || s.db == nil {
 		return nil

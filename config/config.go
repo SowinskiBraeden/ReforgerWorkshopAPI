@@ -137,6 +137,7 @@ func New() *Config {
 	fullURL := strings.TrimRight(envString("FULL_URL", "http://localhost:8000"), "/")
 	apiBaseURL := strings.TrimRight(envString("API_BASE_URL", fullURL), "/")
 	publicBaseURL := strings.TrimRight(envString("PUBLIC_BASE_URL", fullURL), "/")
+	logDir := envString("LOG_DIR", "logs")
 
 	cfg := &Config{
 		BaseURL:                  envString("BASE_URL", "localhost"),
@@ -146,7 +147,7 @@ func New() *Config {
 		PublicCanonicalRedirects: envBool("PUBLIC_CANONICAL_REDIRECTS", false),
 		BindAddress:              envString("BIND_ADDRESS", "0.0.0.0:8000"),
 
-		LogDir:      envString("LOG_DIR", "logs"),
+		LogDir:      logDir,
 		LogToStdout: envBool("LOG_TO_STDOUT", true),
 
 		TrustedProxyCIDRs: envString("TRUSTED_PROXY_CIDRS", ""),
@@ -205,8 +206,11 @@ func New() *Config {
 		),
 		MetricsInternalCIDRs: envString("METRICS_INTERNAL_CIDRS", "127.0.0.1/32,::1/128"),
 
-		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", false),
-		MetricsStatePath:          envString("METRICS_STATE_PATH", ""),
+		// Persistence defaults on so metrics (request totals, retention
+		// buckets, country origin) survive binary updates without any env
+		// setup. The state file lives next to the request logs by default.
+		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", true),
+		MetricsStatePath:          envString("METRICS_STATE_PATH", filepath.Join(logDir, "metrics-state.json")),
 		MetricsFlushInterval:      envDuration("METRICS_FLUSH_INTERVAL", 15*time.Second),
 
 		BillingEnabled:         envBool("BILLING_ENABLED", false),

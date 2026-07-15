@@ -94,6 +94,60 @@ func TestMetricsRetentionWindows(t *testing.T) {
 	}
 }
 
+func TestMetricsWindowSummariesAndSiteClient(t *testing.T) {
+	metrics := NewMetrics()
+	now := time.Date(2026, 7, 7, 12, 30, 0, 0, time.UTC)
+	metrics.now = func() time.Time { return now }
+
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration:    120 * time.Millisecond,
+		Source:      TrafficSourceInternalLoopback,
+		UserAgent:   "Mozilla/5.0",
+		Method:      "GET",
+		Path:        "/v1/mods",
+		StatusCode:  http.StatusOK,
+		CacheStatus: "hit",
+	})
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration:    480 * time.Millisecond,
+		Source:      TrafficSourceExternal,
+		UserAgent:   "curl/8.0",
+		Method:      "GET",
+		Path:        "/v1/mods",
+		StatusCode:  http.StatusInternalServerError,
+		CacheStatus: "MISS",
+	})
+
+	snapshot := metrics.Snapshot(nil)
+	summary := snapshot.Retention.Day.Summary
+	if summary.Requests != 2 || summary.Errors != 1 {
+		t.Fatalf("day summary requests/errors = %d/%d, want 2/1", summary.Requests, summary.Errors)
+	}
+	if summary.ResponseTime.LowMs != 120 || summary.ResponseTime.HighMs != 480 {
+		t.Fatalf("day summary response low/high = %d/%d, want 120/480", summary.ResponseTime.LowMs, summary.ResponseTime.HighMs)
+	}
+	if summary.CacheResponseTimes.Hit.HighMs != 120 {
+		t.Fatalf("hit high = %d, want 120", summary.CacheResponseTimes.Hit.HighMs)
+	}
+	if summary.CacheResponseTimes.Miss.LowMs != 480 || summary.CacheResponseTimes.Miss.AverageMs != 480 {
+		t.Fatalf("miss low/avg = %d/%f, want 480/480", summary.CacheResponseTimes.Miss.LowMs, summary.CacheResponseTimes.Miss.AverageMs)
+	}
+	if snapshot.Retention.Year.Summary.Requests != 2 {
+		t.Fatalf("year summary requests = %d, want 2", snapshot.Retention.Year.Summary.Requests)
+	}
+
+	clients := make(map[string]bool)
+	for _, client := range snapshot.ClientSummaries {
+		clients[client.Name] = true
+	}
+	if !clients[SiteClientName] || !clients["curl/8.0"] {
+		t.Fatalf("client summaries = %v, want %q and curl/8.0", clients, SiteClientName)
+	}
+	if len(snapshot.RequestLogs) != 2 || snapshot.RequestLogs[1].Client != SiteClientName {
+		t.Fatalf("request logs = %+v, want newest-first with internal client %q", snapshot.RequestLogs, SiteClientName)
+	}
+}
+
 func TestMetricsTracksCoarseGeographyAndUniqueClientNetworks(t *testing.T) {
 	metrics := NewMetrics()
 	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
@@ -302,6 +356,65 @@ func TestMetricsStoreLoadsOldStateWithoutNewFields(t *testing.T) {
 	}
 	if snapshot.Clients.TopUserAgentsToday == nil {
 		t.Fatal("new client metrics should default to an empty slice/map, not crash")
+	}
+}
+
+func TestMetricsStoreRoundTripsGeography(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "metrics.json")
+	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
+
+	metrics := NewMetrics()
+	metrics.now = func() time.Time { return now }
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration:    50 * time.Millisecond,
+		ClientIP:    "203.0.113.10",
+		CountryCode: "US",
+		Source:      TrafficSourceExternal,
+		Method:      "GET",
+		Path:        "/v1/mods",
+		StatusCode:  http.StatusOK,
+	})
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration:    70 * time.Millisecond,
+		ClientIP:    "198.51.100.20",
+		CountryCode: "CA",
+		Source:      TrafficSourceExternal,
+		Method:      "GET",
+		Path:        "/v1/mods",
+		StatusCode:  http.StatusOK,
+	})
+
+	store, err := NewMetricsStore(path, time.Second)
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	if err := store.Save(metrics); err != nil {
+		t.Fatalf("save state: %v", err)
+	}
+
+	restored := NewMetrics()
+	restored.now = func() time.Time { return now.Add(time.Hour) }
+	if err := store.Load(restored); err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+
+	snapshot := restored.Snapshot(nil)
+	countries := make(map[string]CountryMetric)
+	for _, country := range snapshot.Geography.Countries {
+		countries[country.CountryCode] = country
+	}
+	for _, code := range []string{"US", "CA"} {
+		country, ok := countries[code]
+		if !ok {
+			t.Fatalf("geography after restart is missing %s: %+v", code, snapshot.Geography.Countries)
+		}
+		if country.Requests.Total != 1 || country.Requests.Today != 1 || country.Requests.ThisMonth != 1 {
+			t.Fatalf("%s requests after restart = %+v, want total/today/month 1", code, country.Requests)
+		}
+		if country.UniqueClientNetworks.Today != 1 {
+			t.Fatalf("%s unique networks after restart = %+v, want today 1", code, country.UniqueClientNetworks)
+		}
 	}
 }
 
