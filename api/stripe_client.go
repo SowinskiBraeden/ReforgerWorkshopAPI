@@ -45,6 +45,11 @@ type StripeCustomerDetails struct {
 	Email string `json:"email"`
 }
 
+type StripeCustomer struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+}
+
 type StripePortalSession struct {
 	ID  string `json:"id"`
 	URL string `json:"url"`
@@ -85,6 +90,12 @@ func (c StripeClient) GetCheckoutSession(ctx context.Context, sessionID string) 
 	var session StripeCheckoutSession
 	err := c.get(ctx, "/v1/checkout/sessions/"+url.PathEscape(sessionID), nil, &session)
 	return session, err
+}
+
+func (c StripeClient) GetCustomer(ctx context.Context, customerID string) (StripeCustomer, error) {
+	var customer StripeCustomer
+	err := c.get(ctx, "/v1/customers/"+url.PathEscape(strings.TrimSpace(customerID)), nil, &customer)
+	return customer, err
 }
 
 func (c StripeClient) CreatePortalSession(ctx context.Context, customerID string, returnURL string) (StripePortalSession, error) {

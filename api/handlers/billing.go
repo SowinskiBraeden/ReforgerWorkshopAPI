@@ -368,9 +368,13 @@ func (a *App) accountFromCheckoutSession(r *http.Request, session api.StripeChec
 	if session.Status != "" && session.Status != "complete" {
 		return api.Account{}, fmt.Errorf("checkout session is not complete")
 	}
+	email := firstNonEmpty(session.CustomerEmail, session.CustomerDetails.Email)
+	if email == "" {
+		email = a.emailFromStripeCustomer(r, session.Customer)
+	}
 	account := api.Account{
 		ID:                   session.ClientReferenceID,
-		Email:                firstNonEmpty(session.CustomerEmail, session.CustomerDetails.Email),
+		Email:                email,
 		StripeCustomerID:     session.Customer,
 		StripeSubscriptionID: session.Subscription,
 		Plan:                 plan,
@@ -392,6 +396,9 @@ func (a *App) upsertAccountFromSubscription(r *http.Request, sub stripeSubscript
 	if !ok {
 		account = api.Account{StripeCustomerID: sub.Customer}
 	}
+	if email == "" {
+		email = a.emailFromStripeCustomer(r, sub.Customer)
+	}
 	account.Email = firstNonEmpty(account.Email, email)
 	account.StripeSubscriptionID = sub.ID
 	account.Plan = plan
@@ -404,6 +411,19 @@ func (a *App) upsertAccountFromSubscription(r *http.Request, sub stripeSubscript
 		err = a.BillingStore.RevokePaidKeysForAccount(r.Context(), account.ID)
 	}
 	return account, err
+}
+
+func (a *App) emailFromStripeCustomer(r *http.Request, customerID string) string {
+	customerID = strings.TrimSpace(customerID)
+	if customerID == "" {
+		return ""
+	}
+	customer, err := a.StripeClient.GetCustomer(r.Context(), customerID)
+	if err != nil {
+		zap.S().Warnw("stripe customer email lookup failed", "customer_id", customerID, "error", err)
+		return ""
+	}
+	return strings.TrimSpace(customer.Email)
 }
 
 func (a *App) ensureInitialAPIKey(r *http.Request, account api.Account) (string, api.APIKeyRecord, error) {

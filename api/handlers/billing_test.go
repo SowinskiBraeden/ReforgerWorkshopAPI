@@ -129,6 +129,42 @@ func TestBillingCheckoutAllowsMultipleSessionsWithoutEmail(t *testing.T) {
 	}
 }
 
+func TestCheckoutWebhookRecoversEmailFromStripeCustomer(t *testing.T) {
+	var app *App
+	stripe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/customers/cus_paid":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"cus_paid","email":"paid@example.com"}`))
+		default:
+			t.Fatalf("unexpected Stripe path %s", r.URL.Path)
+		}
+	}))
+	defer stripe.Close()
+	app = testBillingApp(t, stripe.URL)
+
+	payload := `{"id":"evt_checkout_email","type":"checkout.session.completed","data":{"object":{"id":"cs_paid","customer":"cus_paid","subscription":"sub_paid","status":"complete","client_reference_id":"acct_pending","metadata":{"plan":"developer"}}}}`
+	if _, err := app.BillingStore.UpsertAccount(context.Background(), api.Account{ID: "acct_pending", Plan: api.PlanFree, SubscriptionStatus: api.SubscriptionStatusNone}); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/stripe/webhook", strings.NewReader(payload))
+	req.Header.Set("Stripe-Signature", stripeSignatureHeader(t, payload, app.Config.StripeWebhookSecret, time.Now()))
+	rec := httptest.NewRecorder()
+
+	app.Router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	account, ok, err := app.BillingStore.GetAccountByStripeCustomer(context.Background(), "cus_paid")
+	if err != nil || !ok {
+		t.Fatalf("account lookup = (%+v, %v, %v), want account", account, ok, err)
+	}
+	if account.Email != "paid@example.com" {
+		t.Fatalf("account email = %q, want paid@example.com", account.Email)
+	}
+}
+
 func TestStripeWebhookRecordsCompletedCheckoutSession(t *testing.T) {
 	app := testBillingApp(t, "https://stripe.invalid")
 	payload := `{"id":"evt_test","type":"customer.subscription.deleted","data":{"object":{"id":"sub_test","customer":"cus_test","status":"canceled","metadata":{"plan":"developer"},"items":{"data":[{"price":{"id":"price_dev"}}]}}}}`
