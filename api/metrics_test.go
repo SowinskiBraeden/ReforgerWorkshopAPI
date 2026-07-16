@@ -51,6 +51,44 @@ func TestMetricsTracksRequestsAndResponseTimes(t *testing.T) {
 	}
 }
 
+func TestMetricsWindowLocationControlsTodayReset(t *testing.T) {
+	location, err := time.LoadLocation("America/Vancouver")
+	if err != nil {
+		t.Fatalf("load location: %v", err)
+	}
+
+	metrics := NewMetrics()
+	metrics.SetWindowLocation(location)
+	now := time.Date(2026, 7, 16, 23, 30, 0, 0, time.UTC)
+	metrics.now = func() time.Time { return now }
+	metrics.mu.Lock()
+	metrics.resetRequestWindowsLocked(now)
+	metrics.mu.Unlock()
+
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration:    50 * time.Millisecond,
+		ClientIP:    "203.0.113.10",
+		CountryCode: "CA",
+		UserAgent:   "test-client",
+		Source:      TrafficSourceExternal,
+		Method:      "GET",
+		Path:        "/v1/mods",
+		StatusCode:  http.StatusOK,
+	})
+
+	now = time.Date(2026, 7, 17, 0, 30, 0, 0, time.UTC)
+	snapshot := metrics.Snapshot(nil)
+	if snapshot.Requests.Today != 1 {
+		t.Fatalf("today requests after UTC midnight = %d, want 1 in Vancouver timezone", snapshot.Requests.Today)
+	}
+	if len(snapshot.Geography.Countries) != 1 || snapshot.Geography.Countries[0].Requests.Today != 1 {
+		t.Fatalf("geography after UTC midnight = %+v, want same local-day country count", snapshot.Geography.Countries)
+	}
+	if len(snapshot.ClientSummaries) != 1 || snapshot.ClientSummaries[0].RequestsToday != 1 {
+		t.Fatalf("client summaries after UTC midnight = %+v, want same local-day client count", snapshot.ClientSummaries)
+	}
+}
+
 func TestMetricsRetentionWindows(t *testing.T) {
 	metrics := NewMetrics()
 	now := time.Date(2026, 7, 7, 12, 30, 0, 0, time.UTC)
@@ -415,6 +453,39 @@ func TestMetricsStoreRoundTripsGeography(t *testing.T) {
 		if country.UniqueClientNetworks.Today != 1 {
 			t.Fatalf("%s unique networks after restart = %+v, want today 1", code, country.UniqueClientNetworks)
 		}
+	}
+}
+
+func TestImportRequestMetricsFromLogsRollsWindowsToCurrentDay(t *testing.T) {
+	dir := t.TempDir()
+	log := `{"ts":"2026-07-08T23:55:00Z","msg":"request completed","requestId":"old","clientIP":"203.0.113.10","countryCode":"US","method":"GET","path":"/v1/mods","status":200,"latencyMs":25,"userAgent":"old-client"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "2026-07-08.log"), []byte(log), 0600); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+
+	metrics := NewMetrics()
+	metrics.now = func() time.Time {
+		return time.Date(2026, 7, 9, 1, 0, 0, 0, time.UTC)
+	}
+
+	imported, err := ImportRequestMetricsFromLogs(metrics, dir)
+	if err != nil {
+		t.Fatalf("import logs: %v", err)
+	}
+	if imported != 1 {
+		t.Fatalf("imported = %d, want 1", imported)
+	}
+
+	snapshot := metrics.Snapshot(nil)
+	if snapshot.Requests.Total != 1 {
+		t.Fatalf("total requests = %d, want 1", snapshot.Requests.Total)
+	}
+	if snapshot.Requests.Today != 0 {
+		t.Fatalf("today requests = %d, want 0 after rolling to current day", snapshot.Requests.Today)
+	}
+	if len(snapshot.Geography.Countries) != 1 || snapshot.Geography.Countries[0].Requests.Today != 0 {
+		t.Fatalf("geography = %+v, want historical country retained with current-day count reset", snapshot.Geography.Countries)
 	}
 }
 

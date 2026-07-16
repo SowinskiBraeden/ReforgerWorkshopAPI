@@ -20,6 +20,7 @@ INDEX_ENABLED=true
 INDEX_DB_PATH=/var/lib/reforgermods-api/reforgermods-index.db
 INDEX_REFRESH_ENABLED=true
 INTERNAL_METRICS_ENABLED=true
+METRICS_TIMEZONE=America/Vancouver
 INTERNAL_ADMIN_USERNAME=admin
 INTERNAL_ADMIN_PASSWORD=replace-with-random-password
 INTERNAL_ADMIN_SESSION_SECRET=replace-with-random-secret

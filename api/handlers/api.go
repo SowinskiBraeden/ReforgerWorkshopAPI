@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -135,8 +136,25 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/account/api-keys/", a.servePublicPage("account-api-keys")).Methods("GET", "HEAD")
 
 	a.Metrics = api.NewMetrics()
+	a.configureMetricsWindowLocation(a.Metrics)
 
 	if a.Config.MetricsPersistenceEnabled {
+		metricsStatePath := a.Config.MetricsStatePath
+		absoluteMetricsStatePath, absErr := filepath.Abs(metricsStatePath)
+		if absErr != nil {
+			absoluteMetricsStatePath = metricsStatePath
+		}
+		metricsStateExists := false
+		if _, err := os.Stat(metricsStatePath); err == nil {
+			metricsStateExists = true
+		} else if !os.IsNotExist(err) {
+			zap.S().Warnw(
+				"metrics state path could not be checked",
+				"path", metricsStatePath,
+				"absolutePath", absoluteMetricsStatePath,
+				"error", err,
+			)
+		}
 		store, err := api.NewMetricsStore(
 			a.Config.MetricsStatePath,
 			a.Config.MetricsFlushInterval,
@@ -144,11 +162,26 @@ func (a *App) New() *mux.Router {
 		if err != nil {
 			zap.S().Warnw("metrics persistence disabled", "error", err)
 		} else {
+			zap.S().Infow(
+				"metrics persistence enabled",
+				"path", metricsStatePath,
+				"absolutePath", absoluteMetricsStatePath,
+				"stateFileExists", metricsStateExists,
+			)
 			if err := store.Load(a.Metrics); err != nil {
 				zap.S().Warnw(
 					"metrics state was not loaded; starting with fresh metrics",
+					"path", metricsStatePath,
+					"absolutePath", absoluteMetricsStatePath,
 					"error",
 					err,
+				)
+			} else if metricsStateExists {
+				zap.S().Infow(
+					"metrics state loaded",
+					"path", metricsStatePath,
+					"absolutePath", absoluteMetricsStatePath,
+					"totalRequests", a.Metrics.TotalRequests(),
 				)
 			}
 			if a.Metrics.TotalRequests() == 0 {
@@ -156,7 +189,13 @@ func (a *App) New() *mux.Router {
 				if err != nil {
 					zap.S().Warnw("historical request log import failed", "error", err)
 				} else if imported > 0 {
-					zap.S().Infow("historical request logs imported into metrics", "requests", imported)
+					zap.S().Infow(
+						"historical request logs imported into metrics",
+						"requests", imported,
+						"path", metricsStatePath,
+						"absolutePath", absoluteMetricsStatePath,
+						"totalRequests", a.Metrics.TotalRequests(),
+					)
 				}
 			}
 
@@ -241,6 +280,28 @@ func (a *App) New() *mux.Router {
 	router.NotFoundHandler = http.HandlerFunc(a.serveNotFound)
 
 	return router
+}
+
+func (a *App) configureMetricsWindowLocation(metrics *api.Metrics) {
+	if metrics == nil {
+		return
+	}
+	timezone := strings.TrimSpace(a.Config.MetricsTimezone)
+	if timezone == "" {
+		timezone = "UTC"
+	}
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		zap.S().Warnw(
+			"metrics timezone invalid; using UTC",
+			"timezone", timezone,
+			"error", err,
+		)
+		location = time.UTC
+		timezone = "UTC"
+	}
+	metrics.SetWindowLocation(location)
+	zap.S().Infow("metrics window timezone configured", "timezone", timezone)
 }
 
 func (a *App) registerAPIRoutes(router *mux.Router, deprecated bool) {
@@ -345,6 +406,7 @@ func (a *App) internalMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if a.Metrics == nil {
 		a.Metrics = api.NewMetrics()
+		a.configureMetricsWindowLocation(a.Metrics)
 	}
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(a.Metrics.Snapshot(a.Cache))

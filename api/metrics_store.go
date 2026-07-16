@@ -234,6 +234,11 @@ func ImportRequestMetricsFromLogs(metrics *Metrics, logDir string) (int, error) 
 			return imported, err
 		}
 	}
+	now := metrics.now().UTC()
+	metrics.mu.Lock()
+	metrics.rollRequestWindowsLocked(now)
+	metrics.pruneRetentionLocked(now)
+	metrics.mu.Unlock()
 	return imported, nil
 }
 

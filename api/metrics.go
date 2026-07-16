@@ -32,9 +32,10 @@ const (
 type Metrics struct {
 	mu sync.Mutex
 
-	now        func() time.Time
-	startedAt  time.Time
-	uniqueSalt []byte
+	now            func() time.Time
+	windowLocation *time.Location
+	startedAt      time.Time
+	uniqueSalt     []byte
 
 	totalRequests     uint64
 	requestDayKey     string
@@ -544,6 +545,7 @@ func NewMetrics() *Metrics {
 	startedAt := now().UTC()
 	m := &Metrics{
 		now:                  now,
+		windowLocation:       time.UTC,
 		startedAt:            startedAt,
 		uniqueSalt:           newUniqueSalt(),
 		uniqueToday:          make(map[string]struct{}),
@@ -566,6 +568,15 @@ func NewMetrics() *Metrics {
 	}
 	m.resetRequestWindowsLocked(startedAt)
 	return m
+}
+
+func (m *Metrics) SetWindowLocation(location *time.Location) {
+	if m == nil || location == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.windowLocation = location
 }
 
 func (m *Metrics) RecordRequest(duration time.Duration) {
@@ -1032,7 +1043,7 @@ func (m *Metrics) Snapshot(cache *ResponseCache) MetricsSnapshot {
 }
 
 func (m *Metrics) rollRequestWindowsLocked(now time.Time) {
-	dayKey, weekKey, monthKey := requestWindowKeys(now)
+	dayKey, weekKey, monthKey := requestWindowKeys(now, m.windowLocation)
 	if m.requestDayKey != dayKey {
 		m.requestDayKey = dayKey
 		m.requestsToday = 0
@@ -1076,7 +1087,7 @@ func (m *Metrics) rollRequestWindowsLocked(now time.Time) {
 }
 
 func (m *Metrics) resetRequestWindowsLocked(now time.Time) {
-	m.requestDayKey, m.requestWeekKey, m.requestMonthKey = requestWindowKeys(now)
+	m.requestDayKey, m.requestWeekKey, m.requestMonthKey = requestWindowKeys(now, m.windowLocation)
 	m.uniqueToday = make(map[string]struct{})
 	m.uniqueThisWeek = make(map[string]struct{})
 	m.uniqueThisMonth = make(map[string]struct{})
@@ -1094,9 +1105,13 @@ func (m *Metrics) resetRequestWindowsLocked(now time.Time) {
 	}
 }
 
-func requestWindowKeys(now time.Time) (string, string, string) {
-	year, week := now.ISOWeek()
-	return now.Format("2006-01-02"), fmt.Sprintf("%04d-W%02d", year, week), now.Format("2006-01")
+func requestWindowKeys(now time.Time, location *time.Location) (string, string, string) {
+	if location == nil {
+		location = time.UTC
+	}
+	localNow := now.In(location)
+	year, week := localNow.ISOWeek()
+	return localNow.Format("2006-01-02"), fmt.Sprintf("%04d-W%02d", year, week), localNow.Format("2006-01")
 }
 
 func (m *Metrics) recordUniqueClientNetworkLocked(clientIP string, countryCode string) {

@@ -86,6 +86,7 @@ type Config struct {
 	MetricsPersistenceEnabled bool
 	MetricsStatePath          string
 	MetricsFlushInterval      time.Duration
+	MetricsTimezone           string
 
 	BillingEnabled         bool
 	BillingDBPath          string
@@ -212,6 +213,7 @@ func New() *Config {
 		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", true),
 		MetricsStatePath:          envString("METRICS_STATE_PATH", filepath.Join(logDir, "metrics-state.json")),
 		MetricsFlushInterval:      envDuration("METRICS_FLUSH_INTERVAL", 15*time.Second),
+		MetricsTimezone:           envString("METRICS_TIMEZONE", "UTC"),
 
 		BillingEnabled:         envBool("BILLING_ENABLED", false),
 		BillingDBPath:          envString("BILLING_DB_PATH", "/var/lib/reforgermods-api/reforgermods-billing.db"),
