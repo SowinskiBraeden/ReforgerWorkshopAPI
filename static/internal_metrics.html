@@ -163,6 +163,7 @@
       ]);
       html+='<h3>Client</h3>'+kv([
         ['Client',esc(log.client||'')],
+        ['API client',esc(log.apiClient||'')],
         ['User agent',esc(log.userAgent||'')],
         ['IP address',code(log.clientIp||'')],
         ['Country',esc(countryName(log.countryCode))],

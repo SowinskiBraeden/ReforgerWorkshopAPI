@@ -119,11 +119,13 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 			if countryCode == "" {
 				countryCode = m.CountryCode(r)
 			}
+			apiClient := strings.TrimSpace(r.Header.Get("X-API-Client"))
 			m.metrics.RecordRequestMetric(RequestMetricDetails{
 				Duration:      latency,
 				RequestID:     requestID,
 				ClientIP:      clientIP,
 				CountryCode:   countryCode,
+				APIClient:     apiClient,
 				UserAgent:     r.UserAgent(),
 				Headers:       redactedRequestHeaders(r.Header),
 				Source:        m.TrafficSource(r, clientIP),
@@ -146,6 +148,7 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 				"query", r.URL.RawQuery,
 				"status", recorder.statusCode,
 				"latencyMs", latency.Milliseconds(),
+				"apiClient", apiClient,
 				"userAgent", r.UserAgent(),
 			)
 		}()

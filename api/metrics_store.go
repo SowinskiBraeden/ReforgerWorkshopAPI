@@ -278,17 +278,28 @@ func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error)
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		var entry struct {
-			Timestamp   time.Time `json:"ts"`
-			Message     string    `json:"msg"`
-			RequestID   string    `json:"requestId"`
-			ClientIP    string    `json:"clientIP"`
-			CountryCode string    `json:"countryCode"`
-			Method      string    `json:"method"`
-			Path        string    `json:"path"`
-			Query       string    `json:"query"`
-			Status      int       `json:"status"`
-			LatencyMs   int64     `json:"latencyMs"`
-			UserAgent   string    `json:"userAgent"`
+			Timestamp    time.Time         `json:"ts"`
+			Message      string            `json:"msg"`
+			RequestID    string            `json:"requestId"`
+			ClientIP     string            `json:"clientIP"`
+			ClientIPAlt  string            `json:"clientIp"`
+			CountryCode  string            `json:"countryCode"`
+			Country      string            `json:"country"`
+			CFCountry    string            `json:"cfCountry"`
+			Method       string            `json:"method"`
+			Path         string            `json:"path"`
+			Query        string            `json:"query"`
+			RawQuery     string            `json:"rawQuery"`
+			Status       int               `json:"status"`
+			StatusCode   int               `json:"statusCode"`
+			LatencyMs    int64             `json:"latencyMs"`
+			DurationMs   int64             `json:"durationMs"`
+			APIClient    string            `json:"apiClient"`
+			XAPIClient   string            `json:"xApiClient"`
+			Client       string            `json:"client"`
+			UserAgent    string            `json:"userAgent"`
+			UserAgentAlt string            `json:"user-agent"`
+			Headers      map[string]string `json:"headers"`
 		}
 		if err := json.Unmarshal(line, &entry); err != nil || entry.Message != "request completed" {
 			continue
@@ -297,17 +308,19 @@ func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error)
 			continue
 		}
 		metrics.RecordHistoricalRequestMetric(RequestMetricDetails{
-			Duration:      time.Duration(entry.LatencyMs) * time.Millisecond,
+			Duration:      time.Duration(firstNonZeroInt64(entry.LatencyMs, entry.DurationMs)) * time.Millisecond,
 			RequestID:     entry.RequestID,
-			ClientIP:      entry.ClientIP,
-			CountryCode:   entry.CountryCode,
-			UserAgent:     entry.UserAgent,
+			ClientIP:      firstNonEmpty(entry.ClientIP, entry.ClientIPAlt),
+			CountryCode:   firstNonEmpty(entry.CountryCode, entry.Country, entry.CFCountry),
+			APIClient:     firstNonEmpty(entry.APIClient, entry.XAPIClient, headerValue(entry.Headers, "X-API-Client"), entry.Client),
+			UserAgent:     firstNonEmpty(entry.UserAgent, entry.UserAgentAlt, headerValue(entry.Headers, "User-Agent")),
+			Headers:       entry.Headers,
 			Source:        TrafficSourceUnknown,
 			Method:        entry.Method,
 			Path:          entry.Path,
-			RawQuery:      entry.Query,
-			StatusCode:    entry.Status,
-			EndpointGroup: EndpointGroupForRequest(entry.Path, entry.Query),
+			RawQuery:      firstNonEmpty(entry.Query, entry.RawQuery),
+			StatusCode:    firstNonZeroInt(entry.Status, entry.StatusCode),
+			EndpointGroup: EndpointGroupForRequest(entry.Path, firstNonEmpty(entry.Query, entry.RawQuery)),
 		}, entry.Timestamp)
 		imported++
 	}
@@ -321,6 +334,24 @@ func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error)
 		ModAt:  info.ModTime().UTC(),
 	})
 	return imported, nil
+}
+
+func firstNonZeroInt(values ...int) int {
+	for _, value := range values {
+		if value != 0 {
+			return value
+		}
+	}
+	return 0
+}
+
+func firstNonZeroInt64(values ...int64) int64 {
+	for _, value := range values {
+		if value != 0 {
+			return value
+		}
+	}
+	return 0
 }
 
 func canonicalLogImportPath(path string) string {

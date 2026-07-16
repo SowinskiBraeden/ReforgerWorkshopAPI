@@ -122,6 +122,7 @@ type RequestMetricDetails struct {
 	RequestID     string
 	ClientIP      string
 	CountryCode   string
+	APIClient     string
 	UserAgent     string
 	Headers       map[string]string
 	Source        string
@@ -153,6 +154,7 @@ type RequestLogEntry struct {
 	DurationMs    int64             `json:"durationMs"`
 	ClientIP      string            `json:"clientIp"`
 	CountryCode   string            `json:"countryCode"`
+	APIClient     string            `json:"apiClient,omitempty"`
 	UserAgent     string            `json:"userAgent"`
 	Client        string            `json:"client"`
 	Source        string            `json:"source"`
@@ -630,7 +632,14 @@ func (m *Metrics) TotalRequests() uint64 {
 }
 
 func (m *Metrics) recordRequestMetricAt(details RequestMetricDetails, now time.Time) {
+	apiClient := normalizeAPIClient(firstNonEmpty(
+		details.APIClient,
+		headerValue(details.Headers, "X-API-Client"),
+	))
 	client := NormalizeUserAgent(details.UserAgent)
+	if apiClient != "" {
+		client = apiClient
+	}
 	source := normalizeTrafficSource(details.Source)
 	if source == TrafficSourceInternal || source == TrafficSourceInternalLoopback {
 		client = SiteClientName
@@ -685,6 +694,7 @@ func (m *Metrics) recordRequestMetricAt(details RequestMetricDetails, now time.T
 		DurationMs:    details.Duration.Milliseconds(),
 		ClientIP:      strings.TrimSpace(details.ClientIP),
 		CountryCode:   countryCode,
+		APIClient:     apiClient,
 		UserAgent:     sanitizeMetricKey(details.UserAgent, "unknown", 240),
 		Client:        client,
 		Source:        source,
@@ -1272,6 +1282,35 @@ func NormalizeUserAgent(raw string) string {
 	default:
 		return sanitizeMetricKey(ua, "unknown", 80)
 	}
+}
+
+func normalizeAPIClient(raw string) string {
+	value := strings.Join(strings.Fields(strings.TrimSpace(raw)), " ")
+	if value == "" {
+		return ""
+	}
+	return sanitizeMetricKey(value, "", 80)
+}
+
+func headerValue(headers map[string]string, name string) string {
+	if len(headers) == 0 {
+		return ""
+	}
+	for key, value := range headers {
+		if strings.EqualFold(strings.TrimSpace(key), name) {
+			return value
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func firstUserAgentProduct(ua string) string {

@@ -51,6 +51,35 @@ func TestMetricsTracksRequestsAndResponseTimes(t *testing.T) {
 	}
 }
 
+func TestMetricsPrefersAPIClientHeaderForClientAttribution(t *testing.T) {
+	metrics := NewMetrics()
+	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	metrics.now = func() time.Time { return now }
+	metrics.startedAt = now
+	metrics.mu.Lock()
+	metrics.resetRequestWindowsLocked(now)
+	metrics.mu.Unlock()
+
+	metrics.RecordRequestMetric(RequestMetricDetails{
+		Duration:    25 * time.Millisecond,
+		ClientIP:    "203.0.113.20",
+		CountryCode: "US",
+		APIClient:   "my-panel/2.0",
+		UserAgent:   "Mozilla/5.0",
+		Method:      "GET",
+		Path:        "/v1/mods",
+		StatusCode:  http.StatusOK,
+	})
+
+	snapshot := metrics.Snapshot(nil)
+	if len(snapshot.ClientSummaries) != 1 || snapshot.ClientSummaries[0].Name != "my-panel/2.0" {
+		t.Fatalf("client summaries = %+v, want API client attribution", snapshot.ClientSummaries)
+	}
+	if len(snapshot.RequestLogs) != 1 || snapshot.RequestLogs[0].APIClient != "my-panel/2.0" || snapshot.RequestLogs[0].Client != "my-panel/2.0" {
+		t.Fatalf("request logs = %+v, want API client retained and used as client", snapshot.RequestLogs)
+	}
+}
+
 func TestMetricsWindowLocationControlsTodayReset(t *testing.T) {
 	location, err := time.LoadLocation("America/Vancouver")
 	if err != nil {
@@ -486,6 +515,39 @@ func TestImportRequestMetricsFromLogsRollsWindowsToCurrentDay(t *testing.T) {
 	}
 	if len(snapshot.Geography.Countries) != 1 || snapshot.Geography.Countries[0].Requests.Today != 0 {
 		t.Fatalf("geography = %+v, want historical country retained with current-day count reset", snapshot.Geography.Countries)
+	}
+}
+
+func TestImportRequestMetricsFromLogsReadsCountryAndAPIClientAliases(t *testing.T) {
+	dir := t.TempDir()
+	log := `{"ts":"2026-07-08T23:55:00Z","msg":"request completed","requestId":"alias","clientIp":"203.0.113.25","country":"ca","method":"GET","path":"/v1/mods","statusCode":200,"durationMs":42,"client":"import-client/1.0","headers":{"User-Agent":"Mozilla/5.0","X-API-Client":"header-client/2.0"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "2026-07-08.log"), []byte(log), 0600); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+
+	metrics := NewMetrics()
+	metrics.now = func() time.Time {
+		return time.Date(2026, 7, 8, 23, 59, 0, 0, time.UTC)
+	}
+
+	imported, err := ImportRequestMetricsFromLogs(metrics, dir)
+	if err != nil {
+		t.Fatalf("import logs: %v", err)
+	}
+	if imported != 1 {
+		t.Fatalf("imported = %d, want 1", imported)
+	}
+
+	snapshot := metrics.Snapshot(nil)
+	if len(snapshot.Geography.Countries) != 1 || snapshot.Geography.Countries[0].CountryCode != "CA" {
+		t.Fatalf("geography = %+v, want CA from country alias", snapshot.Geography.Countries)
+	}
+	if len(snapshot.ClientSummaries) != 1 || snapshot.ClientSummaries[0].Name != "header-client/2.0" {
+		t.Fatalf("client summaries = %+v, want X-API-Client from headers", snapshot.ClientSummaries)
+	}
+	if len(snapshot.RequestLogs) != 1 || snapshot.RequestLogs[0].ClientIP != "203.0.113.25" || snapshot.RequestLogs[0].APIClient != "header-client/2.0" {
+		t.Fatalf("request logs = %+v, want imported aliases retained", snapshot.RequestLogs)
 	}
 }
 
