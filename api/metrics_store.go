@@ -243,6 +243,20 @@ func ImportRequestMetricsFromLogs(metrics *Metrics, logDir string) (int, error) 
 }
 
 func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	path = canonicalLogImportPath(path)
+	cursor := metrics.logImportCursor(path)
+	offset := cursor.Offset
+	if offset < 0 || offset > info.Size() {
+		offset = 0
+	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -251,11 +265,18 @@ func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error)
 		return 0, err
 	}
 	defer file.Close()
+	if offset > 0 {
+		if _, err := file.Seek(offset, 0); err != nil {
+			return 0, err
+		}
+	}
 
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	imported := 0
+	cutoff := metrics.logImportCutoff()
 	for scanner.Scan() {
+		line := scanner.Bytes()
 		var entry struct {
 			Timestamp   time.Time `json:"ts"`
 			Message     string    `json:"msg"`
@@ -269,7 +290,10 @@ func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error)
 			LatencyMs   int64     `json:"latencyMs"`
 			UserAgent   string    `json:"userAgent"`
 		}
-		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil || entry.Message != "request completed" {
+		if err := json.Unmarshal(line, &entry); err != nil || entry.Message != "request completed" {
+			continue
+		}
+		if !cutoff.IsZero() && !entry.Timestamp.IsZero() && !entry.Timestamp.Before(cutoff) {
 			continue
 		}
 		metrics.RecordHistoricalRequestMetric(RequestMetricDetails{
@@ -287,7 +311,57 @@ func importRequestMetricsFromLogFile(metrics *Metrics, path string) (int, error)
 		}, entry.Timestamp)
 		imported++
 	}
-	return imported, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return imported, err
+	}
+	metrics.setLogImportCursor(path, LogImportCursor{
+		Path:   path,
+		Offset: info.Size(),
+		Size:   info.Size(),
+		ModAt:  info.ModTime().UTC(),
+	})
+	return imported, nil
+}
+
+func canonicalLogImportPath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return filepath.Clean(path)
+	}
+	return filepath.Clean(abs)
+}
+
+func (m *Metrics) logImportCursor(path string) LogImportCursor {
+	if m == nil {
+		return LogImportCursor{}
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.logImports == nil {
+		return LogImportCursor{}
+	}
+	return m.logImports[path]
+}
+
+func (m *Metrics) setLogImportCursor(path string, cursor LogImportCursor) {
+	if m == nil || path == "" {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.logImports == nil {
+		m.logImports = make(map[string]LogImportCursor)
+	}
+	m.logImports[path] = cursor
+}
+
+func (m *Metrics) logImportCutoff() time.Time {
+	if m == nil {
+		return time.Time{}
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.startedAt
 }
 
 type metricsPersistentState struct {
@@ -344,9 +418,10 @@ type metricsPersistentState struct {
 	ClientSummaries      map[string]persistentClientMetricState   `json:"clientSummaries"`
 	ScrapeErrorsByReason map[string]uint64                        `json:"scrapeErrorsByReason"`
 
-	LatestCaches  []MetricEvent     `json:"latestCaches"`
-	LatestScrapes []MetricEvent     `json:"latestScrapes"`
-	RequestLogs   []RequestLogEntry `json:"requestLogs"`
+	LatestCaches  []MetricEvent              `json:"latestCaches"`
+	LatestScrapes []MetricEvent              `json:"latestScrapes"`
+	RequestLogs   []RequestLogEntry          `json:"requestLogs"`
+	LogImports    map[string]LogImportCursor `json:"logImports,omitempty"`
 
 	Locations    map[string]persistentLocationMetricState `json:"locations"`
 	HourBuckets  map[string]persistentMetricBucketState   `json:"hourBuckets"`
@@ -528,6 +603,7 @@ func (m *Metrics) persistentState() metricsPersistentState {
 		LatestCaches:  cloneMetricEvents(m.latestCaches),
 		LatestScrapes: cloneMetricEvents(m.latestScrapes),
 		RequestLogs:   cloneRequestLogs(m.requestLogs),
+		LogImports:    cloneLogImportCursors(m.logImports),
 
 		Locations:    persistentLocations(m.locations),
 		HourBuckets:  persistentBuckets(m.hourBuckets),
@@ -611,6 +687,10 @@ func (m *Metrics) restorePersistentState(state metricsPersistentState) {
 	m.latestCaches = limitMetricEvents(state.LatestCaches)
 	m.latestScrapes = limitMetricEvents(state.LatestScrapes)
 	m.requestLogs = limitRequestLogs(state.RequestLogs)
+	m.logImports = cloneLogImportCursors(state.LogImports)
+	if m.logImports == nil {
+		m.logImports = make(map[string]LogImportCursor)
+	}
 
 	m.locations = restoreLocations(state.Locations)
 	m.hourBuckets = restoreBuckets(state.HourBuckets)
@@ -919,6 +999,23 @@ func persistentCounter(counter windowCounter) persistentWindowCounter {
 
 func restoreCounter(counter persistentWindowCounter) windowCounter {
 	return windowCounter{total: counter.Total, today: counter.Today, thisWeek: counter.ThisWeek, thisMonth: counter.ThisMonth}
+}
+
+func cloneLogImportCursors(in map[string]LogImportCursor) map[string]LogImportCursor {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]LogImportCursor, len(in))
+	for key, cursor := range in {
+		key = canonicalLogImportPath(key)
+		if cursor.Path == "" {
+			cursor.Path = key
+		} else {
+			cursor.Path = canonicalLogImportPath(cursor.Path)
+		}
+		out[key] = cursor
+	}
+	return out
 }
 
 func fingerprintSetToSlice(values map[string]struct{}) []string {

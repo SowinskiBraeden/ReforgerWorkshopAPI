@@ -265,6 +265,7 @@ func (a *App) New() *mux.Router {
 	router.Handle("/rate-limits", a.Middleware.Wrap(http.HandlerFunc(a.RateLimitsHandler))).Methods("GET", "OPTIONS")
 	v1.Handle("/rate-limits", a.Middleware.Wrap(http.HandlerFunc(a.RateLimitsHandler))).Methods("GET", "OPTIONS")
 	router.HandleFunc("/internal/metrics", a.internalMetricsHandler).Methods("GET")
+	router.HandleFunc("/internal/metrics/import-logs", a.internalMetricsImportLogsHandler).Methods("POST")
 	router.HandleFunc("/internal/metrics/panel", a.internalMetricsPanelHandler).Methods("GET")
 	router.HandleFunc("/internal/login", a.internalLoginHandler).Methods("POST")
 	router.HandleFunc("/internal/logout", a.internalLogoutHandler).Methods("POST")
@@ -276,6 +277,7 @@ func (a *App) New() *mux.Router {
 	router.HandleFunc("/internal/admin/api-keys", a.createInternalAPIKeyHandler).Methods("POST")
 	router.HandleFunc("/internal/admin/api-keys/{id}", a.deleteInternalAPIKeyHandler).Methods("DELETE")
 	v1.HandleFunc("/internal/metrics", a.internalMetricsHandler).Methods("GET")
+	v1.HandleFunc("/internal/metrics/import-logs", a.internalMetricsImportLogsHandler).Methods("POST")
 	v1.HandleFunc("/internal/metrics/panel", a.internalMetricsPanelHandler).Methods("GET")
 	router.NotFoundHandler = http.HandlerFunc(a.serveNotFound)
 
@@ -410,6 +412,40 @@ func (a *App) internalMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(a.Metrics.Snapshot(a.Cache))
+}
+
+func (a *App) internalMetricsImportLogsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
+	if !a.Config.InternalMetricsEnabled {
+		config.WriteError(w, r, http.StatusNotFound, "NOT_FOUND", "Not found.")
+		return
+	}
+	if !a.internalAdminAllowed(r) {
+		writeAdminUnauthorized(w, r)
+		return
+	}
+	if a.Metrics == nil {
+		a.Metrics = api.NewMetrics()
+		a.configureMetricsWindowLocation(a.Metrics)
+	}
+	imported, err := api.ImportRequestMetricsFromLogs(a.Metrics, a.Config.LogDir)
+	if err != nil {
+		zap.S().Warnw("manual request log import failed", "error", err)
+		config.WriteError(w, r, http.StatusInternalServerError, "METRICS_LOG_IMPORT_FAILED", "Failed to import request logs.")
+		return
+	}
+	if a.MetricsStore != nil {
+		if err := a.MetricsStore.Save(a.Metrics); err != nil {
+			zap.S().Warnw("metrics state save after manual log import failed", "error", err)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"imported":      imported,
+		"totalRequests": a.Metrics.TotalRequests(),
+	})
 }
 
 func (a *App) internalMetricsPanelHandler(w http.ResponseWriter, r *http.Request) {

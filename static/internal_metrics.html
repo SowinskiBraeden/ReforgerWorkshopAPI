@@ -37,7 +37,7 @@
   </style>
 </head>
 <body>
-  <header><div class="wrap top"><div><h1>Admin Panel</h1><div class="sub" id="meta">Loading...</div></div><div class="controls"><div class="tabs"><button class="tab active" data-tab="overview">Overview</button><button class="tab" data-tab="logs">Request Logs</button><button class="tab" data-tab="clients">API Clients</button><button class="tab" data-tab="users">Users</button><button class="tab" data-tab="internalKeys">Internal Keys</button></div><select id="metricsWindow"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option></select><button class="primary" id="refresh">Refresh</button><button id="logout">Logout</button></div></div></header>
+  <header><div class="wrap top"><div><h1>Admin Panel</h1><div class="sub" id="meta">Loading...</div></div><div class="controls"><div class="tabs"><button class="tab active" data-tab="overview">Overview</button><button class="tab" data-tab="logs">Request Logs</button><button class="tab" data-tab="clients">API Clients</button><button class="tab" data-tab="users">Users</button><button class="tab" data-tab="internalKeys">Internal Keys</button></div><select id="metricsWindow"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option></select><button id="importLogs">Load logs</button><button class="primary" id="refresh">Refresh</button><button id="logout">Logout</button></div></div></header>
   <main class="wrap">
     <section class="view" id="overview">
       <div class="grid">
@@ -66,6 +66,7 @@
     let metrics=null,users=[],internalKeys={api_keys:[],rate_limit:null},visibleLogs=[];
 
     document.getElementById('refresh').addEventListener('click',load);
+    document.getElementById('importLogs').addEventListener('click',importLogs);
     document.getElementById('metricsWindow').addEventListener('change',()=>{if(metrics)renderOverview(metrics)});
     document.getElementById('logout').addEventListener('click',async()=>{await fetch('/internal/logout',{method:'POST',credentials:'same-origin'});location.reload()});
     document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
@@ -84,8 +85,16 @@
       renderUsers();renderInternalKeys();status.textContent=''
     }
     async function getJSON(path){const res=await fetch(path,{cache:'no-store',credentials:'same-origin'});if(res.status===401){location.reload();throw new Error('login required')}if(!res.ok)throw new Error(path+' failed: '+res.status);return res.json()}
+    async function postJSON(path){const res=await fetch(path,{method:'POST',cache:'no-store',credentials:'same-origin'});if(res.status===401){location.reload();throw new Error('login required')}if(!res.ok)throw new Error(path+' failed: '+res.status);return res.json()}
     function switchTab(id){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!==id);if(id==='users')renderUsers();if(id==='logs')renderLogs();if(id==='internalKeys')renderInternalKeys()}
     function note(text,isError){const status=document.getElementById('status');status.textContent=text;status.className='status'+(isError?' bad':'');if(text)setTimeout(()=>{if(status.textContent===text)status.textContent=''},6000)}
+
+    async function importLogs(){
+      const btn=document.getElementById('importLogs');btn.disabled=true;btn.textContent='Loading logs...';
+      try{const result=await postJSON('/internal/metrics/import-logs');metrics=await getJSON('/internal/metrics');renderMetrics(metrics);note('Imported '+fmt.format(result.imported||0)+' log requests.')}
+      catch(err){note('Log import failed: '+err.message,true)}
+      finally{btn.disabled=false;btn.textContent='Load logs'}
+    }
 
     function renderMetrics(data){
       document.getElementById('meta').textContent='Generated '+new Date(data.generatedAt).toLocaleString()+' · uptime '+formatDuration(data.uptimeSeconds);

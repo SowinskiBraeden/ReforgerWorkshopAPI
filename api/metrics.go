@@ -110,6 +110,7 @@ type Metrics struct {
 	latestScrapes []MetricEvent
 	requestLogs   []RequestLogEntry
 	locations     map[string]*locationMetricState
+	logImports    map[string]LogImportCursor
 
 	hourBuckets  map[string]*metricBucketState
 	dayBuckets   map[string]*metricBucketState
@@ -133,6 +134,13 @@ type RequestMetricDetails struct {
 	APIPlan       string
 	AccountID     string
 	KeyID         string
+}
+
+type LogImportCursor struct {
+	Path   string    `json:"path"`
+	Offset int64     `json:"offset"`
+	Size   int64     `json:"size"`
+	ModAt  time.Time `json:"modAt"`
 }
 
 type RequestLogEntry struct {
@@ -559,6 +567,7 @@ func NewMetrics() *Metrics {
 		cacheKeys:            make(map[string]*cacheKeyMetricState),
 		clientSummaries:      make(map[string]*clientMetricState),
 		scrapeErrorsByReason: make(map[string]uint64),
+		logImports:           make(map[string]LogImportCursor),
 		acceptedFlow: acceptedFlowState{
 			resources: make(map[string]*acceptedResourceState),
 		},

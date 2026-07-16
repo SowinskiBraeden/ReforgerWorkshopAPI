@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +58,50 @@ func TestInternalMetricsRejectsUnsetAdminCredentials(t *testing.T) {
 	app.internalMetricsHandler(w, r)
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("unset admin status = %d, want 401", w.Code)
+	}
+}
+
+func TestInternalMetricsImportLogsRequiresAdminAndImports(t *testing.T) {
+	dir := t.TempDir()
+	ts := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+	log := `{"ts":"` + ts + `","msg":"request completed","requestId":"old","clientIP":"203.0.113.10","countryCode":"US","method":"GET","path":"/v1/mods","status":200,"latencyMs":25,"userAgent":"old-client"}
+`
+	if err := os.WriteFile(filepath.Join(dir, "2026-07-08.log"), []byte(log), 0600); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+
+	app := App{Config: testHandlerConfig()}
+	app.Config.InternalMetricsEnabled = true
+	app.Config.InternalAdminUsername = "admin"
+	app.Config.InternalAdminPassword = "secret-password"
+	app.Config.InternalAdminSessionSecret = "session-secret"
+	app.Config.LogDir = dir
+	app.Metrics = api.NewMetrics()
+	app.Cache = api.NewResponseCache(app.Config, app.Metrics)
+
+	r := httptest.NewRequest(http.MethodPost, "/internal/metrics/import-logs", nil)
+	w := httptest.NewRecorder()
+	app.internalMetricsImportLogsHandler(w, r)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status without login = %d, want 401", w.Code)
+	}
+
+	r = httptest.NewRequest(http.MethodPost, "/internal/metrics/import-logs", nil)
+	r.AddCookie(adminLoginCookie(t, &app))
+	w = httptest.NewRecorder()
+	app.internalMetricsImportLogsHandler(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status with admin cookie = %d, want 200, body = %s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Imported      int    `json:"imported"`
+		TotalRequests uint64 `json:"totalRequests"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode import response: %v", err)
+	}
+	if body.Imported != 1 || body.TotalRequests != 1 {
+		t.Fatalf("import response = %+v, want imported/total 1", body)
 	}
 }
 

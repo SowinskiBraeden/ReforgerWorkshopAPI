@@ -489,6 +489,63 @@ func TestImportRequestMetricsFromLogsRollsWindowsToCurrentDay(t *testing.T) {
 	}
 }
 
+func TestImportRequestMetricsFromLogsUsesCursor(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "2026-07-08.log")
+	first := `{"ts":"2026-07-08T23:55:00Z","msg":"request completed","requestId":"first","clientIP":"203.0.113.10","countryCode":"US","method":"GET","path":"/v1/mods","status":200,"latencyMs":25,"userAgent":"old-client"}
+`
+	if err := os.WriteFile(path, []byte(first), 0600); err != nil {
+		t.Fatalf("write first log: %v", err)
+	}
+
+	metrics := NewMetrics()
+	now := time.Date(2026, 7, 9, 1, 0, 0, 0, time.UTC)
+	metrics.now = func() time.Time { return now }
+	metrics.startedAt = now
+
+	imported, err := ImportRequestMetricsFromLogs(metrics, dir)
+	if err != nil {
+		t.Fatalf("first import logs: %v", err)
+	}
+	if imported != 1 {
+		t.Fatalf("first imported = %d, want 1", imported)
+	}
+
+	imported, err = ImportRequestMetricsFromLogs(metrics, dir)
+	if err != nil {
+		t.Fatalf("second import logs: %v", err)
+	}
+	if imported != 0 {
+		t.Fatalf("second imported = %d, want 0", imported)
+	}
+
+	appended := `{"ts":"2026-07-08T23:56:00Z","msg":"request completed","requestId":"second","clientIP":"203.0.113.11","countryCode":"CA","method":"GET","path":"/v1/search","status":200,"latencyMs":30,"userAgent":"old-client"}
+{"ts":"2026-07-09T01:01:00Z","msg":"request completed","requestId":"live","clientIP":"203.0.113.12","countryCode":"US","method":"GET","path":"/v1/health","status":200,"latencyMs":10,"userAgent":"live-client"}
+`
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatalf("open append log: %v", err)
+	}
+	if _, err := file.WriteString(appended); err != nil {
+		_ = file.Close()
+		t.Fatalf("append log: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("close log: %v", err)
+	}
+
+	imported, err = ImportRequestMetricsFromLogs(metrics, dir)
+	if err != nil {
+		t.Fatalf("third import logs: %v", err)
+	}
+	if imported != 1 {
+		t.Fatalf("third imported = %d, want 1", imported)
+	}
+	if got := metrics.TotalRequests(); got != 2 {
+		t.Fatalf("total requests = %d, want 2", got)
+	}
+}
+
 type assertErr string
 
 func (e assertErr) Error() string { return string(e) }
