@@ -1310,6 +1310,7 @@ PAGES.settings = {
           <div class="formrow">
             <button id="op_import" class="primary">Import historical logs</button>
             <label><input type="checkbox" id="op_dry"> dry run</label>
+            <label><input type="checkbox" id="op_fresh"> re-scan files</label>
           </div>
           <div class="formrow">
             <label>Range (optional)</label>
@@ -1349,7 +1350,7 @@ PAGES.settings = {
       out.textContent = "Importing…";
       try {
         const summary = await mutate("/internal/api/import-logs", "POST", {
-          dryRun: $("#op_dry").checked, from: $("#op_from").value, to: $("#op_to").value,
+          dryRun: $("#op_dry").checked, fresh: $("#op_fresh").checked, from: $("#op_from").value, to: $("#op_to").value,
         });
         out.textContent = JSON.stringify(summary, null, 2);
       } catch (err) { out.textContent = "Import failed: " + err.message; }

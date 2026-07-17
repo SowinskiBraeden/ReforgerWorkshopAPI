@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -584,6 +583,7 @@ func (a *App) adminImportLogsHandler(w http.ResponseWriter, r *http.Request) {
 		DryRun bool   `json:"dryRun"`
 		From   string `json:"from"`
 		To     string `json:"to"`
+		Fresh  bool   `json:"fresh"`
 	}
 	if r.ContentLength > 0 && !decodeAdminJSON(w, r, &input) {
 		return
@@ -596,23 +596,31 @@ func (a *App) adminImportLogsHandler(w http.ResponseWriter, r *http.Request) {
 		DryRun:  input.DryRun,
 		FromDay: input.From,
 		ToDay:   input.To,
+		Fresh:   input.Fresh,
 	})
 	if err != nil {
 		zap.S().Warnw("historical log import failed", "error", err)
 		config.WriteError(w, r, http.StatusInternalServerError, "IMPORT_FAILED", "Historical log import failed: "+err.Error())
 		return
 	}
+	aggregated := false
 	if !input.DryRun && !summary.FirstEventAt.IsZero() {
-		go func() {
-			a.aggMu.Lock()
-			defer a.aggMu.Unlock()
-			if err := a.Aggregator.RebuildRange(context.Background(), summary.FirstEventAt, summary.LastEventAt); err != nil {
-				zap.S().Warnw("post-import aggregation rebuild failed", "error", err)
-			}
-		}()
+		a.aggMu.Lock()
+		err := a.Aggregator.RebuildRange(r.Context(), summary.FirstEventAt, summary.LastEventAt)
+		a.aggMu.Unlock()
+		if err != nil {
+			zap.S().Warnw("post-import aggregation rebuild failed", "error", err)
+			config.WriteError(w, r, http.StatusInternalServerError, "IMPORT_AGGREGATION_FAILED", "Logs imported, but aggregate rebuild failed: "+err.Error())
+			return
+		}
+		aggregated = true
 	}
 	a.audit(r, "telemetry.import_logs", "import", "", input)
-	writeAdminJSON(w, summary)
+	writeAdminJSON(w, map[string]any{
+		"import":      summary,
+		"aggregated":  aggregated,
+		"aggregation": a.Aggregator.State(r.Context()),
+	})
 }
 
 func (a *App) adminRebuildHandler(w http.ResponseWriter, r *http.Request) {
