@@ -25,6 +25,7 @@ type BillingAuth struct {
 	Plan      string
 	AccountID string
 	KeyID     string
+	ClientID  string
 }
 
 type RateIdentity struct {
@@ -38,20 +39,16 @@ type RateIdentity struct {
 
 type IdentityResolver func(r *http.Request, clientIP string) RateIdentity
 
-type MiddlewareConfig struct {
-	Config           config.Config
-	IdentityResolver IdentityResolver
-}
-
+// MiddlewareChain applies per-route policy: security headers, CORS, input
+// limits, and rate limiting. Request telemetry is NOT recorded here — the
+// outer TelemetryMiddleware owns that — this layer only annotates auth and
+// rate-limit outcomes onto the request's telemetry annotations.
 type MiddlewareChain struct {
-	cfg               config.Config
-	metrics           *Metrics
-	identityResolver  IdentityResolver
-	trustedProxies    []*net.IPNet
-	internalCIDRs     []*net.IPNet
-	ownClientPatterns []string
-	clients           map[string]*rateClient
-	mu                sync.Mutex
+	cfg              config.Config
+	identityResolver IdentityResolver
+	trustedProxies   []*net.IPNet
+	clients          map[string]*rateClient
+	mu               sync.Mutex
 }
 
 type rateClient struct {
@@ -61,18 +58,11 @@ type rateClient struct {
 	burst    int
 }
 
-func NewMiddleware(cfg config.Config, metrics ...*Metrics) *MiddlewareChain {
-	var collector *Metrics
-	if len(metrics) > 0 {
-		collector = metrics[0]
-	}
+func NewMiddleware(cfg config.Config) *MiddlewareChain {
 	m := &MiddlewareChain{
-		cfg:               cfg,
-		metrics:           collector,
-		trustedProxies:    parseTrustedProxies(cfg.TrustedProxyCIDRs),
-		internalCIDRs:     parseTrustedProxies(cfg.MetricsInternalCIDRs),
-		ownClientPatterns: normalizeClientPatterns(cfg.MetricsOwnClientPatterns),
-		clients:           make(map[string]*rateClient),
+		cfg:            cfg,
+		trustedProxies: parseTrustedProxies(cfg.TrustedProxyCIDRs),
+		clients:        make(map[string]*rateClient),
 	}
 	m.identityResolver = func(_ *http.Request, clientIP string) RateIdentity {
 		return RateIdentity{
@@ -96,85 +86,32 @@ func BillingAuthFromContext(ctx context.Context) (BillingAuth, bool) {
 	return auth, ok
 }
 
-// Middleware is kept for older tests/imports. New code should use NewMiddleware.
-func Middleware(next http.Handler) http.Handler {
-	return NewMiddleware(*config.New()).Wrap(next)
-}
-
 func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		requestID := requestID(r)
-		clientIP := ""
-		countryCode := ""
-		r.Header.Set("X-Request-Id", requestID)
-		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
-		recorder.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
-		recorder.Header().Set("X-Request-Id", requestID)
-		defer func() {
-			latency := time.Since(start)
-			if clientIP == "" {
-				clientIP = m.ClientIP(r)
-			}
-			if countryCode == "" {
-				countryCode = m.CountryCode(r)
-			}
-			apiClient := strings.TrimSpace(r.Header.Get("X-API-Client"))
-			m.metrics.RecordRequestMetric(RequestMetricDetails{
-				Duration:      latency,
-				RequestID:     requestID,
-				ClientIP:      clientIP,
-				CountryCode:   countryCode,
-				APIClient:     apiClient,
-				UserAgent:     r.UserAgent(),
-				Headers:       redactedRequestHeaders(r.Header),
-				Source:        m.TrafficSource(r, clientIP),
-				Method:        r.Method,
-				Path:          r.URL.Path,
-				RawQuery:      r.URL.RawQuery,
-				StatusCode:    recorder.statusCode,
-				CacheStatus:   recorder.Header().Get("X-Cache"),
-				EndpointGroup: EndpointGroupForRequest(r.URL.Path, r.URL.RawQuery),
-				APIPlan:       billingPlanFromRequestContext(r),
-				AccountID:     billingAccountFromRequestContext(r),
-				KeyID:         billingKeyFromRequestContext(r),
-			})
-			zap.S().Infow("request completed",
-				"requestId", requestID,
-				"clientIP", clientIP,
-				"countryCode", countryCode,
-				"method", r.Method,
-				"path", r.URL.Path,
-				"query", r.URL.RawQuery,
-				"status", recorder.statusCode,
-				"latencyMs", latency.Milliseconds(),
-				"apiClient", apiClient,
-				"userAgent", r.UserAgent(),
-			)
-		}()
-
-		m.setSecurityHeaders(recorder)
-		if !m.applyCORS(recorder, r) {
-			config.WriteError(recorder, r, http.StatusForbidden, "CORS_FORBIDDEN", "Origin is not allowed.")
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow, noarchive")
+		m.setSecurityHeaders(w)
+		if !m.applyCORS(w, r) {
+			config.WriteError(w, r, http.StatusForbidden, "CORS_FORBIDDEN", "Origin is not allowed.")
 			return
 		}
 		if r.Method == http.MethodOptions {
-			recorder.WriteHeader(http.StatusNoContent)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		if len(r.URL.RawQuery) > m.cfg.MaxQueryLength {
-			config.WriteError(recorder, r, http.StatusRequestURITooLong, "QUERY_TOO_LONG", "Query string is too long.")
+			config.WriteError(w, r, http.StatusRequestURITooLong, "QUERY_TOO_LONG", "Query string is too long.")
 			return
 		}
 		if m.cfg.MaxBodyBytes > 0 {
-			r.Body = http.MaxBytesReader(recorder, r.Body, m.cfg.MaxBodyBytes)
+			r.Body = http.MaxBytesReader(w, r.Body, m.cfg.MaxBodyBytes)
 		}
 
-		clientIP = m.ClientIP(r)
-		countryCode = m.CountryCode(r)
+		annotations := AnnotationsFromContext(r.Context())
+		clientIP := m.ClientIP(r)
 		identity := m.identityResolver(r, clientIP)
 		if identity.RejectStatus > 0 {
-			config.WriteError(recorder, r, identity.RejectStatus, identity.RejectCode, identity.RejectMessage)
+			annotations.SetAuth("rejected", "", "", "", "", false)
+			config.WriteError(w, r, identity.RejectStatus, identity.RejectCode, identity.RejectMessage)
 			return
 		}
 		plan := strings.TrimPrefix(identity.Bucket, "plan:")
@@ -182,7 +119,7 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 			plan = plan[:i]
 		}
 		if plan == "free" || plan == "developer" || plan == "pro" || plan == "internal" {
-			recorder.Header().Set("X-API-Plan", plan)
+			w.Header().Set("X-API-Plan", plan)
 		}
 		if identity.Limit <= 0 {
 			identity.Limit = m.cfg.AnonymousRateLimitPerMinute
@@ -190,30 +127,24 @@ func (m *MiddlewareChain) Wrap(next http.Handler) http.Handler {
 		if identity.Burst <= 0 {
 			identity.Burst = m.cfg.AnonymousRateBurst
 		}
-		if !m.allow(recorder, r, identity) {
-			zap.S().Infow("rate limit rejected", "requestId", requestID, "clientIP", clientIP, "path", r.URL.Path, "bucket", identity.Bucket)
+		if !m.allow(w, r, identity) {
+			annotations.SetRateLimit(true, identity.Limit, identity.Bucket)
+			zap.S().Infow("rate limit rejected",
+				"requestId", r.Header.Get("X-Request-Id"),
+				"route", r.URL.Path,
+				"bucket", sanitizeRateBucket(identity.Bucket),
+			)
 			return
 		}
+		annotations.SetRateLimit(false, identity.Limit, identity.Bucket)
 
-		next.ServeHTTP(recorder, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
-type statusRecorder struct {
-	http.ResponseWriter
-	statusCode int
-	wrote      bool
-}
-
-func (r *statusRecorder) WriteHeader(statusCode int) {
-	if r.wrote {
-		return
-	}
-	r.wrote = true
-	r.statusCode = statusCode
-	r.ResponseWriter.WriteHeader(statusCode)
-}
-
+// ClientIP resolves the peer address, honoring forwarding headers only when
+// the direct peer is a trusted proxy. Callers must treat the value as
+// transient: it is never stored or logged.
 func (m *MiddlewareChain) ClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -240,114 +171,6 @@ func (m *MiddlewareChain) ClientIP(r *http.Request) string {
 	return remoteIP.String()
 }
 
-func (m *MiddlewareChain) CountryCode(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	remoteIP := net.ParseIP(strings.TrimSpace(host))
-	if remoteIP == nil || !m.isTrustedProxy(remoteIP) {
-		return "ZZ"
-	}
-	return requestCountryCodeFromHeaders(r)
-}
-
-func (m *MiddlewareChain) TrafficSource(r *http.Request, clientIP string) string {
-	ip := net.ParseIP(strings.TrimSpace(clientIP))
-	if ip == nil {
-		return TrafficSourceUnknown
-	}
-	if ip.IsLoopback() {
-		return TrafficSourceInternalLoopback
-	}
-	for _, cidr := range m.internalCIDRs {
-		if cidr.Contains(ip) {
-			if ip.IsLoopback() {
-				return TrafficSourceInternalLoopback
-			}
-			return TrafficSourceInternal
-		}
-	}
-	if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-		return TrafficSourceInternal
-	}
-	return TrafficSourceExternal
-}
-
-func billingPlanFromRequestContext(r *http.Request) string {
-	auth, ok := BillingAuthFromContext(r.Context())
-	if !ok {
-		return ""
-	}
-	return auth.Plan
-}
-
-func billingAccountFromRequestContext(r *http.Request) string {
-	auth, ok := BillingAuthFromContext(r.Context())
-	if !ok {
-		return ""
-	}
-	return auth.AccountID
-}
-
-func billingKeyFromRequestContext(r *http.Request) string {
-	auth, ok := BillingAuthFromContext(r.Context())
-	if !ok {
-		return ""
-	}
-	return auth.KeyID
-}
-
-func redactedRequestHeaders(headers http.Header) map[string]string {
-	out := make(map[string]string, len(headers))
-	for key, values := range headers {
-		name := http.CanonicalHeaderKey(key)
-		if sensitiveRequestHeader(name) {
-			out[name] = "[redacted]"
-			continue
-		}
-		value := strings.Join(values, ", ")
-		if len(value) > 300 {
-			value = value[:300] + "..."
-		}
-		out[name] = value
-	}
-	return out
-}
-
-func sensitiveRequestHeader(name string) bool {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "authorization", "cookie", "set-cookie", "x-api-key", "stripe-signature", "proxy-authorization":
-		return true
-	default:
-		return false
-	}
-}
-
-func normalizeClientPatterns(patterns []string) []string {
-	out := make([]string, 0, len(patterns))
-	for _, pattern := range patterns {
-		pattern = strings.ToLower(strings.TrimSpace(pattern))
-		if pattern != "" {
-			out = append(out, pattern)
-		}
-	}
-	return out
-}
-
-func userAgentMatches(userAgent string, patterns []string) bool {
-	userAgent = strings.ToLower(strings.TrimSpace(userAgent))
-	if userAgent == "" {
-		return false
-	}
-	for _, pattern := range patterns {
-		if pattern != "" && strings.Contains(userAgent, pattern) {
-			return true
-		}
-	}
-	return false
-}
-
 func requestCountryCodeFromHeaders(r *http.Request) string {
 	for _, header := range []string{
 		"CF-IPCountry",
@@ -371,6 +194,14 @@ func normalizeMetricsCountryCode(raw string) string {
 		if r < 'A' || r > 'Z' {
 			return ""
 		}
+	}
+	return code
+}
+
+func normalizeCountryCode(countryCode string) string {
+	code := normalizeMetricsCountryCode(countryCode)
+	if code == "" {
+		return "ZZ"
 	}
 	return code
 }
@@ -443,7 +274,7 @@ func (m *MiddlewareChain) applyCORS(w http.ResponseWriter, r *http.Request) bool
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization, X-API-Client, X-API-Key")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization, X-API-Client, X-API-Key, X-ReforgerMods-Client, X-ReforgerMods-Client-Version")
 			return true
 		}
 	}
@@ -500,11 +331,13 @@ func parseTrustedProxies(raw string) []*net.IPNet {
 	return cidrs
 }
 
-func requestID(r *http.Request) string {
-	if existing := strings.TrimSpace(r.Header.Get("X-Request-Id")); existing != "" && len(existing) <= 128 {
-		return existing
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
 	}
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	return ""
 }
 
 func maxInt(a, b int) int {

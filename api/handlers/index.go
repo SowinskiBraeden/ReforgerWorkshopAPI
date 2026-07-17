@@ -43,9 +43,7 @@ func (a *App) persistListPage(ctx context.Context, key string, pageNumber int, s
 	}); err != nil {
 		a.recordIndexDBError("failed to persist list page", err)
 	}
-	if a.Metrics != nil {
-		a.Metrics.RecordIndexEvent("page_refreshed", 0)
-	}
+	a.Hooks.IndexEvent("page_refreshed")
 	a.queueDetailHydration(results.Mods)
 }
 
@@ -72,9 +70,7 @@ func (a *App) persistModDetail(ctx context.Context, modID string, mod models.Mod
 	}); err != nil {
 		a.recordIndexDBError("failed to persist mod detail", err)
 	}
-	if a.Metrics != nil {
-		a.Metrics.RecordIndexEvent("detail_refreshed", 0)
-	}
+	a.Hooks.IndexEvent("detail_refreshed")
 }
 
 func (a *App) localSearchFallback(key string, pageNumber int, search string, sort string, tags []string, policy api.CacheTTLPolicy) api.LocalFallbackFunc {
@@ -89,14 +85,10 @@ func (a *App) localSearchFallback(key string, pageNumber int, search string, sor
 			return api.CachedResponse{}, false
 		}
 		if len(mods) == 0 {
-			if a.Metrics != nil {
-				a.Metrics.RecordIndexEvent("local_search_empty", 0)
-			}
+			a.Hooks.IndexEvent("local_search_empty")
 			return api.CachedResponse{}, false
 		}
-		if a.Metrics != nil {
-			a.Metrics.RecordIndexEvent("local_search_hit", 0)
-		}
+		a.Hooks.IndexEvent("local_search_hit")
 		totalPages := pageNumber
 		if len(mods) == 16 {
 			totalPages = pageNumber + 1
@@ -180,8 +172,8 @@ func (a *App) queueDetailHydration(mods []models.ModPreview) {
 			a.persistModDetail(ctx, modID, *mod, body, policy)
 			return api.CachedResponse{StatusCode: http.StatusOK, Body: body}
 		})
-		if err == nil && created && a.Metrics != nil {
-			a.Metrics.RecordIndexEvent("background_queued", 0)
+		if err == nil && created {
+			a.Hooks.IndexEvent("background_queued")
 		}
 	}
 }
@@ -219,8 +211,6 @@ func (a *App) recordIndexDBError(message string, err error) {
 	if err == nil {
 		return
 	}
-	if a.Metrics != nil {
-		a.Metrics.RecordIndexEvent("database_error", 0)
-	}
+	a.Hooks.IndexEvent("database_error")
 	zap.S().Warnw(message, "error", err)
 }

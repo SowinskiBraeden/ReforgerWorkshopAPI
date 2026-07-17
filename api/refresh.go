@@ -72,7 +72,7 @@ type refreshManager struct {
 	retention  time.Duration
 	retryAfter time.Duration
 	onComplete func(*refreshJob, CachedResponse, time.Duration)
-	metrics    *Metrics
+	hooks      *TelemetryHooks
 	now        func() time.Time
 
 	ctx    context.Context
@@ -102,12 +102,13 @@ type refreshJob struct {
 
 	status      RefreshJobStatus
 	createdAt   time.Time
+	startedAt   time.Time
 	updatedAt   time.Time
 	completedAt *time.Time
 	message     string
 }
 
-func newRefreshManager(workers int, queueSize int, timeout time.Duration, retention time.Duration, retryAfter time.Duration, metrics *Metrics, now func() time.Time, onComplete func(*refreshJob, CachedResponse, time.Duration)) *refreshManager {
+func newRefreshManager(workers int, queueSize int, timeout time.Duration, retention time.Duration, retryAfter time.Duration, hooks *TelemetryHooks, now func() time.Time, onComplete func(*refreshJob, CachedResponse, time.Duration)) *refreshManager {
 	if workers <= 0 {
 		workers = 1
 	}
@@ -132,7 +133,7 @@ func newRefreshManager(workers int, queueSize int, timeout time.Duration, retent
 		retention:   retention,
 		retryAfter:  retryAfter,
 		onComplete:  onComplete,
-		metrics:     metrics,
+		hooks:       hooks,
 		now:         now,
 		ctx:         ctx,
 		cancel:      cancel,
@@ -163,20 +164,22 @@ func (m *refreshManager) Enqueue(req RefreshRequest) (RefreshJobSnapshot, bool, 
 	defer m.mu.Unlock()
 
 	if m.shutting {
-		m.recordRefreshMetricLocked("rejected")
+		m.hooks.JobRejected()
+		m.publishQueueStateLocked()
 		return RefreshJobSnapshot{}, false, ErrRefreshShutdown
 	}
 	if id := m.activeByKey[req.ResourceKey]; id != "" {
 		job := m.jobs[id]
 		if job != nil {
-			m.recordRefreshMetricLocked("deduplicated")
+			m.hooks.JobDeduplicated(job.id)
 			return m.snapshotLocked(job), false, nil
 		}
 		delete(m.activeByKey, req.ResourceKey)
 	}
 
 	if len(m.queued) >= m.queueSize {
-		m.recordRefreshMetricLocked("rejected")
+		m.hooks.JobRejected()
+		m.publishQueueStateLocked()
 		return RefreshJobSnapshot{}, false, ErrRefreshQueueFull
 	}
 	job := &refreshJob{
@@ -195,7 +198,8 @@ func (m *refreshManager) Enqueue(req RefreshRequest) (RefreshJobSnapshot, bool, 
 	m.queued = append(m.queued, job)
 	m.jobs[job.id] = job
 	m.activeByKey[job.resourceKey] = job.id
-	m.recordRefreshMetricLocked("created")
+	m.hooks.JobQueued(job.id, job.requestID, jobKindFor(job.priority, job.requestID), job.resourceKey, job.resourceURL, string(job.priority), now)
+	m.publishQueueStateLocked()
 	select {
 	case m.wake <- struct{}{}:
 	default:
@@ -284,7 +288,7 @@ func (m *refreshManager) nextJob() *refreshJob {
 }
 
 func (m *refreshManager) runJob(workerID int, job *refreshJob) {
-	m.markRunning(job)
+	m.markRunning(job, workerID)
 	start := m.now()
 
 	defer func() {
@@ -332,13 +336,16 @@ func (m *refreshManager) runJob(workerID int, job *refreshJob) {
 	)
 }
 
-func (m *refreshManager) markRunning(job *refreshJob) {
+func (m *refreshManager) markRunning(job *refreshJob, workerID int) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	now := m.now().UTC()
 	job.status = RefreshJobRunning
-	job.updatedAt = m.now().UTC()
+	job.startedAt = now
+	job.updatedAt = now
 	m.active++
-	m.recordRefreshMetricLocked("running")
+	m.hooks.JobStarted(job.id, workerID, now)
+	m.publishQueueStateLocked()
 }
 
 func (m *refreshManager) complete(job *refreshJob, resp CachedResponse, duration time.Duration) RefreshJobStatus {
@@ -367,11 +374,15 @@ func (m *refreshManager) complete(job *refreshJob, resp CachedResponse, duration
 	if m.active > 0 {
 		m.active--
 	}
+	failureReason := ""
 	if resp.Err != nil {
-		m.recordRefreshMetricLocked("failed")
-	} else {
-		m.recordRefreshMetricLocked("succeeded")
+		failureReason = ClassifyScrapeError(resp.Err, resp.StatusCode)
+		if resp.PanicRecovered {
+			failureReason = "panic_recovered"
+		}
 	}
+	m.hooks.JobFinished(job.id, job.createdAt, job.startedAt, now, resp.Err == nil, resp.StatusCode, failureReason, resp.PanicRecovered)
+	m.publishQueueStateLocked()
 	return job.status
 }
 
@@ -409,7 +420,7 @@ func (m *refreshManager) cleanup() {
 			job.status = RefreshJobExpired
 			job.updatedAt = now
 			job.message = "Refresh job status expired."
-			m.recordRefreshMetricLocked("expired")
+			m.hooks.JobExpired(job.id)
 			continue
 		}
 		if job.status == RefreshJobExpired && age >= 2*m.retention {
@@ -435,11 +446,17 @@ func (m *refreshManager) snapshotLocked(job *refreshJob) RefreshJobSnapshot {
 	return snapshot
 }
 
-func (m *refreshManager) recordRefreshMetricLocked(event string) {
-	if m.metrics != nil {
-		m.metrics.RecordRefreshEvent(event, len(m.queued), m.active)
-		m.metrics.RecordRefreshSnapshot(len(m.queued), m.queueSize, m.active, m.workers)
+func (m *refreshManager) publishQueueStateLocked() {
+	m.hooks.RefreshQueueState(len(m.queued), m.queueSize, m.active, m.workers)
+}
+
+// jobKindFor distinguishes request-driven cache refreshes from scheduler
+// work: scheduler enqueues carry no request ID.
+func jobKindFor(priority RefreshPriority, requestID string) string {
+	if requestID == "" {
+		return "index_refresh"
 	}
+	return "cache_refresh"
 }
 
 func priorityRank(priority RefreshPriority) int {

@@ -260,7 +260,7 @@ func (s *BillingStore) Migrate(ctx context.Context) error {
 			return err
 		}
 	}
-	return nil
+	return s.migrateAdmin(ctx)
 }
 
 func (s *BillingStore) UpsertAccount(ctx context.Context, account Account) (Account, error) {

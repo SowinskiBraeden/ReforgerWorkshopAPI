@@ -34,7 +34,7 @@ type CachedResponse struct {
 
 type ResponseCache struct {
 	cfg     config.Config
-	metrics *Metrics
+	hooks   *TelemetryHooks
 	store   *IndexStore
 	mu      sync.Mutex
 	entries map[string]*cacheEntry
@@ -76,18 +76,18 @@ type CacheInfo struct {
 	RefreshJobID  string    `json:"refreshJobId,omitempty"`
 }
 
-func NewResponseCache(cfg config.Config, metrics ...*Metrics) *ResponseCache {
+func NewResponseCache(cfg config.Config, hooks ...*TelemetryHooks) *ResponseCache {
 	parallel := cfg.CacheRefreshParallel
 	if parallel <= 0 {
 		parallel = 1
 	}
-	var collector *Metrics
-	if len(metrics) > 0 {
-		collector = metrics[0]
+	var collector *TelemetryHooks
+	if len(hooks) > 0 {
+		collector = hooks[0]
 	}
 	cache := &ResponseCache{
 		cfg:     cfg,
-		metrics: collector,
+		hooks:   collector,
 		entries: make(map[string]*cacheEntry),
 		now:     time.Now,
 	}
@@ -114,9 +114,7 @@ func (c *ResponseCache) PreloadHotEntries(ctx context.Context, limit int) error 
 	}
 	entries, err := c.store.HotCacheEntries(ctx, limit)
 	if err != nil {
-		if c.metrics != nil {
-			c.metrics.RecordIndexEvent("database_error", 0)
-		}
+		c.hooks.DatabaseError("index_hot_preload", err)
 		return err
 	}
 	now := c.now()
@@ -267,18 +265,12 @@ func (c *ResponseCache) finishRefresh(job *refreshJob, resp CachedResponse, dura
 	}
 	if resp.Err != nil {
 		c.markRefreshFailed(job)
-		reason := ClassifyScrapeError(resp.Err, resp.StatusCode)
-		if resp.PanicRecovered {
-			reason = "panic_recovered"
-		}
-		c.metrics.RecordScrapeResult(job.resourceKey, resp.StatusCode, duration, resp.Err, reason)
-		c.metrics.RecordRefreshCompletion(job.resourceKey, RefreshJobFailed, duration, reason, resp.PanicRecovered)
+		c.hooks.UpstreamFetch(job.resourceKey, resp.StatusCode, duration, resp.Err, job.id)
 		zap.S().Warnw("cache refresh failed", "requestId", job.requestID, "jobId", job.id, "key", job.resourceKey, "durationMs", duration.Milliseconds())
 		return
 	}
 	c.storeResponse(job.resourceKey, resp, RefreshJobSucceeded, job.id)
-	c.metrics.RecordScrapeResult(job.resourceKey, resp.StatusCode, duration, nil, "")
-	c.metrics.RecordRefreshCompletion(job.resourceKey, RefreshJobSucceeded, duration, "", false)
+	c.hooks.UpstreamFetch(job.resourceKey, resp.StatusCode, duration, nil, job.id)
 }
 
 func (c *ResponseCache) storeResponse(key string, resp CachedResponse, refreshStatus RefreshJobStatus, refreshJobID string) {
@@ -305,9 +297,7 @@ func (c *ResponseCache) storeResponse(key string, resp CachedResponse, refreshSt
 		persisted.LastRefreshStatus = string(refreshStatus)
 		go func() {
 			if err := c.store.PutCacheEntry(context.Background(), persisted); err != nil {
-				if c.metrics != nil {
-					c.metrics.RecordIndexEvent("database_error", 0)
-				}
+				c.hooks.DatabaseError("cache_persist", err)
 				zap.S().Warnw("failed to persist cache entry", "key", key, "error", err)
 			}
 		}()
@@ -324,37 +314,27 @@ func (c *ResponseCache) lookupPersistent(ctx context.Context, key string, now ti
 	}
 	persisted, ok, err := c.store.GetCacheEntry(ctx, key)
 	if err != nil {
-		if c.metrics != nil {
-			c.metrics.RecordPersistentCache("ERROR")
-			c.metrics.RecordIndexEvent("database_error", 0)
-		}
+		c.hooks.PersistentCache("ERROR")
+		c.hooks.DatabaseError("persistent_cache_lookup", err)
 		zap.S().Warnw("persistent cache lookup failed", "key", key, "error", err)
 		return nil, "MISS"
 	}
 	if !ok {
-		if c.metrics != nil {
-			c.metrics.RecordPersistentCache("MISS")
-		}
+		c.hooks.PersistentCache("MISS")
 		return nil, "MISS"
 	}
 	entry := cacheEntryFromPersistent(persisted)
 	if now.Before(entry.expiresAt) {
 		c.promotePersistent(key, entry)
-		if c.metrics != nil {
-			c.metrics.RecordPersistentCache("HIT")
-		}
+		c.hooks.PersistentCache("HIT")
 		return cloneCacheEntry(entry), "HIT"
 	}
 	if now.Before(entry.staleAt) {
 		c.promotePersistent(key, entry)
-		if c.metrics != nil {
-			c.metrics.RecordPersistentCache("STALE")
-		}
+		c.hooks.PersistentCache("STALE")
 		return cloneCacheEntry(entry), "STALE"
 	}
-	if c.metrics != nil {
-		c.metrics.RecordPersistentCache("MISS")
-	}
+	c.hooks.PersistentCache("MISS")
 	return nil, "MISS"
 }
 
@@ -392,17 +372,18 @@ func (c *ResponseCache) markRefreshQueued(key string, job RefreshJobSnapshot) {
 
 func (c *ResponseCache) write(w http.ResponseWriter, r *http.Request, key string, entry *cacheEntry, cacheStatus string, refreshStatus RefreshJobStatus) {
 	now := c.now()
+	// Cache outcome is carried on the X-Cache header and lands on the
+	// request event; no separate cache event is recorded, so a request can
+	// never be counted twice.
 	if match := r.Header.Get("If-None-Match"); match != "" && match == entry.etag {
 		c.setCacheHeaders(w, entry, cacheStatus, refreshStatus, now)
 		w.WriteHeader(http.StatusNotModified)
-		c.metrics.RecordCache(key, cacheStatus, http.StatusNotModified)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	c.setCacheHeaders(w, entry, cacheStatus, refreshStatus, now)
 	w.WriteHeader(entry.response.StatusCode)
 	_, _ = w.Write(entry.response.Body)
-	c.metrics.RecordCache(key, cacheStatus, entry.response.StatusCode)
 }
 
 func (c *ResponseCache) setCacheHeaders(w http.ResponseWriter, entry *cacheEntry, cacheStatus string, refreshStatus RefreshJobStatus, now time.Time) {
@@ -448,7 +429,6 @@ func (c *ResponseCache) writeAccepted(w http.ResponseWriter, r *http.Request, ke
 	w.Header().Set("X-Refresh-Status", string(job.Status))
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(job)
-	c.metrics.RecordCache(key, "MISS", http.StatusAccepted)
 }
 
 func (c *ResponseCache) writeRefreshSaturated(w http.ResponseWriter, r *http.Request, err error) {
@@ -465,7 +445,6 @@ func (c *ResponseCache) writeRefreshSaturated(w http.ResponseWriter, r *http.Req
 	}
 	zap.S().Warnw("refresh request rejected", "requestId", r.Header.Get("X-Request-Id"), "path", r.URL.Path, "reason", code)
 	config.WriteError(w, r, status, code, message)
-	c.metrics.RecordCache(r.URL.Path, "MISS", status)
 }
 
 func (c *ResponseCache) touchLocked(key string) {

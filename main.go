@@ -16,11 +16,15 @@ import (
 	"go.uber.org/zap"
 )
 
-const version string = "1.3.0"
+const version string = "1.4.0"
 
 func main() {
+	handlers.Version = version
 	a := handlers.App{}
 	a.Config = *config.New()
+	if runMaintenanceCommand(&a) {
+		return
+	}
 	util.ConfigureScraper(util.ScraperConfig{
 		Timeout:     a.Config.UpstreamTimeout,
 		Retries:     a.Config.UpstreamRetries,
@@ -41,7 +45,7 @@ func main() {
 	)
 	server := &http.Server{
 		Addr:              a.Config.BindAddress,
-		Handler:           a.Router,
+		Handler:           a.Handler,
 		ReadHeaderTimeout: a.Config.ReadHeaderTimeout,
 		ReadTimeout:       a.Config.ReadTimeout,
 		WriteTimeout:      a.Config.WriteTimeout,

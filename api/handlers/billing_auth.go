@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/api"
 )
@@ -22,6 +23,7 @@ func (a *App) configureBillingIdentityResolver() {
 		return
 	}
 	a.Middleware.SetIdentityResolver(func(r *http.Request, clientIP string) api.RateIdentity {
+		annotations := api.AnnotationsFromContext(r.Context())
 		key := apiKeyFromRequest(r)
 		if key == "" || a.BillingStore == nil {
 			return api.RateIdentity{Bucket: "plan:free:" + clientIP, Limit: a.Config.AnonymousRateLimitPerMinute, Burst: a.Config.AnonymousRateBurst}
@@ -37,27 +39,50 @@ func (a *App) configureBillingIdentityResolver() {
 			}
 			auth := api.BillingAuth{Plan: api.PlanInternal, AccountID: "internal", KeyID: internalKey.ID}
 			*r = *r.WithContext(context.WithValue(r.Context(), api.ContextBillingAuthKey, auth))
+			annotations.SetAuth("internal_key", "internal", internalKey.ID, "", api.PlanInternal, true)
 			go a.BillingStore.TouchInternalAPIKeyUsed(context.Background(), internalKey.ID)
 			limits := a.rateLimitInfo(api.PlanInternal)
 			return api.RateIdentity{Bucket: "plan:" + api.PlanInternal + ":" + internalKey.ID, Limit: limits.Limit, Burst: limits.Burst}
 		}
-		record, account, ok, err := a.BillingStore.GetAPIKeyByHash(r.Context(), hash)
-		if err != nil || !ok || !record.IsActive || !record.RevokedAt.IsZero() {
+		record, account, clientID, disabledAt, expiresAt, accountStatus, ok, err := a.BillingStore.GetAPIKeyAuth(r.Context(), hash)
+		if err != nil || !ok {
 			return invalidKeyIdentity()
+		}
+		if usable, reason := api.KeyUsable(record, disabledAt, expiresAt, accountStatus, timeNow()); !usable {
+			switch reason {
+			case "account_suspended", "account_deleted":
+				return api.RateIdentity{RejectStatus: http.StatusForbidden, RejectCode: "ACCOUNT_SUSPENDED", RejectMessage: "Account is suspended."}
+			case "expired":
+				return api.RateIdentity{RejectStatus: http.StatusUnauthorized, RejectCode: "API_KEY_EXPIRED", RejectMessage: "API key has expired."}
+			case "disabled":
+				return api.RateIdentity{RejectStatus: http.StatusUnauthorized, RejectCode: "API_KEY_DISABLED", RejectMessage: "API key is temporarily disabled."}
+			default:
+				return invalidKeyIdentity()
+			}
 		}
 		if !subscriptionAllowsPaidAccess(account.SubscriptionStatus) || normalizeBillingPlan(account.Plan) == "" {
 			return api.RateIdentity{RejectStatus: http.StatusForbidden, RejectCode: "API_KEY_INACTIVE", RejectMessage: "API key subscription is not active."}
 		}
 		plan := normalizeBillingPlan(account.Plan)
-		auth := api.BillingAuth{Plan: plan, AccountID: account.ID, KeyID: record.ID}
+		auth := api.BillingAuth{Plan: plan, AccountID: account.ID, KeyID: record.ID, ClientID: clientID}
 		*r = *r.WithContext(context.WithValue(r.Context(), api.ContextBillingAuthKey, auth))
-		go a.BillingStore.TouchAPIKeyUsed(context.Background(), record.ID)
+		annotations.SetAuth("api_key", account.ID, record.ID, clientID, plan, clientVerifiedFor(r, clientID))
+		go a.BillingStore.TouchAPIKeyUsedAt(context.Background(), record.ID)
 		limits := a.rateLimitInfo(plan)
 		// The bucket is keyed by account, not key, so creating extra keys
 		// never multiplies the paid rate limit.
 		return api.RateIdentity{Bucket: "plan:" + plan + ":" + account.ID, Limit: limits.Limit, Burst: limits.Burst}
 	})
 }
+
+// clientVerifiedFor treats a self-reported client name as verified only when
+// the authenticated key belongs to a registered client (headers alone can be
+// spoofed).
+func clientVerifiedFor(r *http.Request, clientID string) bool {
+	return clientID != ""
+}
+
+func timeNow() time.Time { return time.Now().UTC() }
 
 func (a *App) rateLimitInfo(plan string) rateLimitInfo {
 	plan = normalizeBillingPlan(plan)

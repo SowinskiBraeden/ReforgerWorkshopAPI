@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin | Reforger Mods API</title>
+<link rel="stylesheet" href="/static/internal/admin.css">
+</head>
+<body>
+<div id="app">
+  <aside id="nav">
+    <div class="brand">reforgermods<span>.net</span><em>internal</em></div>
+    <nav id="navlinks"></nav>
+    <div class="navfoot">
+      <div id="whoami"></div>
+      <button id="logout" class="ghost">Sign out</button>
+    </div>
+  </aside>
+  <main id="main">
+    <header id="topbar">
+      <h1 id="pagetitle">Overview</h1>
+      <div class="controls">
+        <select id="range">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d" selected>Last 30 days</option>
+          <option value="this_month">This month</option>
+          <option value="last_month">Last month</option>
+          <option value="this_year">This year</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <span id="customrange" class="hidden">
+          <input type="date" id="from"> – <input type="date" id="to">
+          <button id="applyrange">Apply</button>
+        </span>
+        <select id="tz">
+          <option value="utc" selected>UTC</option>
+          <option value="local">Local time</option>
+        </select>
+        <button id="refresh" title="Reload">&#x21bb;</button>
+      </div>
+    </header>
+    <div id="content"><div class="loading">Loading…</div></div>
+  </main>
+</div>
+<div id="drawer" class="hidden"><div id="drawerbox"><button id="drawerclose">×</button><div id="drawerbody"></div></div></div>
+<script src="/static/internal/admin.js"></script>
+</body>
+</html>

@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/config"
+	"github.com/SowinskiBraeden/ReforgerWorkshopAPI/telemetry"
+	"github.com/gorilla/mux"
 )
 
 func testConfig() config.Config {
@@ -50,66 +53,9 @@ func TestClientIPUsesForwardedForFromTrustedProxy(t *testing.T) {
 	}
 }
 
-func TestCountryCodeUsesKnownHeadersFromTrustedProxy(t *testing.T) {
-	cfg := testConfig()
-	cfg.TrustedProxyCIDRs = "10.0.0.0/8"
-	m := NewMiddleware(cfg)
-
-	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
-	r.RemoteAddr = "10.1.2.3:1234"
-	r.Header.Set("CF-IPCountry", "ca")
-
-	if got := m.CountryCode(r); got != "CA" {
-		t.Fatalf("CountryCode() = %q, want CA", got)
-	}
-
-	r.Header.Set("CF-IPCountry", "XX")
-	r.Header.Set("X-Vercel-IP-Country", "US")
-	if got := m.CountryCode(r); got != "US" {
-		t.Fatalf("CountryCode() fallback = %q, want US", got)
-	}
-}
-
-func TestCountryCodeIgnoresSpoofedHeadersFromUntrustedRemote(t *testing.T) {
-	cfg := testConfig()
-	m := NewMiddleware(cfg)
-
-	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
-	r.RemoteAddr = "203.0.113.10:1234"
-	r.Header.Set("CF-IPCountry", "CA")
-
-	if got := m.CountryCode(r); got != "ZZ" {
-		t.Fatalf("CountryCode() = %q, want unknown for untrusted remote", got)
-	}
-}
-
-func TestTrafficSourceClassification(t *testing.T) {
-	cfg := testConfig()
-	cfg.MetricsOwnClientPatterns = []string{"ReforgerPanel"}
-	cfg.MetricsInternalCIDRs = "10.0.0.0/8,127.0.0.1/32,::1/128"
-	m := NewMiddleware(cfg)
-
-	r := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
-	if got := m.TrafficSource(r, "127.0.0.1"); got != TrafficSourceInternalLoopback {
-		t.Fatalf("loopback source = %q, want %q", got, TrafficSourceInternalLoopback)
-	}
-	if got := m.TrafficSource(r, "10.1.2.3"); got != TrafficSourceInternal {
-		t.Fatalf("internal source = %q, want %q", got, TrafficSourceInternal)
-	}
-	r.Header.Set("User-Agent", "ReforgerPanel/1.0")
-	if got := m.TrafficSource(r, "203.0.113.10"); got != TrafficSourceExternal {
-		t.Fatalf("panel-like external source = %q, want %q", got, TrafficSourceExternal)
-	}
-	r.Header.Set("User-Agent", "curl/8.21.0")
-	if got := m.TrafficSource(r, "8.8.8.8"); got != TrafficSourceExternal {
-		t.Fatalf("external source = %q, want %q", got, TrafficSourceExternal)
-	}
-}
-
 func TestMiddlewareReturnsRequestIDHeader(t *testing.T) {
 	cfg := testConfig()
-	m := NewMiddleware(cfg)
-	handler := m.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := testTelemetryHandler(t, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -126,8 +72,7 @@ func TestMiddlewareReturnsRequestIDHeader(t *testing.T) {
 
 func TestMiddlewareGeneratesRequestIDHeader(t *testing.T) {
 	cfg := testConfig()
-	m := NewMiddleware(cfg)
-	handler := m.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := testTelemetryHandler(t, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -139,6 +84,24 @@ func TestMiddlewareGeneratesRequestIDHeader(t *testing.T) {
 	if got := recorder.Header().Get("X-Request-Id"); got == "" {
 		t.Fatal("X-Request-Id header was not set")
 	}
+}
+
+// testTelemetryHandler wraps a handler in the outer telemetry middleware the
+// way Initialize does, backed by a throwaway telemetry store.
+func testTelemetryHandler(t *testing.T, cfg config.Config, next http.Handler) http.Handler {
+	t.Helper()
+	store, err := telemetry.Open(filepath.Join(t.TempDir(), "telemetry.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := telemetry.NewRecorder(store)
+	t.Cleanup(func() {
+		_ = recorder.Close()
+		_ = store.Close()
+	})
+	router := mux.NewRouter()
+	router.PathPrefix("/").Handler(next)
+	return NewTelemetryMiddleware(cfg, recorder, router, "test").Handler()
 }
 
 func TestMiddlewareAllowsSameOriginPOSTWithoutCORSAllowlist(t *testing.T) {

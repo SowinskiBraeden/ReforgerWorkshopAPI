@@ -80,13 +80,20 @@ type Config struct {
 	InternalAdminUsername      string
 	InternalAdminPassword      string
 	InternalAdminSessionSecret string
-	MetricsOwnClientPatterns   []string
 	MetricsInternalCIDRs       string
+	MetricsTimezone            string
 
-	MetricsPersistenceEnabled bool
-	MetricsStatePath          string
-	MetricsFlushInterval      time.Duration
-	MetricsTimezone           string
+	TelemetryEnabled          bool
+	TelemetryDBPath           string
+	TelemetryHashSecret       string
+	AnonIDRotation            string
+	TelemetryRawRetentionDays int
+	TelemetryHourlyRetention  int
+	TelemetryLogRetentionDays int
+	TelemetryErrRetentionDays int
+	TelemetrySlowRequestMs    int
+	InternalTrafficSecret     string
+	InstanceID                string
 
 	BillingEnabled         bool
 	BillingDBPath          string
@@ -201,19 +208,21 @@ func New() *Config {
 		InternalAdminUsername:      strings.TrimSpace(os.Getenv("INTERNAL_ADMIN_USERNAME")),
 		InternalAdminPassword:      os.Getenv("INTERNAL_ADMIN_PASSWORD"),
 		InternalAdminSessionSecret: strings.TrimSpace(os.Getenv("INTERNAL_ADMIN_SESSION_SECRET")),
-		MetricsOwnClientPatterns: envCSVWithDefault(
-			"METRICS_OWN_CLIENT_PATTERNS",
-			[]string{"node", "ReforgerPanel", "DZRPanel"},
-		),
-		MetricsInternalCIDRs: envString("METRICS_INTERNAL_CIDRS", "127.0.0.1/32,::1/128"),
+		MetricsInternalCIDRs:       envString("METRICS_INTERNAL_CIDRS", "127.0.0.1/32,::1/128"),
+		// Display-only default timezone for the admin UI; stored data is UTC.
+		MetricsTimezone: envString("METRICS_TIMEZONE", "UTC"),
 
-		// Persistence defaults on so metrics (request totals, retention
-		// buckets, country origin) survive binary updates without any env
-		// setup. The state file lives next to the request logs by default.
-		MetricsPersistenceEnabled: envBool("METRICS_PERSISTENCE_ENABLED", true),
-		MetricsStatePath:          envString("METRICS_STATE_PATH", filepath.Join(logDir, "metrics-state.json")),
-		MetricsFlushInterval:      envDuration("METRICS_FLUSH_INTERVAL", 15*time.Second),
-		MetricsTimezone:           envString("METRICS_TIMEZONE", "UTC"),
+		TelemetryEnabled:          envBool("TELEMETRY_ENABLED", true),
+		TelemetryDBPath:           envString("TELEMETRY_DB_PATH", "data/telemetry.db"),
+		TelemetryHashSecret:       strings.TrimSpace(os.Getenv("TELEMETRY_HASH_SECRET")),
+		AnonIDRotation:            envString("ANON_ID_ROTATION", "monthly"),
+		TelemetryRawRetentionDays: envInt("TELEMETRY_RAW_RETENTION_DAYS", 90),
+		TelemetryHourlyRetention:  envInt("TELEMETRY_HOURLY_RETENTION_DAYS", 400),
+		TelemetryLogRetentionDays: envInt("TELEMETRY_LOG_RETENTION_DAYS", 30),
+		TelemetryErrRetentionDays: envInt("TELEMETRY_ERROR_RETENTION_DAYS", 365),
+		TelemetrySlowRequestMs:    envInt("TELEMETRY_SLOW_REQUEST_MS", 1500),
+		InternalTrafficSecret:     strings.TrimSpace(os.Getenv("INTERNAL_TRAFFIC_SECRET")),
+		InstanceID:                envString("INSTANCE_ID", hostnameOrDefault()),
 
 		BillingEnabled:         envBool("BILLING_ENABLED", false),
 		BillingDBPath:          envString("BILLING_DB_PATH", "/var/lib/reforgermods-api/reforgermods-billing.db"),
@@ -426,10 +435,9 @@ func envCSV(key string) []string {
 	return out
 }
 
-func envCSVWithDefault(key string, fallback []string) []string {
-	values := envCSV(key)
-	if len(values) == 0 {
-		return append([]string(nil), fallback...)
+func hostnameOrDefault() string {
+	if name, err := os.Hostname(); err == nil && strings.TrimSpace(name) != "" {
+		return strings.TrimSpace(name)
 	}
-	return values
+	return "server-1"
 }

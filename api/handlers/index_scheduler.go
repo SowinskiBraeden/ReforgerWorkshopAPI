@@ -83,15 +83,10 @@ func (s *IndexScheduler) enqueueListRefresh(page int, sort string) {
 	key := api.ModsCacheKey(page, "", sort, nil)
 	resourceURL := "/v1/mods/" + strconvItoa(page) + "?sort=" + sort
 	_, created, err := s.app.Cache.EnqueueRefresh(key, resourceURL, policy.Fresh, policy.Stale, api.RefreshPriorityLow, func(ctx context.Context) api.CachedResponse {
-		start := time.Now()
-		if s.app.Metrics != nil {
-			s.app.Metrics.RecordIndexEvent("background_running", 0)
-		}
+		s.app.Hooks.IndexEvent("background_running")
 		results, err := util.ScrapeModsContext(ctx, page, "", sort, nil)
 		if err != nil {
-			if s.app.Metrics != nil {
-				s.app.Metrics.RecordIndexEvent("refresh_failed", time.Since(start))
-			}
+			s.app.Hooks.IndexEvent("refresh_failed")
 			return api.CachedResponse{Err: err, ErrorCode: "UPSTREAM_UNAVAILABLE", Message: "Workshop list data is temporarily unavailable."}
 		}
 		if !results.Found {
@@ -116,20 +111,16 @@ func (s *IndexScheduler) enqueueListRefresh(page int, sort string) {
 			return api.CachedResponse{Err: err, ErrorCode: "INTERNAL_ERROR", Message: "Failed to encode response."}
 		}
 		s.app.persistListPage(ctx, key, page, "", sort, results, body, policy)
-		if s.app.Metrics != nil {
-			s.app.Metrics.RecordIndexEvent("background_succeeded", time.Since(start))
-		}
+		s.app.Hooks.IndexEvent("background_succeeded")
 		return api.CachedResponse{StatusCode: http.StatusOK, Body: body}
 	})
 	if err != nil {
-		if s.app.Metrics != nil {
-			s.app.Metrics.RecordIndexEvent("background_failed", 0)
-		}
+		s.app.Hooks.IndexEvent("background_failed")
 		zap.S().Warnw("background index job was not queued", "key", key, "error", err)
 		return
 	}
-	if created && s.app.Metrics != nil {
-		s.app.Metrics.RecordIndexEvent("background_queued", 0)
+	if created {
+		s.app.Hooks.IndexEvent("background_queued")
 	}
 }
 
