@@ -115,3 +115,16 @@ func TestIsInternalMetricsPath(t *testing.T) {
 		}
 	}
 }
+
+func TestIsIgnoredMetricsPath(t *testing.T) {
+	for _, path := range []string{"/internal", "/internal/api/overview", "/static", "/static/index.css", "static/internal/admin.js"} {
+		if !IsIgnoredMetricsPath(path) {
+			t.Errorf("%q should be ignored by request metrics", path)
+		}
+	}
+	for _, path := range []string{"/", "/mods/", "/account/session", "/v1/mods"} {
+		if IsIgnoredMetricsPath(path) {
+			t.Errorf("%q should remain in request metrics", path)
+		}
+	}
+}

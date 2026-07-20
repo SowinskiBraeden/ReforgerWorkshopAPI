@@ -711,7 +711,6 @@ var siteTemplate = htmltemplate.Must(htmltemplate.ParseFiles(htmlTemplatePath("t
 var homeLandingHTML = htmlFragment("core/home.html")
 
 var apiReferenceHTML = htmlFragment("core/api-reference.html")
-var comingSoonHTML = htmlFragment("core/coming-soon.html")
 var notFoundHTML = htmlFragment("core/not-found.html")
 
 var changelogFallbackHTML = htmlFragment("core/changelog.html")

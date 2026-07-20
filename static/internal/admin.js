@@ -89,10 +89,22 @@ function countryName(code) {
 function countryLabel(code) {
   const c = String(code || "").trim().toUpperCase();
   const name = countryName(c);
-  return c && name !== c ? `${name} (${c})` : name;
+  return c && name !== c ? name : name;
 }
 function countryItems(items) {
   return (items || []).map(item => ({ ...item, label: countryLabel(item.key || item.countryCode) }));
+}
+function planClass(plan) {
+  return plan === "pro" || plan === "developer" ? "ok" : plan === "internal" ? "warn" : "info";
+}
+function subscriptionPill(status) {
+  const s = String(status || "none");
+  return `<span class="pill ${s === "active" || s === "trialing" ? "ok" : s === "past_due" ? "warn" : ""}">${esc(s)}</span>`;
+}
+function userContact(row) {
+  const email = row.email || "";
+  if (!email) return `<span class="note">No email</span>`;
+  return `<a href="mailto:${esc(email)}">${esc(email)}</a>`;
 }
 
 /* ---------- drawer ---------- */
@@ -135,7 +147,7 @@ function lineChart(points, opts = {}) {
     Object.entries(byGroup).forEach(([g, m], gi) => {
       const vals = buckets.map(b => (m[b] ? m[b][metrics[0].key] || 0 : 0));
       max = Math.max(max, ...vals);
-      lines.push({ label: g || "(none)", color: seriesColors[gi % seriesColors.length], vals });
+      lines.push({ label: opts.groupLabel ? opts.groupLabel(g) : (g || "(none)"), color: seriesColors[gi % seriesColors.length], vals });
     });
   } else {
     for (const [mi, metric] of metrics.entries()) {
@@ -205,7 +217,7 @@ function table(columns, rows, onRowAttrs) {
     const attrs = onRowAttrs ? onRowAttrs(row) : "";
     html += `<tr ${attrs ? `class="click" ${attrs}` : ""}>` + columns.map(c => {
       const value = c.fmt ? c.fmt(row[c.key], row) : esc(row[c.key]);
-      return `<td>${value == null ? "" : value}</td>`;
+      return `<td data-label="${esc(c.label)}">${value == null ? "" : value}</td>`;
     }).join("") + `</tr>`;
   }
   if (!rows || !rows.length) html += `<tr><td colspan="${columns.length}" class="note">No rows.</td></tr>`;
@@ -232,16 +244,17 @@ const sourcePill = (s) => `<span class="pill info">${esc(s)}</span>`;
 /* ---------- navigation ---------- */
 
 const NAV = [
-  ["Analytics"],
-  ["overview", "Overview"], ["realtime", "Real-time"], ["requests", "Requests"],
+  ["Main"],
+  ["overview", "Overview"], ["requests", "Requests"], ["audience", "Audience"],
+  ["retention", "Retention"], ["users", "Users"],
+  ["Ops"],
+  ["realtime", "Real-time"], ["errors", "Errors"], ["health", "Health"],
+  ["Deep Dive"],
   ["endpoints", "Endpoints"], ["performance", "Performance"],
-  ["cache", "Cache"], ["errors", "Errors"], ["ratelimits", "Rate Limits"],
-  ["Audience"],
-  ["audience", "Clients & Geography"], ["retention", "Retention"], ["insights", "Insights & Export"],
-  ["Operations"],
-  ["logs", "Logs"], ["jobs", "Background Jobs"], ["health", "System Health"],
-  ["Administration"],
-  ["users", "Users & Keys"], ["audit", "Audit Log"], ["settings", "Settings"],
+  ["cache", "Cache"], ["ratelimits", "Rate Limits"], ["insights", "Insights & Export"],
+  ["logs", "Logs"], ["jobs", "Background Jobs"],
+  ["Admin"],
+  ["audit", "Audit Log"], ["settings", "Settings"],
 ];
 
 // Old bookmarks and cross-links keep working.
@@ -290,14 +303,12 @@ PAGES.overview = {
     // One card per question; detail lives on the linked page.
     const cards = [
       ["Requests", num(t.requests) + delta(t.requests, p.requests), "#/requests"],
-      ["Error rate", pct(t.errors, t.requests) + delta(t.errors, p.errors), "#/errors"],
-      ["Rate limited", num(t.rateLimited) + delta(t.rateLimited, p.rateLimited), "#/ratelimits"],
-      ["Active clients", num(t.uniqueClients) + delta(t.uniqueClients, p.uniqueClients), "#/audience"],
       ["Active users", num(t.uniqueAccounts) + delta(t.uniqueAccounts, p.uniqueAccounts), "#/users"],
-      ["Anon networks (est.)", num(t.uniqueNetworks) + delta(t.uniqueNetworks, p.uniqueNetworks), "#/audience"],
+      ["Active integrations", num(t.uniqueClients) + delta(t.uniqueClients, p.uniqueClients), "#/audience"],
       ["New integrations", num(d.newClients), "#/retention"],
-      ["Cache hit rate", pct(t.cacheHit + t.cacheStale, cacheTotal), "#/cache"],
+      ["Error rate", pct(t.errors, t.requests) + delta(t.errors, p.errors), "#/errors"],
       ["p95 latency", msFmt(t.latency.p95Ms), "#/performance"],
+      ["Cache served", pct(t.cacheHit + t.cacheStale, cacheTotal), "#/cache"],
       ["Job queue", num(d.gauges.refresh_queue_depth), "#/jobs"],
     ];
     const sources = Object.entries(t.bySource || {}).sort((a, b) => b[1] - a[1])
@@ -312,7 +323,7 @@ PAGES.overview = {
       <div class="grid three" style="margin-top:12px">
         <div class="card"><h3>Traffic sources</h3>${barList(sources, { filter: "source" })}</div>
         <div class="card"><h3>Top endpoints</h3>${barList((d.topEndpoints || []).slice(0, 6), { filter: "route" })}</div>
-        <div class="card"><h3>Most active clients</h3>${barList((d.topClients || []).slice(0, 6), { filter: "client" })}</div>
+        <div class="card"><h3>Countries</h3>${barList(countryItems((d.topCountries || []).slice(0, 6)), { filter: "country" })}</div>
       </div>
       <div class="card"><h3>Recent errors <a class="copy" href="#/errors">all →</a></h3>${table(
         [
@@ -430,7 +441,7 @@ PAGES.requests = {
     ]);
     el.innerHTML = `
       <div class="card">
-        ${lineChart(series.series, { groups: true, legend: true })}
+        ${lineChart(series.series, { groups: true, legend: true, groupLabel: groupBy === "country" ? countryLabel : null })}
         <div class="legend">chart grouped by
           <select id="fgroupby">${["source", "endpoint_group", "route", "method", "status_family", "country", "cache", "auth", "client_kind", "client", "version"]
             .map(g => `<option value="${g}" ${g === groupBy ? "selected" : ""}>${g}</option>`).join("")}</select>
@@ -472,6 +483,9 @@ function bindPager(el, page, query) {
     query.set("offset", button.dataset.offset);
     location.hash = `#/${page}?` + query.toString();
   }));
+}
+function interactiveClick(e) {
+  return !!e.target.closest("a,button,input,select,textarea");
 }
 
 PAGES.endpoints = {
@@ -758,30 +772,37 @@ function showRegisteredClientDrawer(client) {
 PAGES.retention = {
   title: "Retention",
   async render(el) {
-    const entity = state.retEntity || "network";
+    const entity = state.retEntity || "client";
     const d = await api("/internal/api/retention", { ...rangeParams(), entity });
     const s = d.summary;
+    const entityName = {
+      client: "API clients",
+      user: "billed users",
+      key: "API keys",
+      network: "anonymous networks",
+    }[entity] || entity;
     el.innerHTML = `
       <div class="filters">
-        <label>Entity</label>
-        <select id="rentity">${[["network", "Anonymous networks (estimated)"], ["user", "Users (accounts)"], ["client", "API clients"], ["key", "API keys"]]
+        <label>Measure</label>
+        <select id="rentity">${[["client", "API clients"], ["user", "Billed users"], ["key", "API keys"], ["network", "Anonymous networks (rough estimate)"]]
           .map(([v, l]) => `<option value="${v}" ${entity === v ? "selected" : ""}>${l}</option>`).join("")}</select>
-        ${entity === "network" ? `<span class="pill warn">estimated — rotating anonymous IDs, do not compare with authenticated retention</span>` : ""}
+        ${entity === "network" ? `<span class="pill warn">rough estimate</span>` : ""}
       </div>
+      <div class="note">This answers: when ${esc(entityName)} first show up, how many come back later? Anonymous network retention is useful for directional traffic only because IDs rotate.</div>
       <div class="grid cards">
-        ${[["Cohort (first seen in range)", num(s.cohortSize)],
-          ["1-day retention", ratio(s.day1)], ["7-day retention", ratio(s.day7)],
-          ["14-day retention", ratio(s.day14)], ["30-day retention", ratio(s.day30)],
-          ["New in period", num(s.new)], ["Returning", num(s.returning)],
-          ["Churned", num(s.churned)], ["Reactivated", num(s.reactivated)]]
+        ${[["First seen", num(s.cohortSize)],
+          ["Came back next day", ratio(s.day1)], ["Came back within 7 days", ratio(s.day7)],
+          ["Came back within 30 days", ratio(s.day30)],
+          ["New this range", num(s.new)], ["Already active", num(s.returning)],
+          ["Stopped showing up", num(s.churned)], ["Returned after gap", num(s.reactivated)]]
           .map(([label, value]) => `<div class="card"><h3>${label}</h3><div class="big">${value}</div></div>`).join("")}
       </div>
-      <div class="card"><h3>Daily / weekly / monthly actives</h3>${lineChart(d.series.map(p => ({ bucket: p.day, ...p })), { metrics: [
+      <div class="card"><h3>Active trend</h3>${lineChart(d.series.map(p => ({ bucket: p.day, ...p })), { metrics: [
         { key: "daily", label: "DAU" }, { key: "weekly", label: "WAU", color: "#4aa3ff" },
         { key: "monthly", label: "MAU", color: "#ffb86b" }, { key: "new", label: "new", color: "#b28dff" }], legend: true })}</div>
       <div class="grid two" style="margin-top:12px">
-        <div class="card"><h3>Weekly cohorts (retained share)</h3>${heatmap(d.weeklyCohorts)}</div>
-        <div class="card"><h3>Monthly cohorts</h3>${heatmap(d.monthlyCohorts)}</div>
+        <div class="card"><h3>Weekly groups</h3><div class="note">Rows are first-seen weeks. Each column shows the share active again after that many weeks.</div>${heatmap(d.weeklyCohorts)}</div>
+        <div class="card"><h3>Monthly groups</h3><div class="note">Rows are first-seen months. Each column shows the share active again after that many months.</div>${heatmap(d.monthlyCohorts)}</div>
       </div>
       <div class="note">Active = ${esc(d.definitions.active)}</div>`;
     $("#rentity").addEventListener("change", (e) => { state.retEntity = e.target.value; navigate(); });
@@ -1043,7 +1064,7 @@ PAGES.health = {
 };
 
 PAGES.users = {
-  title: "Users & Keys",
+  title: "Users",
   async render(el) {
     const query = new URLSearchParams(location.hash.split("?")[1] || "");
     const offset = Number(query.get("offset") || 0);
@@ -1051,7 +1072,14 @@ PAGES.users = {
     if (query.get("q")) params.q = query.get("q");
     if (query.get("status")) params.status = query.get("status");
     const d = await api("/internal/api/users", params);
+    const paidOnPage = (d.users || []).filter(u => u.plan && u.plan !== "free").length;
+    const activePaidOnPage = (d.users || []).filter(u => u.plan && u.plan !== "free" && u.subscriptionStatus === "active").length;
     el.innerHTML = `
+      <div class="grid cards">
+        ${[["Users on this page", num((d.users || []).length)], ["Paid plans on this page", num(paidOnPage)],
+          ["Active paid on this page", num(activePaidOnPage)], ["Total accounts", num(d.total)]]
+          .map(([label, value]) => `<div class="card"><h3>${label}</h3><div class="big">${value}</div></div>`).join("")}
+      </div>
       <div class="filters">
         <input id="uq" placeholder="search email / id / stripe id" value="${esc(params.q || "")}">
         <select id="ustatus"><option value="">status: all</option>${["active", "suspended", "deleted"].map(s => `<option ${params.status === s ? "selected" : ""}>${s}</option>`).join("")}</select>
@@ -1059,15 +1087,13 @@ PAGES.users = {
         <button id="unew">Create user</button>
       </div>
       ${table([
-        { key: "email", label: "Email" },
-        { key: "plan", label: "Plan", fmt: (v) => `<span class="pill info">${esc(v)}</span>` },
+        { key: "email", label: "Support email", fmt: (v, r) => userContact(r) },
+        { key: "plan", label: "Plan", fmt: (v) => `<span class="pill ${planClass(v)}">${esc(v)}</span>` },
+        { key: "subscriptionStatus", label: "Billing", fmt: subscriptionPill },
         { key: "status", label: "Status", fmt: (v) => `<span class="pill ${v === "active" ? "ok" : "bad"}">${esc(v)}</span>` },
-        { key: "subscriptionStatus", label: "Subscription" },
         { key: "isInternal", label: "Internal", fmt: (v) => v ? "yes" : "" },
         { key: "isTest", label: "Test", fmt: (v) => v ? "yes" : "" },
         { key: "tags", label: "Tags" },
-        { key: "createdAt", label: "Created", fmt: dt },
-        { key: "firstSeenAt", label: "First activity", fmt: dt },
         { key: "lastSeenAt", label: "Last activity", fmt: dt },
         { key: "daysActive", label: "Days active", fmt: num },
       ], d.users, (row) => `data-user="${esc(row.id)}"`)}
@@ -1075,7 +1101,9 @@ PAGES.users = {
       <div id="keysection"></div>`;
     bindPager(el, "users", query);
     renderKeySections($("#keysection"));
-    el.querySelectorAll("tr[data-user]").forEach(tr => tr.addEventListener("click", () => showUserDrawer(tr.dataset.user)));
+    el.querySelectorAll("tr[data-user]").forEach(tr => tr.addEventListener("click", (e) => {
+      if (!interactiveClick(e)) showUserDrawer(tr.dataset.user);
+    }));
     $("#uapply").addEventListener("click", () => {
       const parts = new URLSearchParams();
       if ($("#uq").value) parts.set("q", $("#uq").value);
@@ -1103,9 +1131,10 @@ async function showUserDrawer(accountID) {
   const u = d.user, usage = d.usage || {}, profile = d.profile || {};
   openDrawer(`<h2>${esc(u.email || u.id)}</h2>
     ${kv([
+      ["Support email", u.email ? `<a href="mailto:${esc(u.email)}">${esc(u.email)}</a>` : `<span class="note">No email on account</span>`, u.email],
       ["Account ID", esc(u.id), u.id],
       ["Status", `<span class="pill ${u.status === "active" ? "ok" : "bad"}">${esc(u.status)}</span>`],
-      ["Plan", esc(u.plan)], ["Subscription", esc(u.subscriptionStatus)],
+      ["Plan", `<span class="pill ${planClass(u.plan)}">${esc(u.plan)}</span>`], ["Billing", subscriptionPill(u.subscriptionStatus)],
       ["Stripe customer", esc(u.stripeCustomerId || "–")],
       ["Created", dt(u.createdAt)],
       ["First API activity", dt(profile.firstSeenAt)], ["Last API activity", dt(profile.lastSeenAt)],
@@ -1200,7 +1229,7 @@ async function renderKeySections(el) {
       ${table([
         { key: "prefix", label: "Key", fmt: (v, k) => esc(v) + "…" + esc(k.lastFour || "") },
         { key: "name", label: "Name" },
-        { key: "accountId", label: "Account", fmt: (v) => `<a href="#/users?open=${esc(v)}">${esc(v)}</a>` },
+        { key: "accountEmail", label: "Support email", fmt: (v, k) => v ? `<a href="#/users?open=${esc(k.accountId)}">${esc(v)}</a>` : `<a href="#/users?open=${esc(k.accountId)}">${esc(k.accountId)}</a>` },
         { key: "plan", label: "Plan" }, { key: "environment", label: "Env" },
         { key: "clientId", label: "Client" }, { key: "scopes", label: "Scopes" },
         { key: "isActive", label: "State", fmt: (v, k) => k.revokedAt ? `<span class="pill bad">revoked</span>` : k.disabledAt ? `<span class="pill warn">disabled</span>` : k.expiresAt && new Date(k.expiresAt) < new Date() ? `<span class="pill warn">expired</span>` : `<span class="pill ok">active</span>` },
@@ -1209,7 +1238,7 @@ async function renderKeySections(el) {
         { key: "lastUsedAt", label: "Last used", fmt: dt },
         { key: "expiresAt", label: "Expires", fmt: dt },
         { key: "adminNotes", label: "Notes" },
-      ], d.keys, (row) => `data-key='${esc(JSON.stringify({ id: row.id, accountId: row.accountId, name: row.name }))}'`)}
+      ], d.keys, (row) => `data-key='${esc(JSON.stringify({ id: row.id, accountId: row.accountId, name: row.name, accountEmail: row.accountEmail }))}'`)}
       <div class="section-title">Internal (service) API keys</div>
       <button class="primary" id="ik_new" style="margin-bottom:8px">Create internal key</button>
       ${table([
@@ -1219,7 +1248,8 @@ async function renderKeySections(el) {
         { key: "createdAt", label: "Created", fmt: dt }, { key: "lastUsedAt", label: "Last used", fmt: dt },
         { key: "id", label: "", fmt: (v, k) => k.revokedAt ? "" : `<button class="danger" data-ikrevoke="${esc(v)}">Revoke</button>` },
       ], internal.api_keys)}`;
-    el.querySelectorAll("tr[data-key]").forEach(tr => tr.addEventListener("click", () => {
+    el.querySelectorAll("tr[data-key]").forEach(tr => tr.addEventListener("click", (e) => {
+      if (interactiveClick(e)) return;
       const meta = JSON.parse(tr.dataset.key);
       showKeyDrawer(meta);
     }));
@@ -1241,6 +1271,10 @@ async function renderKeySections(el) {
 
 function showKeyDrawer(meta) {
   openDrawer(`<h2>Key ${esc(meta.name || meta.id)}</h2>
+    ${kv([
+      ["Support email", meta.accountEmail ? `<a href="mailto:${esc(meta.accountEmail)}">${esc(meta.accountEmail)}</a>` : "–", meta.accountEmail],
+      ["Account", `<a href="#/users?open=${esc(meta.accountId)}">${esc(meta.accountId)}</a>`, meta.accountId],
+    ])}
     <div class="formrow"><label>Name</label><input id="k_name" value="${esc(meta.name || "")}"></div>
     <div class="formrow"><label>Environment</label><select id="k_env">${["production", "staging", "development", "test"].map(v => `<option>${v}</option>`).join("")}</select></div>
     <div class="formrow"><label>Scopes (csv)</label><input id="k_scopes"></div>

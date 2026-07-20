@@ -229,7 +229,7 @@ func (t *TelemetryMiddleware) finish(r *http.Request, recorder *countingRecorder
 	note := annotations.snapshot()
 
 	routeTemplate, routeVars := t.routeTemplate(r)
-	if telemetry.IsInternalMetricsPath(r.URL.Path) {
+	if telemetry.IsIgnoredMetricsPath(r.URL.Path) {
 		return
 	}
 	sanitizedQuery := telemetry.SanitizeQuery(r.URL.RawQuery)

@@ -135,6 +135,35 @@ func TestInternalRequestsAreNotRecorded(t *testing.T) {
 	}
 }
 
+func TestStaticRequestsAreNotRecorded(t *testing.T) {
+	handler, store := testPipeline(t, func(router *mux.Router, chain *MiddlewareChain) {
+		router.PathPrefix("/static/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("asset"))
+		}))
+		router.Handle("/v1/mods", chain.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))).Methods("GET")
+	})
+
+	static := httptest.NewRequest(http.MethodGet, "/static/index.css", nil)
+	static.RemoteAddr = "203.0.113.10:1234"
+	handler.ServeHTTP(httptest.NewRecorder(), static)
+
+	public := httptest.NewRequest(http.MethodGet, "/v1/mods", nil)
+	public.RemoteAddr = "203.0.113.10:1234"
+	handler.ServeHTTP(httptest.NewRecorder(), public)
+
+	if got := countEvents(t, store, 5*time.Second, 1); got != 1 {
+		t.Fatalf("request events = %d, want only the public request", got)
+	}
+	var path string
+	_ = store.DB().QueryRow(`SELECT request_path FROM request_events`).Scan(&path)
+	if strings.HasPrefix(path, "/static") {
+		t.Fatalf("static request was recorded: %q", path)
+	}
+}
+
 func TestPanicIsRecoveredAndRecorded(t *testing.T) {
 	handler, store := testPipeline(t, func(router *mux.Router, chain *MiddlewareChain) {
 		router.HandleFunc("/v1/boom", func(w http.ResponseWriter, r *http.Request) {

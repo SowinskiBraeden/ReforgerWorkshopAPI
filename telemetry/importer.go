@@ -270,7 +270,7 @@ func (im *Importer) importFile(ctx context.Context, path string, opts ImportOpti
 func (im *Importer) countLine(line logLine, summary *ImportSummary) {
 	switch line.Msg {
 	case "request completed":
-		if IsInternalMetricsPath(line.Path) {
+		if IsIgnoredMetricsPath(line.Path) {
 			break
 		}
 		summary.Requests++
@@ -299,7 +299,7 @@ func (im *Importer) writeLine(ctx context.Context, tx *sql.Tx, line logLine, raw
 
 	switch line.Msg {
 	case "request completed":
-		if IsInternalMetricsPath(line.Path) {
+		if IsIgnoredMetricsPath(line.Path) {
 			break
 		}
 		event := im.requestEventFromLine(line, at, networkID, status, dedupe)

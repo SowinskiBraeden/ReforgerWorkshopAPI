@@ -52,10 +52,6 @@ func (a *App) New() *mux.Router {
 
 	// Serve static files
 	router.PathPrefix("/static/").Handler(staticFileHandler())
-
-	router.HandleFunc("/ads.txt", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/ads.txt")
-	})
 	router.HandleFunc("/robots.txt", a.serveRobots).Methods("GET", "HEAD")
 	router.HandleFunc("/sitemap.xml", a.serveSitemap).Methods("GET", "HEAD")
 	router.HandleFunc("/", a.servePublicPage("home")).Methods("GET", "HEAD")

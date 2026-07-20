@@ -482,6 +482,7 @@ func slugify(name string) string {
 type AdminKeyDetail struct {
 	AdminKeySummary
 	AccountID    string     `json:"accountId"`
+	AccountEmail string     `json:"accountEmail,omitempty"`
 	ClientID     string     `json:"clientId,omitempty"`
 	Environment  string     `json:"environment"`
 	Scopes       string     `json:"scopes,omitempty"`
@@ -498,17 +499,17 @@ func (s *BillingStore) ListKeysAdmin(ctx context.Context, accountID string, limi
 	}
 	where, args := "", []any{}
 	if accountID != "" {
-		where = `WHERE account_id = ?`
+		where = `WHERE k.account_id = ?`
 		args = append(args, accountID)
 	}
 	if limit <= 0 || limit > 500 {
 		limit = 200
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id, account_id, key_prefix, COALESCE(last_four, ''),
-		COALESCE(name, ''), plan, is_active, created_at, COALESCE(last_used_at, ''), COALESCE(revoked_at, ''),
-		client_id, environment, scopes, monthly_quota,
-		COALESCE(expires_at, ''), COALESCE(disabled_at, ''), COALESCE(first_used_at, ''), admin_notes
-		FROM api_keys `+where+` ORDER BY created_at DESC LIMIT ?`, append(args, limit)...)
+	rows, err := s.db.QueryContext(ctx, `SELECT k.id, k.account_id, COALESCE(a.email, ''), k.key_prefix, COALESCE(k.last_four, ''),
+		COALESCE(k.name, ''), k.plan, k.is_active, k.created_at, COALESCE(k.last_used_at, ''), COALESCE(k.revoked_at, ''),
+		k.client_id, k.environment, k.scopes, k.monthly_quota,
+		COALESCE(k.expires_at, ''), COALESCE(k.disabled_at, ''), COALESCE(k.first_used_at, ''), k.admin_notes
+		FROM api_keys k LEFT JOIN accounts a ON a.id = k.account_id `+where+` ORDER BY k.created_at DESC LIMIT ?`, append(args, limit)...)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +518,7 @@ func (s *BillingStore) ListKeysAdmin(ctx context.Context, accountID string, limi
 	for rows.Next() {
 		var key AdminKeyDetail
 		var createdAt, lastUsedAt, revokedAt, expiresAt, disabledAt, firstUsedAt sqliteTime
-		if err := rows.Scan(&key.ID, &key.AccountID, &key.Prefix, &key.LastFour, &key.Name,
+		if err := rows.Scan(&key.ID, &key.AccountID, &key.AccountEmail, &key.Prefix, &key.LastFour, &key.Name,
 			&key.Plan, &key.IsActive, &createdAt, &lastUsedAt, &revokedAt,
 			&key.ClientID, &key.Environment, &key.Scopes, &key.MonthlyQuota,
 			&expiresAt, &disabledAt, &firstUsedAt, &key.AdminNotes); err != nil {

@@ -443,11 +443,11 @@ func (s *Store) migrate(ctx context.Context) error {
 
 func (s *Store) cleanupInternalRequestMetrics(ctx context.Context) error {
 	stmts := []string{
-		`DELETE FROM request_events WHERE request_path = '/internal' OR request_path LIKE '/internal/%' OR route_template = '/internal' OR route_template LIKE '/internal/%'`,
-		`DELETE FROM request_errors WHERE request_path = '/internal' OR request_path LIKE '/internal/%' OR route_template = '/internal' OR route_template LIKE '/internal/%'`,
-		`DELETE FROM usage_hourly WHERE endpoint_group = 'admin' OR source = 'admin'`,
-		`DELETE FROM usage_daily WHERE endpoint_group = 'admin' OR source = 'admin'`,
-		`DELETE FROM endpoint_daily WHERE route_template = '/internal' OR route_template LIKE '/internal/%'`,
+		`DELETE FROM request_events WHERE request_path = '/internal' OR request_path LIKE '/internal/%' OR route_template = '/internal' OR route_template LIKE '/internal/%' OR request_path = '/static' OR request_path LIKE '/static/%' OR route_template = '/static' OR route_template LIKE '/static/%'`,
+		`DELETE FROM request_errors WHERE request_path = '/internal' OR request_path LIKE '/internal/%' OR route_template = '/internal' OR route_template LIKE '/internal/%' OR request_path = '/static' OR request_path LIKE '/static/%' OR route_template = '/static' OR route_template LIKE '/static/%'`,
+		`DELETE FROM usage_hourly WHERE endpoint_group IN ('admin', 'site_assets') OR source = 'admin'`,
+		`DELETE FROM usage_daily WHERE endpoint_group IN ('admin', 'site_assets') OR source = 'admin'`,
+		`DELETE FROM endpoint_daily WHERE route_template = '/internal' OR route_template LIKE '/internal/%' OR route_template = '/static' OR route_template LIKE '/static/%'`,
 	}
 	for _, stmt := range stmts {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {

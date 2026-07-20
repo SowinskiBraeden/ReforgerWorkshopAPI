@@ -207,6 +207,14 @@ func IsInternalMetricsPath(path string) bool {
 	return cleaned == "/internal" || strings.HasPrefix(cleaned, "/internal/")
 }
 
+// IsIgnoredMetricsPath reports whether a URL path should be absent from
+// request analytics entirely. This excludes admin traffic and static assets
+// that otherwise overwhelm product usage metrics.
+func IsIgnoredMetricsPath(path string) bool {
+	cleaned := "/" + strings.TrimLeft(strings.TrimSpace(path), "/")
+	return IsInternalMetricsPath(cleaned) || cleaned == "/static" || strings.HasPrefix(cleaned, "/static/")
+}
+
 // VerifyInternalHeader checks the signed service-to-service header:
 // X-Internal-Auth: <unix>.<hex(hmac-sha256(secret, unix))>, valid ±5 minutes.
 // External callers cannot forge it without the shared secret.
