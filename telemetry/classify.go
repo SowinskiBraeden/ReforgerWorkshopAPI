@@ -194,7 +194,17 @@ func ClientNameFromUserAgent(userAgent string) string {
 	if idx := strings.Index(product, "("); idx > 0 {
 		product = product[:idx]
 	}
+	if strings.EqualFold(product, "node") || strings.EqualFold(product, "node.js") {
+		return "reforger.dzr.tools"
+	}
 	return SanitizeText(product, 80)
+}
+
+// IsInternalMetricsPath reports whether an inbound URL path belongs to the
+// private admin/metrics surface and should be absent from request analytics.
+func IsInternalMetricsPath(path string) bool {
+	cleaned := "/" + strings.TrimLeft(strings.TrimSpace(path), "/")
+	return cleaned == "/internal" || strings.HasPrefix(cleaned, "/internal/")
 }
 
 // VerifyInternalHeader checks the signed service-to-service header:

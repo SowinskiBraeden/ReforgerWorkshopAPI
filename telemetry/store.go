@@ -432,6 +432,44 @@ func (s *Store) migrate(ctx context.Context) error {
 			return err
 		}
 	}
+	if err := s.cleanupInternalRequestMetrics(ctx); err != nil {
+		return err
+	}
+	if err := s.normalizeLegacyNodeClient(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) cleanupInternalRequestMetrics(ctx context.Context) error {
+	stmts := []string{
+		`DELETE FROM request_events WHERE request_path = '/internal' OR request_path LIKE '/internal/%' OR route_template = '/internal' OR route_template LIKE '/internal/%'`,
+		`DELETE FROM request_errors WHERE request_path = '/internal' OR request_path LIKE '/internal/%' OR route_template = '/internal' OR route_template LIKE '/internal/%'`,
+		`DELETE FROM usage_hourly WHERE endpoint_group = 'admin' OR source = 'admin'`,
+		`DELETE FROM usage_daily WHERE endpoint_group = 'admin' OR source = 'admin'`,
+		`DELETE FROM endpoint_daily WHERE route_template = '/internal' OR route_template LIKE '/internal/%'`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) normalizeLegacyNodeClient(ctx context.Context) error {
+	stmts := []string{
+		`UPDATE request_events SET client_name = 'reforger.dzr.tools' WHERE lower(client_name) IN ('node', 'node.js')`,
+		`UPDATE request_errors SET client_name = 'reforger.dzr.tools' WHERE lower(client_name) IN ('node', 'node.js')`,
+		`UPDATE structured_logs SET client_name = 'reforger.dzr.tools' WHERE lower(client_name) IN ('node', 'node.js')`,
+		`UPDATE client_daily SET client_name = 'reforger.dzr.tools' WHERE lower(client_name) IN ('node', 'node.js') OR client_key IN ('ua:node', 'ua:node.js')`,
+		`UPDATE entity_profiles SET last_client_name = 'reforger.dzr.tools' WHERE lower(last_client_name) IN ('node', 'node.js')`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

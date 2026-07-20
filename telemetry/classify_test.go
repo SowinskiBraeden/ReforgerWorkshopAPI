@@ -92,11 +92,26 @@ func TestClientNameFromUserAgent(t *testing.T) {
 		"Mozilla/5.0 compatible; Amazonbot/0.1 Chrome/119": "amazonbot",
 		"curl/8.0.1":          "curl/8.0.1",
 		"ReforgerPanel/2.3.1": "ReforgerPanel/2.3.1",
+		"node":                "reforger.dzr.tools",
+		"node.js":             "reforger.dzr.tools",
 		"":                    "unknown",
 	}
 	for ua, want := range cases {
 		if got := ClientNameFromUserAgent(ua); got != want {
 			t.Errorf("ClientNameFromUserAgent(%q) = %q, want %q", ua, got, want)
+		}
+	}
+}
+
+func TestIsInternalMetricsPath(t *testing.T) {
+	for _, path := range []string{"/internal", "/internal/", "/internal/api/overview"} {
+		if !IsInternalMetricsPath(path) {
+			t.Errorf("%q should be treated as internal metrics path", path)
+		}
+	}
+	for _, path := range []string{"/v1/mods", "/static/internal/admin.js", "/account/session"} {
+		if IsInternalMetricsPath(path) {
+			t.Errorf("%q should not be treated as internal metrics path", path)
 		}
 	}
 }

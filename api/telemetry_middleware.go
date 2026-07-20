@@ -229,6 +229,9 @@ func (t *TelemetryMiddleware) finish(r *http.Request, recorder *countingRecorder
 	note := annotations.snapshot()
 
 	routeTemplate, routeVars := t.routeTemplate(r)
+	if telemetry.IsInternalMetricsPath(r.URL.Path) {
+		return
+	}
 	sanitizedQuery := telemetry.SanitizeQuery(r.URL.RawQuery)
 	sanitizedPath := telemetry.SanitizePath(r.URL.Path)
 	endpointGroup := telemetry.EndpointGroup(routeTemplate, sanitizedQuery)

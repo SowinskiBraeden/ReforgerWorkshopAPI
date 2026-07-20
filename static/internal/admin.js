@@ -52,6 +52,9 @@ async function mutate(path, method, body) {
 }
 
 const nf = new Intl.NumberFormat("en-US");
+const countryNames = typeof Intl !== "undefined" && Intl.DisplayNames
+  ? new Intl.DisplayNames(["en"], { type: "region" })
+  : null;
 const num = (v) => nf.format(Math.round(v || 0));
 const pct = (a, b) => (b > 0 ? (100 * a / b).toFixed(1) + "%" : "–");
 const ratio = (v) => (v == null ? "–" : (100 * v).toFixed(0) + "%");
@@ -77,6 +80,19 @@ function delta(cur, prev) {
   const cls = change > 0.5 ? "up" : change < -0.5 ? "down" : "flat";
   const sign = change > 0 ? "+" : "";
   return `<span class="delta ${cls}" title="previous period: ${num(prev)}">${sign}${change.toFixed(1)}%</span>`;
+}
+function countryName(code) {
+  const c = String(code || "").trim().toUpperCase();
+  if (!c || c === "ZZ") return "Unknown";
+  try { return countryNames ? countryNames.of(c) || c : c; } catch { return c; }
+}
+function countryLabel(code) {
+  const c = String(code || "").trim().toUpperCase();
+  const name = countryName(c);
+  return c && name !== c ? `${name} (${c})` : name;
+}
+function countryItems(items) {
+  return (items || []).map(item => ({ ...item, label: countryLabel(item.key || item.countryCode) }));
 }
 
 /* ---------- drawer ---------- */
@@ -279,7 +295,7 @@ PAGES.overview = {
       ["Active clients", num(t.uniqueClients) + delta(t.uniqueClients, p.uniqueClients), "#/audience"],
       ["Active users", num(t.uniqueAccounts) + delta(t.uniqueAccounts, p.uniqueAccounts), "#/users"],
       ["Anon networks (est.)", num(t.uniqueNetworks) + delta(t.uniqueNetworks, p.uniqueNetworks), "#/audience"],
-      ["New clients", num(d.newClients), "#/retention"],
+      ["New integrations", num(d.newClients), "#/retention"],
       ["Cache hit rate", pct(t.cacheHit + t.cacheStale, cacheTotal), "#/cache"],
       ["p95 latency", msFmt(t.latency.p95Ms), "#/performance"],
       ["Job queue", num(d.gauges.refresh_queue_depth), "#/jobs"],
@@ -355,7 +371,7 @@ function requestTable(rows) {
     { key: "source", label: "Source", fmt: sourcePill },
     { key: "cacheStatus", label: "Cache", fmt: cachePill },
     { key: "clientName", label: "Client" },
-    { key: "countryCode", label: "CC" },
+    { key: "countryCode", label: "Country", fmt: countryLabel },
   ], rows, (row) => `data-request="${esc(row.requestId || row.id)}"`);
 }
 function bindRequestRows(el) {
@@ -377,7 +393,7 @@ async function showRequestDrawer(id) {
       ["API key", esc(r.apiKeyID)], ["Client", esc(r.clientName) + (r.clientVerified ? ` <span class="pill ok">verified</span>` : r.clientName ? ` <span class="pill">self-reported</span>` : "")],
       ["Client version", esc(r.clientVersion)],
       ["User agent", esc(r.userAgent)],
-      ["Country", esc(r.countryCode) + " (approx.)"], ["Network ID", esc(r.networkID), r.networkID],
+      ["Country", esc(countryLabel(r.countryCode)) + " (approx.)"], ["Network ID", esc(r.networkID), r.networkID],
       ["ASN / network", esc([r.asn, r.networkName].filter(Boolean).join(" · ") || "unavailable")],
       ["Hosting", esc(r.isHosting)], ["Via trusted proxy", r.viaProxy ? "yes" : "no"],
       ["Cache", cachePill(r.cacheStatus) + " " + esc(r.refreshResult || "")],
@@ -598,7 +614,7 @@ async function showErrorDrawer(errorId) {
       ["Status", e.status ? statusPill(e.status) : ""],
       ["Request ID", esc(e.requestId), e.requestId], ["Job ID", esc(e.jobId)],
       ["User", esc(e.accountId)], ["Client", esc(e.clientName)],
-      ["Country", esc(e.countryCode)], ["Version", esc(e.appVersion)],
+      ["Country", esc(countryLabel(e.countryCode))], ["Version", esc(e.appVersion)],
       ["Fingerprint", esc(e.fingerprint), e.fingerprint],
       ["Occurrences (pattern)", num((d.related || []).length) + " loaded"],
     ])}
@@ -666,7 +682,7 @@ PAGES.audience = {
       ], d.clients, (row) => `data-client="${esc(row.clientName || row.clientKey)}"`)}</div>
       <div class="grid two" style="margin-top:12px">
         <div class="card"><h3>Countries</h3>${table([
-          { key: "countryCode", label: "Country" },
+          { key: "countryCode", label: "Country", fmt: countryLabel },
           { key: "requests", label: "Requests", fmt: num },
           { key: "errors", label: "Errors", fmt: num },
           { key: "rateLimited", label: "429s", fmt: num },
@@ -674,7 +690,7 @@ PAGES.audience = {
         ], (geo.countries || []).slice(0, 15), (row) => `data-country="${esc(row.countryCode)}"`)}</div>
         <div class="card"><h3>Top networks (anonymous)</h3>${table([
           { key: "networkId", label: "Network ID" },
-          { key: "countryCode", label: "CC" },
+          { key: "countryCode", label: "Country", fmt: countryLabel },
           { key: "asn", label: "ASN", fmt: (v) => esc(v || "–") },
           { key: "isHosting", label: "Type", fmt: (v) => `<span class="pill ${v === "hosting" ? "warn" : v === "residential" ? "ok" : ""}">${esc(v)}</span>` },
           { key: "requests", label: "Requests", fmt: num },
@@ -742,13 +758,13 @@ function showRegisteredClientDrawer(client) {
 PAGES.retention = {
   title: "Retention",
   async render(el) {
-    const entity = state.retEntity || "client";
+    const entity = state.retEntity || "network";
     const d = await api("/internal/api/retention", { ...rangeParams(), entity });
     const s = d.summary;
     el.innerHTML = `
       <div class="filters">
         <label>Entity</label>
-        <select id="rentity">${[["user", "Users (accounts)"], ["client", "API clients"], ["key", "API keys"], ["network", "Anonymous networks (estimated)"]]
+        <select id="rentity">${[["network", "Anonymous networks (estimated)"], ["user", "Users (accounts)"], ["client", "API clients"], ["key", "API keys"]]
           .map(([v, l]) => `<option value="${v}" ${entity === v ? "selected" : ""}>${l}</option>`).join("")}</select>
         ${entity === "network" ? `<span class="pill warn">estimated — rotating anonymous IDs, do not compare with authenticated retention</span>` : ""}
       </div>
@@ -895,7 +911,7 @@ async function showLogDrawer(id) {
       ["Trace ID", esc(e.traceId)], ["Job ID", esc(e.jobId), e.jobId],
       ["Route", esc(e.route)], ["Path", esc(e.path)],
       ["Status", e.status ? statusPill(e.status) : ""],
-      ["Client", esc(e.clientName)], ["Country", esc(e.countryCode)],
+      ["Client", esc(e.clientName)], ["Country", esc(countryLabel(e.countryCode))],
       ["Network", esc(e.networkId)], ["Cache", esc(e.cacheStatus)],
       ["Instance", esc(e.instanceId)], ["Version", esc(e.appVersion)],
     ])}
@@ -1103,7 +1119,7 @@ async function showUserDrawer(accountID) {
     ])}
     ${d.series ? lineChart(d.series) : ""}
     <div class="grid two" style="margin-top:8px">
-      <div><div class="section-title">Countries</div>${barList(d.countries || [])}</div>
+      <div><div class="section-title">Countries</div>${barList(countryItems(d.countries))}</div>
       <div><div class="section-title">Top routes</div>${barList(d.routes || [])}</div>
     </div>
     <div class="section-title">API keys (${(d.keys || []).length})</div>

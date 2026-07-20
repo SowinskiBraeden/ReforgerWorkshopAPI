@@ -78,8 +78,8 @@ svg.chart text{fill:var(--muted);font-size:9px}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px}
 .bar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px}
 .bar .label{width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar .track{flex:1;background:var(--surface2);height:12px;overflow:hidden}
-.bar .fill{height:100%;background:var(--link)}
+.bar .track{flex:1;background:#1f2937;height:12px;overflow:hidden;border:1px solid var(--line)}
+.bar .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--link));min-width:2px}
 .bar .val{width:72px;text-align:right;color:var(--muted)}
 .heat{border-collapse:collapse}
 .heat td{width:44px;height:26px;text-align:center;font-size:10px;border:1px solid var(--bg)}
