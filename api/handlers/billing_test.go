@@ -99,34 +99,23 @@ func TestBillingCheckoutRejectsInvalidEmail(t *testing.T) {
 	assertContains(t, rec.Body.String(), "INVALID_EMAIL")
 }
 
-func TestBillingCheckoutAllowsMultipleSessionsWithoutEmail(t *testing.T) {
+func TestBillingCheckoutRejectsMissingEmail(t *testing.T) {
 	stripe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/checkout/sessions" {
-			t.Fatalf("unexpected Stripe path %s", r.URL.Path)
-		}
-		if err := r.ParseForm(); err != nil {
-			t.Fatalf("ParseForm: %v", err)
-		}
-		if got := r.Form.Get("customer_email"); got != "" {
-			t.Fatalf("customer_email = %q, want empty", got)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"cs_test","url":"https://checkout.stripe.test/session"}`))
+		t.Fatalf("Stripe should not be called without an email")
 	}))
 	defer stripe.Close()
 
 	app := testBillingApp(t, stripe.URL)
-	for i := 0; i < 2; i++ {
-		req := httptest.NewRequest(http.MethodPost, "/billing/checkout", strings.NewReader(`{"plan":"developer"}`))
-		req.RemoteAddr = "203.0.113.10:1234"
-		rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/billing/checkout", strings.NewReader(`{"plan":"developer"}`))
+	req.RemoteAddr = "203.0.113.10:1234"
+	rec := httptest.NewRecorder()
 
-		app.Router.ServeHTTP(rec, req)
+	app.Router.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusOK {
-			t.Fatalf("checkout %d status = %d, body = %s", i+1, rec.Code, rec.Body.String())
-		}
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s, want 400", rec.Code, rec.Body.String())
 	}
+	assertContains(t, rec.Body.String(), "INVALID_EMAIL")
 }
 
 func TestCheckoutWebhookRecoversEmailFromStripeCustomer(t *testing.T) {

@@ -47,8 +47,8 @@ func (a *App) BillingCheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	email := strings.TrimSpace(input.Email)
-	if email != "" && (!strings.Contains(email, "@") || len(email) > 254) {
-		config.WriteError(w, r, http.StatusBadRequest, "INVALID_EMAIL", "Email address is invalid.")
+	if email == "" || !strings.Contains(email, "@") || len(email) > 254 {
+		config.WriteError(w, r, http.StatusBadRequest, "INVALID_EMAIL", "A valid email address is required for passwordless sign-in.")
 		return
 	}
 	account, err := a.BillingStore.UpsertAccount(r.Context(), api.Account{Email: email, Plan: api.PlanFree, SubscriptionStatus: api.SubscriptionStatusNone})

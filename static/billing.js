@@ -25,13 +25,87 @@
   function checkoutButtons() {
     document.querySelectorAll('[data-checkout-plan]').forEach(function (button) {
       button.addEventListener('click', function () {
-        button.disabled = true;
-        status('Redirecting to secure Stripe Checkout...');
-        request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan: button.getAttribute('data-checkout-plan') }) })
-          .then(function (body) { window.location.href = body.url; })
-          .catch(function (err) { button.disabled = false; status(err.message); });
+        openCheckoutEmailDialog(button.getAttribute('data-checkout-plan'), button);
       });
     });
+  }
+
+  function openCheckoutEmailDialog(plan, sourceButton) {
+    closeCheckoutEmailDialog();
+    status('');
+    var dialog = document.createElement('div');
+    dialog.className = 'billing-modal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'checkout-email-title');
+    dialog.innerHTML =
+      '<div class="billing-modal-panel">' +
+        '<button type="button" class="billing-modal-close" data-checkout-close aria-label="Close">&times;</button>' +
+        '<span class="billing-kicker">Secure checkout</span>' +
+        '<h2 id="checkout-email-title">' + escapeHTML(displayPlan(plan)) + ' plan</h2>' +
+        '<p>Enter the email you want to use for API key access. Stripe will use the same email for your subscription, invoices, and passwordless sign-in.</p>' +
+        '<form data-checkout-email-form>' +
+          '<label for="checkout-email-modal">Email address</label>' +
+          '<input id="checkout-email-modal" type="email" required placeholder="you@example.com" autocomplete="email">' +
+          '<div class="billing-modal-actions">' +
+            '<button type="button" class="billing-secondary" data-checkout-close>Cancel</button>' +
+            '<button type="submit" class="billing-primary">Continue to Stripe</button>' +
+          '</div>' +
+          '<p class="billing-modal-error" data-checkout-error></p>' +
+        '</form>' +
+      '</div>';
+    document.body.appendChild(dialog);
+    document.body.classList.add('billing-modal-open');
+
+    var input = dialog.querySelector('#checkout-email-modal');
+    var form = dialog.querySelector('[data-checkout-email-form]');
+    var submit = form.querySelector('button[type="submit"]');
+    var error = dialog.querySelector('[data-checkout-error]');
+    setTimeout(function () { input.focus(); }, 0);
+
+    function close() {
+      closeCheckoutEmailDialog();
+      if (sourceButton) sourceButton.focus();
+    }
+    dialog.querySelectorAll('[data-checkout-close]').forEach(function (button) {
+      button.addEventListener('click', close);
+    });
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) close();
+    });
+    dialog.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') close();
+    });
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var email = input.value.trim();
+      if (!email) {
+        error.textContent = 'Enter the email you will use for passwordless sign-in.';
+        input.focus();
+        return;
+      }
+      if (!input.checkValidity()) {
+        error.textContent = 'Enter a valid email address.';
+        input.focus();
+        return;
+      }
+      submit.disabled = true;
+      error.textContent = '';
+      status('Redirecting to secure Stripe Checkout...');
+      request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan: plan, email: email }) })
+        .then(function (body) { window.location.href = body.url; })
+        .catch(function (err) {
+          submit.disabled = false;
+          error.textContent = err.message;
+          status(err.message);
+        });
+    });
+  }
+
+  function closeCheckoutEmailDialog() {
+    var existing = document.querySelector('.billing-modal');
+    if (existing) existing.remove();
+    document.body.classList.remove('billing-modal-open');
   }
 
   function billingSuccess() {
