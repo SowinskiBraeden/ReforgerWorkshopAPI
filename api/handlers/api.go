@@ -117,8 +117,6 @@ func (a *App) New() *mux.Router {
 	methodologyRedirect := func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/arma-reforger-mods-api/#caching", http.StatusMovedPermanently)
 	}
-	router.HandleFunc("/coming-soon/", a.serveComingSoon).Methods("GET", "HEAD")
-	router.HandleFunc("/coming-soon", a.serveComingSoon).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/", docsRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/docs", docsRedirect).Methods("GET", "HEAD")
 	router.HandleFunc("/docs/mod-structures/", modStructuresRedirect).Methods("GET", "HEAD")

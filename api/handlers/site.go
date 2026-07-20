@@ -307,26 +307,6 @@ func legacyPageRedirect(page string) string {
 	return ""
 }
 
-// serveComingSoon renders the API key options page.
-// It is intentionally not part of publicPages, so it stays out of the
-// sitemap and is served with noindex until API key self-serve is fully live.
-func (a *App) serveComingSoon(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/coming-soon/" {
-		http.Redirect(w, r, "/coming-soon/", http.StatusMovedPermanently)
-		return
-	}
-	page := publicPage{
-		Path:        "/coming-soon/",
-		Slug:        "coming-soon",
-		Title:       "Get an API Key | Reforger Mods API",
-		Description: "Monthly API key options for Reforger Mods API, with higher request limits for projects that need more throughput than the public tier.",
-		H1:          "Get an API Key",
-		FullWidth:   true,
-		Content:     comingSoonHTML,
-	}
-	a.renderPublicPage(w, r, page, true, http.StatusOK)
-}
-
 func (a *App) serveNotFound(w http.ResponseWriter, r *http.Request) {
 	page := publicPage{
 		Path:        r.URL.Path,
