@@ -351,7 +351,14 @@ func (a *App) adminPanelHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	http.ServeFile(w, r, adminPanelPath())
+	body, err := os.ReadFile(adminPanelPath())
+	if err != nil {
+		config.WriteError(w, r, http.StatusInternalServerError, "ADMIN_PANEL_UNAVAILABLE", "Admin panel is unavailable.")
+		return
+	}
+	html := strings.ReplaceAll(string(body), "{{ADMIN_STATIC_VERSION}}", Version)
+	html = strings.ReplaceAll(html, "{{ADMIN_API_BASE}}", "/internal/api")
+	_, _ = w.Write([]byte(html))
 }
 
 func adminPanelPath() string {

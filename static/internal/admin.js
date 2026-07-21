@@ -25,8 +25,25 @@ function rangeParams() {
   return p;
 }
 
+const adminAPIBase = (() => {
+  const configured = String(window.RFM_ADMIN_API_BASE || "/internal/api").replace(/\/+$/, "");
+  try {
+    return new URL(configured + "/", location.origin);
+  } catch {
+    return new URL("/internal/api/", location.origin);
+  }
+})();
+
+function adminURL(path) {
+  const clean = String(path || "").replace(/^\/+/, "");
+  const relative = clean.startsWith("internal/api/")
+    ? clean.slice("internal/api/".length)
+    : clean.replace(/^api\//, "");
+  return new URL(relative, adminAPIBase);
+}
+
 async function api(path, params) {
-  const url = new URL(path, location.origin);
+  const url = adminURL(path);
   for (const [k, v] of Object.entries(params || {})) {
     if (v !== "" && v != null) url.searchParams.set(k, v);
   }
@@ -41,7 +58,7 @@ async function api(path, params) {
 }
 
 async function mutate(path, method, body) {
-  const res = await fetch(path, {
+  const res = await fetch(adminURL(path), {
     method, credentials: "same-origin",
     headers: { "Content-Type": "application/json", "X-Admin-CSRF": "1" },
     body: body == null ? undefined : JSON.stringify(body),
@@ -299,6 +316,7 @@ async function navigate() {
   try {
     await def.render(el);
   } catch (err) {
+    console.error("Admin page render failed", err);
     el.innerHTML = `<div class="error-note">Failed to load: ${esc(err.message)}</div>`;
   }
 }
@@ -315,16 +333,24 @@ PAGES.overview = {
   title: "Overview",
   async render(el) {
     const d = await api("/internal/api/overview", rangeParams());
-    const t = d.totals, p = d.previous || {};
+    const t = {
+      requests: 0, errors: 0, cacheHit: 0, cacheStale: 0, cacheMiss: 0,
+      uniqueAccounts: 0, uniqueClients: 0, bySource: {}, latency: {},
+      ...(d.totals || {}),
+    };
+    const p = d.previous || {};
+    const latency = t.latency || {};
+    const gauges = d.gauges || {};
+    const aggregation = d.aggregation || {};
     const cacheTotal = t.cacheHit + t.cacheStale + t.cacheMiss;
-    const queueDepth = d.gauges.refresh_queue_depth;
+    const queueDepth = gauges.refresh_queue_depth || 0;
     const sources = Object.entries(t.bySource || {}).sort((a, b) => b[1] - a[1])
       .map(([k, v]) => ({ key: k, label: k, count: v }));
     el.innerHTML = `
       <div class="stat-row">
         ${statCard("Requests", num(t.requests) + delta(t.requests, p.requests), "#/requests")}
         ${statCard("Error rate", pct(t.errors, t.requests), "#/errors")}
-        ${statCard("p95 latency", msFmt(t.latency.p95Ms), "#/performance")}
+        ${statCard("p95 latency", msFmt(latency.p95Ms), "#/performance")}
         ${statCard("Cache hit", pct(t.cacheHit + t.cacheStale, cacheTotal), "#/cache")}
       </div>
       <div class="stat-row">
@@ -347,7 +373,7 @@ PAGES.overview = {
           { key: "message", label: "Message" }, { key: "routeTemplate", label: "Route" },
           { key: "status", label: "Status", fmt: (v) => v ? statusPill(v) : "" },
         ], (d.recentErrors || []).slice(0, 5), (row) => `data-error="${esc(row.errorId)}"`)}</div>
-      <div class="note">Version ${esc(d.version)} · Aggregation: last run ${esc(d.aggregation.last_aggregation_run || "never")}${d.aggregation.last_aggregation_error ? ` · <span class="pill bad">error: ${esc(d.aggregation.last_aggregation_error)}</span>` : ""}</div>`;
+      <div class="note">Version ${esc(d.version || "unknown")} · Aggregation: last run ${esc(aggregation.last_aggregation_run || "never")}${aggregation.last_aggregation_error ? ` · <span class="pill bad">error: ${esc(aggregation.last_aggregation_error)}</span>` : ""}</div>`;
     bindBarFilters(el);
     bindErrorRows(el);
   },
@@ -888,7 +914,9 @@ PAGES.insights = {
       </div>`;
     $("#expgo").addEventListener("click", () => {
       const params = new URLSearchParams({ ...rangeParams(), dataset: $("#expds").value, format: $("#expfmt").value });
-      window.open("/internal/api/export?" + params.toString(), "_blank");
+      const url = adminURL("/internal/api/export");
+      for (const [k, v] of params.entries()) url.searchParams.set(k, v);
+      window.open(url.toString(), "_blank");
     });
     el.querySelectorAll("tr[data-term]").forEach(tr => tr.addEventListener("click", () =>
       location.hash = "#/requests?term=" + encodeURIComponent(tr.dataset.term)));
@@ -1464,7 +1492,8 @@ async function boot() {
   try {
     state.session = await api("/internal/api/session");
     $("#whoami").textContent = `${state.session.username} · ${state.session.role}`;
-  } catch {
+  } catch (err) {
+    console.error("Admin session load failed", err);
     location.reload();
     return;
   }

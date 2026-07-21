@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Admin | Reforger Mods API</title>
-<link rel="stylesheet" href="/static/internal/admin.css">
+<link rel="stylesheet" href="/static/internal/admin.css?v={{ADMIN_STATIC_VERSION}}">
 </head>
 <body>
 <div id="app">
@@ -54,6 +54,9 @@
   </main>
 </div>
 <div id="drawer" class="hidden"><div id="drawerbox"><button id="drawerclose">×</button><div id="drawerbody"></div></div></div>
-<script src="/static/internal/admin.js"></script>
+<script>
+window.RFM_ADMIN_API_BASE = "{{ADMIN_API_BASE}}";
+</script>
+<script src="/static/internal/admin.js?v={{ADMIN_STATIC_VERSION}}"></script>
 </body>
 </html>
