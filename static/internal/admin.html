@@ -10,16 +10,24 @@
 <body>
 <div id="app">
   <aside id="nav">
-    <div class="brand">reforgermods<span>.net</span><em>internal</em></div>
+    <div class="brand">
+      <img src="/static/assets/reforger-mods-icon-light.png" width="26" height="26" alt="Reforger Mods">
+      <span class="brand-name">Reforger Mods</span>
+      <em>Internal</em>
+    </div>
     <nav id="navlinks"></nav>
     <div class="navfoot">
       <div id="whoami"></div>
       <button id="logout" class="ghost">Sign out</button>
     </div>
   </aside>
+  <div id="nav-overlay"></div>
   <main id="main">
     <header id="topbar">
-      <h1 id="pagetitle">Overview</h1>
+      <div class="topbar-left">
+        <button id="menu-btn" title="Menu" aria-label="Toggle navigation">&#9776;</button>
+        <h1 id="pagetitle">Overview</h1>
+      </div>
       <div class="controls">
         <select id="range">
           <option value="today">Today</option>

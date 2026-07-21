@@ -16,21 +16,34 @@
 body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
 a{color:var(--link);text-decoration:none}
 a:hover{text-decoration:underline}
+
+/* ── Shell ── */
 #app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-#nav{background:var(--surface2);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:auto}
-.brand{padding:16px 14px 10px;font-weight:700}
-.brand span{color:var(--accent)}
-.brand em{display:block;margin-top:2px;font-style:normal;font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase}
+#nav{background:var(--surface2);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:auto;transition:transform .22s ease}
+#main{min-width:0}
+#nav-overlay{display:none}
+
+/* ── Navigation sidebar ── */
+.brand{padding:14px 14px 10px;display:flex;flex-direction:column;gap:2px}
+.brand img{display:block;margin-bottom:6px}
+.brand-name{font-weight:700;font-size:14px;line-height:1}
+.brand em{display:block;font-style:normal;font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
 #navlinks{display:flex;flex-direction:column;padding:4px 6px 12px}
 #navlinks a{color:var(--muted);padding:7px 8px;border-left:2px solid transparent;border-radius:4px}
 #navlinks a:hover,#navlinks a.active{color:var(--text);background:var(--surface);text-decoration:none}
 #navlinks a.active{border-left-color:var(--accent)}
-#navlinks .sep{margin:12px 8px 4px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase}
+#navlinks .sep{margin:12px 8px 4px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .navfoot{margin-top:auto;padding:12px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
-#main{min-width:0}
-#topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
+
+/* ── Topbar ── */
+#topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
+.topbar-left{display:flex;align-items:center;gap:10px;min-width:0}
 #topbar h1{margin:0;font-size:18px;font-weight:700}
-#content{padding:18px 20px;max-width:1280px}
+#menu-btn{display:none;width:34px;height:34px;font-size:18px;background:var(--surface2);border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--text);align-items:center;justify-content:center;flex-shrink:0;line-height:1;padding:0}
+#menu-btn:hover{border-color:var(--muted)}
+#content{padding:18px 20px;max-width:1320px}
+
+/* ── Controls / forms ── */
 .controls,.filters,.formrow,.pager,.legend{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 select,input,button,textarea{background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:7px 9px;font:inherit}
 button{cursor:pointer}
@@ -38,7 +51,7 @@ button:hover{border-color:var(--muted)}
 button:disabled{cursor:not-allowed;opacity:.45}
 button.primary{background:var(--accent);border-color:var(--accent);color:#07130a;font-weight:700}
 button.danger{background:transparent;border-color:var(--bad);color:var(--bad)}
-button.ghost{background:transparent}
+button.ghost{background:transparent;border-color:transparent}
 .hidden{display:none!important}
 .loading{color:var(--muted);padding:32px;text-align:center}
 .note{color:var(--muted);font-size:12px;margin:6px 0 12px}
@@ -46,6 +59,16 @@ button.ghost{background:transparent}
 .error-note{border-color:var(--bad);color:var(--bad)}
 .warnbox{border-color:var(--warn);color:var(--warn)}
 .okbox{border-color:var(--accent);color:var(--accent)}
+
+/* ── Stat cards — overview hero metrics ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.stat-card{background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:14px 16px;cursor:pointer;transition:background .12s}
+.stat-card:hover{background:var(--surface)}
+.stat-card h3{margin:0 0 8px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.stat-card .big{font-size:26px;font-weight:700;line-height:1.15}
+.stat-card .delta{font-size:12px;margin-left:4px}
+
+/* ── Regular grid + cards ── */
 .grid{display:grid;gap:16px;margin-bottom:18px}
 .grid.cards{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .grid.two{grid-template-columns:1fr 1fr}
@@ -58,12 +81,16 @@ button.ghost{background:transparent}
 .delta.up{color:var(--accent)}.delta.down{color:var(--bad)}.delta.flat{color:var(--muted)}
 .card.link{cursor:pointer}
 .card.link:hover h3{text-decoration:underline}
+
+/* ── Tables ── */
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
 th{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;position:sticky;top:0;background:var(--surface2)}
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--surface)}
 .tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--line);background:var(--surface2);border-radius:6px}
+
+/* ── Pills ── */
 .pill{display:inline-block;padding:1px 6px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:11px}
 .pill.ok{color:var(--accent);border-color:var(--accent)}
 .pill.bad{color:var(--bad);border-color:var(--bad)}
@@ -72,7 +99,9 @@ tr.click:hover td{background:var(--surface)}
 .filters{margin-bottom:12px}
 .filters input,.filters select{max-width:190px}
 .pager{margin-top:10px;color:var(--muted);font-size:12px}
-svg.chart{width:100%;height:150px;display:block}
+
+/* ── Charts + bars + heatmap ── */
+svg.chart{width:100%;height:160px;display:block}
 svg.chart .axis{stroke:var(--line)}
 svg.chart text{fill:var(--muted);font-size:9px}
 .legend{font-size:11px;color:var(--muted);margin-top:4px}
@@ -84,6 +113,8 @@ svg.chart text{fill:var(--muted);font-size:9px}
 .bar .val{width:72px;text-align:right;color:var(--muted)}
 .heat{border-collapse:collapse}
 .heat td{width:44px;height:26px;text-align:center;font-size:10px;border:1px solid var(--bg)}
+
+/* ── Detail drawer ── */
 #drawer{position:fixed;inset:0;background:rgba(1,4,9,.7);z-index:50;display:flex;justify-content:flex-end}
 #drawerbox{width:min(760px,96vw);height:100vh;overflow:auto;background:var(--bg);border-left:1px solid var(--line);padding:20px;position:relative}
 #drawerclose{position:absolute;top:10px;right:14px;font-size:18px;background:none;border:none;color:var(--muted)}
@@ -96,20 +127,35 @@ svg.chart text{fill:var(--muted);font-size:9px}
 .formrow label{color:var(--muted);font-size:12px}
 .copy{cursor:pointer;color:var(--link);font-size:11px;margin-left:6px}
 .section-title{margin:22px 0 8px;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase}
-@media(max-width:1100px){.grid.two,.grid.three{grid-template-columns:1fr}}
+
+/* ── Responsive: tablet (≤1100px) ── */
+@media(max-width:1100px){
+  .grid.two,.grid.three{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Responsive: mobile (≤900px) ── */
 @media(max-width:900px){
-  #app{grid-template-columns:1fr}
-  #nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
-  .brand{padding:12px 14px 6px}
-  #navlinks{display:flex;flex-direction:row;gap:6px;overflow:auto;padding:6px 10px 10px}
-  #navlinks a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;background:var(--surface2)}
-  #navlinks a.active{border-left-color:transparent;border-bottom-color:var(--accent)}
-  #navlinks .sep{display:none}
+  /* Sidebar becomes a fixed slide-in panel */
+  #app{grid-template-columns:1fr;position:relative}
+  #nav{
+    position:fixed;top:0;left:0;height:100vh;width:260px;
+    transform:translateX(-100%);z-index:200;
+    border-right:1px solid var(--line);overflow-y:auto
+  }
+  #app.nav-open #nav{transform:translateX(0)}
+  #nav-overlay{
+    display:block;position:fixed;inset:0;
+    background:rgba(0,0,0,.55);z-index:199;
+    visibility:hidden;opacity:0;transition:opacity .22s,visibility .22s
+  }
+  #app.nav-open #nav-overlay{visibility:visible;opacity:1}
+  #menu-btn{display:flex}
   .navfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px}
-  #topbar{position:static;padding:12px}
   #content{padding:12px;max-width:none}
   .controls,.filters,.formrow{align-items:stretch}
-  .controls select,.controls input,.controls button,.filters input,.filters select,.filters button{min-height:36px}
+  .controls select,.controls input,.controls button,.filters input,.filters select,.filters button{min-height:40px}
+  .stat-row{grid-template-columns:repeat(2,1fr);gap:10px}
   .grid.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:0}
   .grid.cards .card{padding:10px 10px 10px 0}
   .card .big{font-size:19px}
@@ -128,12 +174,16 @@ svg.chart text{fill:var(--muted);font-size:9px}
   .bar .track{grid-column:1/-1;grid-row:2}
   .bar .val{width:auto;text-align:right}
 }
+
+/* ── Responsive: small mobile (≤520px) ── */
 @media(max-width:520px){
   body{font-size:12px}
-  #topbar h1{font-size:16px}
+  #topbar h1{font-size:15px}
   .controls,.filters{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .controls #customrange{grid-column:1/-1}
   .controls #refresh,.filters button{width:100%}
+  .stat-row{grid-template-columns:1fr 1fr}
+  .stat-card .big{font-size:22px}
   .grid.cards{grid-template-columns:1fr}
   .card .big{font-size:18px}
   svg.chart{height:130px}

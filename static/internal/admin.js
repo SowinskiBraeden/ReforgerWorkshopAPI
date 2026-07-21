@@ -114,6 +114,18 @@ function openDrawer(html) {
   $("#drawer").classList.remove("hidden");
 }
 function closeDrawer() { $("#drawer").classList.add("hidden"); }
+
+/* ---------- mobile nav ---------- */
+
+function openNav() {
+  $("#app").classList.add("nav-open");
+  document.body.style.overflow = "hidden";
+}
+function closeNav() {
+  const app = $("#app");
+  if (app) app.classList.remove("nav-open");
+  document.body.style.overflow = "";
+}
 function kv(pairs) {
   return `<dl class="kv">` + pairs
     .filter(([, v]) => v !== "" && v != null)
@@ -276,6 +288,7 @@ function currentPage() {
 
 async function navigate() {
   clearInterval(state.timer);
+  closeNav();
   const page = currentPage();
   document.querySelectorAll("#navlinks a").forEach(a =>
     a.classList.toggle("active", a.dataset.page === page));
@@ -294,29 +307,32 @@ async function navigate() {
 
 const PAGES = {};
 
+function statCard(label, value, href) {
+  return `<div class="stat-card" onclick="location.hash='${href.slice(1)}'"><h3>${esc(label)}</h3><div class="big">${value}</div></div>`;
+}
+
 PAGES.overview = {
   title: "Overview",
   async render(el) {
     const d = await api("/internal/api/overview", rangeParams());
     const t = d.totals, p = d.previous || {};
     const cacheTotal = t.cacheHit + t.cacheStale + t.cacheMiss;
-    // One card per question; detail lives on the linked page.
-    const cards = [
-      ["Requests", num(t.requests) + delta(t.requests, p.requests), "#/requests"],
-      ["Active users", num(t.uniqueAccounts) + delta(t.uniqueAccounts, p.uniqueAccounts), "#/users"],
-      ["Active integrations", num(t.uniqueClients) + delta(t.uniqueClients, p.uniqueClients), "#/audience"],
-      ["New integrations", num(d.newClients), "#/retention"],
-      ["Error rate", pct(t.errors, t.requests) + delta(t.errors, p.errors), "#/errors"],
-      ["p95 latency", msFmt(t.latency.p95Ms), "#/performance"],
-      ["Cache served", pct(t.cacheHit + t.cacheStale, cacheTotal), "#/cache"],
-      ["Job queue", num(d.gauges.refresh_queue_depth), "#/jobs"],
-    ];
+    const queueDepth = d.gauges.refresh_queue_depth;
     const sources = Object.entries(t.bySource || {}).sort((a, b) => b[1] - a[1])
       .map(([k, v]) => ({ key: k, label: k, count: v }));
     el.innerHTML = `
-      <div class="grid cards">${cards.map(([label, value, href]) =>
-        `<div class="card link" onclick="location.hash='${href.slice(1)}'">
-          <h3>${label}</h3><div class="big">${value}</div></div>`).join("")}</div>
+      <div class="stat-row">
+        ${statCard("Requests", num(t.requests) + delta(t.requests, p.requests), "#/requests")}
+        ${statCard("Error rate", pct(t.errors, t.requests), "#/errors")}
+        ${statCard("p95 latency", msFmt(t.latency.p95Ms), "#/performance")}
+        ${statCard("Cache hit", pct(t.cacheHit + t.cacheStale, cacheTotal), "#/cache")}
+      </div>
+      <div class="stat-row">
+        ${statCard("Active users", num(t.uniqueAccounts) + delta(t.uniqueAccounts, p.uniqueAccounts), "#/users")}
+        ${statCard("Active clients", num(t.uniqueClients) + delta(t.uniqueClients, p.uniqueClients), "#/audience")}
+        ${statCard("New clients", num(d.newClients), "#/retention")}
+        ${statCard("Job queue", num(queueDepth), "#/jobs")}
+      </div>
       <div class="card">${lineChart(d.series, { metrics: [
         { key: "requests", label: "requests" }, { key: "errors", label: "errors", color: "#ff6b6b" },
         { key: "rateLimited", label: "rate limited", color: "#ffb86b" }], legend: true })}</div>
@@ -1471,6 +1487,10 @@ async function boot() {
     navigate();
   });
   $("#refresh").addEventListener("click", navigate);
+  $("#menu-btn").addEventListener("click", () => {
+    if ($("#app").classList.contains("nav-open")) closeNav(); else openNav();
+  });
+  $("#nav-overlay").addEventListener("click", closeNav);
   $("#logout").addEventListener("click", async () => {
     await fetch("/internal/logout", { method: "POST", credentials: "same-origin" });
     location.reload();
